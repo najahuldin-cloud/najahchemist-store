@@ -1,172 +1,146 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Najah Chemist Wholesale</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Najah Chemist Wholesale</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      padding: 40px;
+    }
 
-<style>
-body { font-family: Arial; margin:0; background:#f4f4f4; }
-header { background:#111; color:white; padding:20px; text-align:center; }
-.products { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:20px; padding:20px; }
-.card { background:white; padding:20px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.1); }
-button { padding:8px 14px; margin-top:10px; border:none; border-radius:4px; cursor:pointer; }
-.primary { background:#111; color:white; }
-.cart { position:fixed; right:0; top:0; height:100%; width:350px; background:white; padding:20px; overflow:auto; display:none; box-shadow:-4px 0 10px rgba(0,0,0,0.2); }
-.cart.active { display:block; }
-input, select { width:100%; padding:6px; margin-bottom:10px; }
-</style>
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 15px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      margin-top: 25px;
+      width: 100%;
+      padding: 12px;
+      background: black;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+  </style>
 </head>
-
 <body>
 
-<header>
-<h1>Najah Chemist Wholesale</h1>
-<p>Orders processed within 2-3 business days</p>
-<button onclick="openCart()" class="primary">View Cart</button>
-</header>
+<div class="container">
+  <h2>Najah Chemist Wholesale Order</h2>
 
-<div class="products">
+  <label>Customer Name</label>
+  <input type="text" id="customerName">
 
-<div class="card">
-<h3>Yoni Oil</h3>
-<select id="yoniOilSize">
-<option value="5000">Liter - JMD 5000</option>
-<option value="15000">Gallon - JMD 15000</option>
-</select>
-<input type="number" id="yoniOilQty" value="1" min="1">
-<button class="primary" onclick="addToCart('Yoni Oil','yoniOilSize','yoniOilQty')">Add</button>
-</div>
+  <label>Phone Number</label>
+  <input type="text" id="phone">
 
-<div class="card">
-<h3>Lightening Cream</h3>
-<select id="lightSize">
-<option value="7000">Liter - JMD 7000</option>
-<option value="21000">Gallon - JMD 21000</option>
-</select>
-<input type="number" id="lightQty" value="1" min="1">
-<button class="primary" onclick="addToCart('Lightening Cream','lightSize','lightQty')">Add</button>
-</div>
+  <label>Delivery Location</label>
+  <input type="text" id="deliveryLocation">
 
-</div>
+  <label>Product</label>
+  <select id="product">
+    <option value="Yoni Oil - Liter - 5000">Yoni Oil - Liter - JMD 5000</option>
+    <option value="Lightening Cream - Liter - 7000">Lightening Cream - Liter - JMD 7000</option>
+  </select>
 
-<div class="cart" id="cart">
-<h2>Cart</h2>
-<div id="cartItems"></div>
+  <label>Delivery Area</label>
+  <select id="deliveryArea">
+    <option value="Kingston" data-fee="1000">Kingston - JMD 1000</option>
+    <option value="Other Parish" data-fee="2000">Other Parish - JMD 2000</option>
+  </select>
 
-<hr>
-
-<h3>Customer Information</h3>
-
-<input type="text" id="custName" placeholder="Full Name" required>
-<input type="text" id="custPhone" placeholder="Phone Number" required>
-
-<select id="deliveryMethod">
-<option value="Kingston">Kingston Delivery (+1000)</option>
-<option value="Knutsford">Knutsford</option>
-<option value="Zipmail">Zipmail</option>
-</select>
-
-<input type="text" id="custAddress" placeholder="Delivery Address or Branch">
-
-<hr>
-
-<h3 id="totalDisplay"></h3>
-
-<button class="primary" onclick="checkout()">Checkout via WhatsApp</button>
-<button onclick="closeCart()">Close</button>
-
+  <button onclick="checkout()">Checkout via WhatsApp</button>
 </div>
 
 <script>
-let cart = [];
+async function checkout() {
 
-function addToCart(name,sizeId,qtyId){
-let sizeSelect = document.getElementById(sizeId);
-let qty = parseInt(document.getElementById(qtyId).value);
-let price = parseInt(sizeSelect.value);
-let sizeText = sizeSelect.options[sizeSelect.selectedIndex].text;
+  const customerName = document.getElementById("customerName").value;
+  const phone = document.getElementById("phone").value;
+  const deliveryLocation = document.getElementById("deliveryLocation").value;
+  const product = document.getElementById("product").value;
 
-cart.push({
-name:name,
-size:sizeText,
-qty:qty,
-price:price
-});
+  const deliverySelect = document.getElementById("deliveryArea");
+  const deliveryArea = deliverySelect.value;
+  const deliveryFee = parseInt(deliverySelect.options[deliverySelect.selectedIndex].dataset.fee);
 
-alert("Added to cart");
-}
+  if (!customerName || !phone || !deliveryLocation) {
+    alert("Please complete all customer details.");
+    return;
+  }
 
-function openCart(){
-document.getElementById("cart").classList.add("active");
-renderCart();
-}
+  const productPrice = parseInt(product.split("-")[2]);
+  const total = productPrice + deliveryFee;
 
-function closeCart(){
-document.getElementById("cart").classList.remove("active");
-}
+  const orderData = {
+    orderId: "ORD-" + Date.now(),
+    date: new Date().toISOString(),
+    customerName: customerName,
+    phone: phone,
+    products: product,
+    deliveryLocation: deliveryArea + " - " + deliveryLocation,
+    deliveryFee: deliveryFee,
+    total: total,
+    status: "New"
+  };
 
-function renderCart(){
-let container = document.getElementById("cartItems");
-container.innerHTML="";
-let total=0;
+  try {
 
-cart.forEach(item=>{
-let subtotal = item.price * item.qty;
-total += subtotal;
+    await fetch("/.netlify/functions/create-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(orderData)
+    });
 
-container.innerHTML += `
-<p>
-<strong>${item.name}</strong><br>
-${item.size}<br>
-Qty: ${item.qty}<br>
-Subtotal: JMD ${subtotal}
-</p>
-<hr>
-`;
-});
+    const message =
+`Najah Chemist Wholesale Order
+Customer: ${customerName}
+Phone: ${phone}
+Product: ${product}
+Delivery: ${deliveryArea}
+Address: ${deliveryLocation}
+Total: JMD ${total}`;
 
-let delivery = document.getElementById("deliveryMethod").value;
-if(delivery === "Kingston"){
-total += 1000;
-}
+    const url = "https://api.whatsapp.com/send?phone=18768510998&text=" + encodeURIComponent(message);
 
-document.getElementById("totalDisplay").innerHTML = "Total: JMD " + total;
-}
+    window.open(url, "_blank");
 
-document.getElementById("deliveryMethod").addEventListener("change", renderCart);
-
-function checkout(){
-
-if(cart.length === 0){
-alert("Cart is empty");
-return;
-}
-
-let name = document.getElementById("custName").value;
-let phone = document.getElementById("custPhone").value;
-let delivery = document.getElementById("deliveryMethod").value;
-let address = document.getElementById("custAddress").value;
-
-if(name === "" || phone === "" || address === ""){
-alert("Please complete customer information");
-return;
-}
-
-let message = "Najah Chemist Wholesale Order\n\n";
-cart.forEach(item=>{
-message += item.name + " - " + item.size + " - Qty: " + item.qty + "\n";
-});
-
-message += "\nCustomer Name: " + name;
-message += "\nPhone: " + phone;
-message += "\nDelivery: " + delivery;
-message += "\nAddress/Branch: " + address;
-message += "\nOrders processed within 2-3 business days.";
-
-let url = "https://wa.me/18768851099?text=" + encodeURIComponent(message);
-window.open(url,"_blank");
-
+  } catch (error) {
+    alert("Error processing order.");
+    console.error(error);
+  }
 }
 </script>
 
