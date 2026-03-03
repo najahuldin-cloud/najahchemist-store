@@ -6,211 +6,168 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body { font-family: Arial; margin:0; padding:0; background:#f4f4f4; }
+body { font-family: Arial; margin:0; background:#f4f4f4; }
 header { background:#111; color:white; padding:20px; text-align:center; }
-.products { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:20px; padding:20px; }
-.card { background:white; padding:20px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,.08); }
-button { padding:8px 12px; margin-top:10px; cursor:pointer; border:none; border-radius:4px; }
+.products { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:20px; padding:20px; }
+.card { background:white; padding:20px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.1); }
+button { padding:8px 14px; margin-top:10px; border:none; border-radius:4px; cursor:pointer; }
 .primary { background:#111; color:white; }
-.modal, .cart { position:fixed; top:0; right:0; height:100%; width:380px; background:white; padding:20px; overflow:auto; display:none; box-shadow:-4px 0 20px rgba(0,0,0,.2); }
-.modal.active, .cart.active { display:block; }
-.overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; }
-.overlay.active { display:block; }
-select { width:100%; padding:6px; margin-bottom:10px; }
+.cart { position:fixed; right:0; top:0; height:100%; width:350px; background:white; padding:20px; overflow:auto; display:none; box-shadow:-4px 0 10px rgba(0,0,0,0.2); }
+.cart.active { display:block; }
+input, select { width:100%; padding:6px; margin-bottom:10px; }
 </style>
 </head>
+
 <body>
 
 <header>
 <h1>Najah Chemist Wholesale</h1>
-<p>Orders processed within 2–3 business days</p>
-<button class="primary" onclick="openCart()">View Cart</button>
+<p>Orders processed within 2-3 business days</p>
+<button onclick="openCart()" class="primary">View Cart</button>
 </header>
 
-<div class="products" id="productGrid"></div>
+<div class="products">
 
-<div class="overlay" id="overlay" onclick="closeAll()"></div>
-<div class="modal" id="modal"></div>
-<div class="cart" id="cart"></div>
+<div class="card">
+<h3>Yoni Oil</h3>
+<select id="yoniOilSize">
+<option value="5000">Liter - JMD 5000</option>
+<option value="15000">Gallon - JMD 15000</option>
+</select>
+<input type="number" id="yoniOilQty" value="1" min="1">
+<button class="primary" onclick="addToCart('Yoni Oil','yoniOilSize','yoniOilQty')">Add</button>
+</div>
+
+<div class="card">
+<h3>Lightening Cream</h3>
+<select id="lightSize">
+<option value="7000">Liter - JMD 7000</option>
+<option value="21000">Gallon - JMD 21000</option>
+</select>
+<input type="number" id="lightQty" value="1" min="1">
+<button class="primary" onclick="addToCart('Lightening Cream','lightSize','lightQty')">Add</button>
+</div>
+
+</div>
+
+<div class="cart" id="cart">
+<h2>Cart</h2>
+<div id="cartItems"></div>
+
+<hr>
+
+<h3>Customer Information</h3>
+
+<input type="text" id="custName" placeholder="Full Name" required>
+<input type="text" id="custPhone" placeholder="Phone Number" required>
+
+<select id="deliveryMethod">
+<option value="Kingston">Kingston Delivery (+1000)</option>
+<option value="Knutsford">Knutsford</option>
+<option value="Zipmail">Zipmail</option>
+</select>
+
+<input type="text" id="custAddress" placeholder="Delivery Address or Branch">
+
+<hr>
+
+<h3 id="totalDisplay"></h3>
+
+<button class="primary" onclick="checkout()">Checkout via WhatsApp</button>
+<button onclick="closeCart()">Close</button>
+
+</div>
 
 <script>
-document.addEventListener("DOMContentLoaded", function(){
-
-const WHATSAPP = "18768851099";
 let cart = [];
-let currentProduct = null;
 
-const products = [
-{
-id:1,
-name:"Yoni Foaming Wash",
-sizes:{Liter:3550, Gallon:12500, "5 Gallon":56250},
-allowScent:true,
-allowMint:true
-},
-{
-id:2,
-name:"VagiMist",
-sizes:{Liter:4000, Gallon:14000},
-allowScent:true,
-allowMint:true
-},
-{
-id:3,
-name:"Yoni Oil",
-sizes:{Liter:5000, Gallon:18000},
-allowScent:true,
-allowMint:true
-},
-{
-id:4,
-name:"Body Butter",
-sizes:{"2lbs":6000, "8lbs":20000},
-allowScent:true,
-allowMint:false
-},
-{
-id:5,
-name:"Lightening Cream",
-sizes:{Liter:7000, Gallon:25000},
-allowScent:false,
-allowMint:false
-}
-];
-
-function renderProducts(){
-const grid=document.getElementById("productGrid");
-grid.innerHTML="";
-products.forEach(p=>{
-const div=document.createElement("div");
-div.className="card";
-div.innerHTML=`
-<h3>${p.name}</h3>
-<button class="primary" onclick="openModal(${p.id})">Details</button>
-`;
-grid.appendChild(div);
-});
-}
-
-window.openModal = function(id){
-currentProduct=products.find(p=>p.id===id);
-const modal=document.getElementById("modal");
-const overlay=document.getElementById("overlay");
-
-let sizeOptions="";
-for(let s in currentProduct.sizes){
-sizeOptions+=`<option value="${s}">${s} - JMD ${currentProduct.sizes[s]}</option>`;
-}
-
-let scentHTML=currentProduct.allowScent?
-`<label>Scent</label>
-<select id="scent">
-<option>Unscented</option>
-<option>Strawberry</option>
-<option>Watermelon</option>
-<option>Coconut</option>
-<option>Lavender</option>
-</select>`:"";
-
-let mintHTML=currentProduct.allowMint?
-`<label>Mint Option</label>
-<select id="mint">
-<option>With Mint</option>
-<option>No Mint</option>
-</select>`:"";
-
-modal.innerHTML=`
-<h2>${currentProduct.name}</h2>
-<label>Size</label>
-<select id="size">${sizeOptions}</select>
-<label>Quantity</label>
-<select id="qty">
-${[...Array(10)].map((_,i)=>`<option>${i+1}</option>`).join("")}
-</select>
-${scentHTML}
-${mintHTML}
-<button class="primary" onclick="addToCart()">Add to Cart</button>
-<button onclick="closeAll()">Close</button>
-`;
-
-modal.classList.add("active");
-overlay.classList.add("active");
-}
-
-window.closeAll = function(){
-document.getElementById("modal").classList.remove("active");
-document.getElementById("cart").classList.remove("active");
-document.getElementById("overlay").classList.remove("active");
-}
-
-window.addToCart = function(){
-const size=document.getElementById("size").value;
-const qty=parseInt(document.getElementById("qty").value);
-const scent=document.getElementById("scent")?.value||"";
-const mint=document.getElementById("mint")?.value||"";
+function addToCart(name,sizeId,qtyId){
+let sizeSelect = document.getElementById(sizeId);
+let qty = parseInt(document.getElementById(qtyId).value);
+let price = parseInt(sizeSelect.value);
+let sizeText = sizeSelect.options[sizeSelect.selectedIndex].text;
 
 cart.push({
-name:currentProduct.name,
-size,
-qty,
-price:currentProduct.sizes[size],
-scent,
-mint
+name:name,
+size:sizeText,
+qty:qty,
+price:price
 });
 
-closeAll();
 alert("Added to cart");
 }
 
-window.openCart = function(){
-const cartDiv=document.getElementById("cart");
-const overlay=document.getElementById("overlay");
+function openCart(){
+document.getElementById("cart").classList.add("active");
+renderCart();
+}
 
+function closeCart(){
+document.getElementById("cart").classList.remove("active");
+}
+
+function renderCart(){
+let container = document.getElementById("cartItems");
+container.innerHTML="";
 let total=0;
-let html="<h2>Cart</h2>";
 
 cart.forEach(item=>{
-let subtotal=item.price*item.qty;
-total+=subtotal;
-html+=`
+let subtotal = item.price * item.qty;
+total += subtotal;
+
+container.innerHTML += `
 <p>
-<b>${item.name}</b><br>
-Size: ${item.size}<br>
+<strong>${item.name}</strong><br>
+${item.size}<br>
 Qty: ${item.qty}<br>
-${item.scent?`Scent: ${item.scent}<br>`:""}
-${item.mint?`Mint: ${item.mint}<br>`:""}
 Subtotal: JMD ${subtotal}
-</p><hr>`;
+</p>
+<hr>
+`;
 });
 
-html+=`<p><b>Delivery (Kingston): JMD 1000</b></p>`;
-total+=1000;
-
-html+=`<h3>Total: JMD ${total}</h3>
-<button class="primary" onclick="checkout(${total})">Checkout via WhatsApp</button>
-<button onclick="closeAll()">Close</button>`;
-
-cartDiv.innerHTML=html;
-cartDiv.classList.add("active");
-overlay.classList.add("active");
+let delivery = document.getElementById("deliveryMethod").value;
+if(delivery === "Kingston"){
+total += 1000;
 }
 
-window.checkout = function(total){
-let message="Najah Chemist Wholesale Order%0A%0A";
+document.getElementById("totalDisplay").innerHTML = "Total: JMD " + total;
+}
+
+document.getElementById("deliveryMethod").addEventListener("change", renderCart);
+
+function checkout(){
+
+if(cart.length === 0){
+alert("Cart is empty");
+return;
+}
+
+let name = document.getElementById("custName").value;
+let phone = document.getElementById("custPhone").value;
+let delivery = document.getElementById("deliveryMethod").value;
+let address = document.getElementById("custAddress").value;
+
+if(name === "" || phone === "" || address === ""){
+alert("Please complete customer information");
+return;
+}
+
+let message = "Najah Chemist Wholesale Order\n\n";
 cart.forEach(item=>{
-message+=`${item.name}%0ASize: ${item.size}%0AQty: ${item.qty}%0A`;
-if(item.scent) message+=`Scent: ${item.scent}%0A`;
-if(item.mint) message+=`Mint: ${item.mint}%0A`;
-message+="%0A";
+message += item.name + " - " + item.size + " - Qty: " + item.qty + "\n";
 });
-message+=`Delivery: Kingston%0ATotal: JMD ${total}%0A%0AProcessed within 2-3 business days.`;
 
-window.open(`https://wa.me/${WHATSAPP}?text=${message}`);
+message += "\nCustomer Name: " + name;
+message += "\nPhone: " + phone;
+message += "\nDelivery: " + delivery;
+message += "\nAddress/Branch: " + address;
+message += "\nOrders processed within 2-3 business days.";
+
+let url = "https://wa.me/18768851099?text=" + encodeURIComponent(message);
+window.open(url,"_blank");
+
 }
-
-renderProducts();
-
-});
 </script>
 
 </body>
