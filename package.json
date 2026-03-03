@@ -1,0 +1,9 @@
+{
+  "name": "najahchemist-store",
+  "version": "1.0.0",
+  "description": "Najah Chemist Wholesale System",
+  "main": "index.html",
+  "dependencies": {
+    "googleapis": "^126.0.1"
+  }
+}
