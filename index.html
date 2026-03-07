@@ -1,147 +1,151 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Najah Chemist Wholesale</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f5f5;
-      padding: 40px;
-    }
+<meta charset="UTF-8">
+<title>Najah Chemist Wholesale</title>
 
-    .container {
-      max-width: 600px;
-      margin: auto;
-      background: white;
-      padding: 30px;
-      border-radius: 8px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    }
+<style>
+body{
+font-family: Arial, sans-serif;
+background:#f5f5f5;
+padding:40px;
+}
 
-    h2 {
-      text-align: center;
-      margin-bottom: 30px;
-    }
+.container{
+max-width:600px;
+margin:auto;
+background:white;
+padding:30px;
+border-radius:8px;
+box-shadow:0 4px 20px rgba(0,0,0,0.08);
+}
 
-    label {
-      font-weight: bold;
-      display: block;
-      margin-top: 15px;
-    }
+h1{
+text-align:center;
+margin-bottom:30px;
+}
 
-    input, select {
-      width: 100%;
-      padding: 10px;
-      margin-top: 5px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-    }
+label{
+font-weight:bold;
+display:block;
+margin-top:15px;
+}
 
-    button {
-      margin-top: 25px;
-      width: 100%;
-      padding: 12px;
-      background: black;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      font-size: 16px;
-      cursor: pointer;
-    }
+input,select{
+width:100%;
+padding:12px;
+margin-top:6px;
+border:1px solid #ccc;
+border-radius:5px;
+font-size:14px;
+}
 
-    button:hover {
-      opacity: 0.9;
-    }
-  </style>
+button{
+margin-top:25px;
+width:100%;
+padding:15px;
+background:black;
+color:white;
+border:none;
+border-radius:6px;
+font-size:16px;
+cursor:pointer;
+}
+
+button:hover{
+background:#333;
+}
+</style>
+
 </head>
+
 <body>
 
 <div class="container">
-  <h2>Najah Chemist Wholesale Order</h2>
 
-  <label>Customer Name</label>
-  <input type="text" id="customerName">
+<h1>Najah Chemist Wholesale Order</h1>
 
-  <label>Phone Number</label>
-  <input type="text" id="phone">
+<label>Customer Name</label>
+<input id="customerName" type="text">
 
-  <label>Delivery Location</label>
-  <input type="text" id="deliveryLocation">
+<label>Phone Number</label>
+<input id="phone" type="text">
 
-  <label>Product</label>
-  <select id="product">
-    <option value="Yoni Oil - Liter - 5000">Yoni Oil - Liter - JMD 5000</option>
-    <option value="Lightening Cream - Liter - 7000">Lightening Cream - Liter - JMD 7000</option>
-  </select>
+<label>Delivery Location</label>
+<input id="location" type="text">
 
-  <label>Delivery Area</label>
-  <select id="deliveryArea">
-    <option value="Kingston" data-fee="1000">Kingston - JMD 1000</option>
-    <option value="Other Parish" data-fee="2000">Other Parish - JMD 2000</option>
-  </select>
+<label>Product</label>
+<select id="product">
+<option value="Yoni Oil - Liter - 5000">Yoni Oil - Liter - JMD 5000</option>
+<option value="Yoni Oil - Gallon - 18000">Yoni Oil - Gallon - JMD 18000</option>
+</select>
 
-  <button onclick="checkout()">Checkout via WhatsApp</button>
+<label>Delivery Area</label>
+<select id="deliveryArea">
+<option value="Kingston - 1000">Kingston - JMD 1000</option>
+<option value="St Catherine - 1500">St Catherine - JMD 1500</option>
+<option value="Rural - 2000">Rural - JMD 2000</option>
+</select>
+
+<button onclick="submitOrder()">
+Checkout via WhatsApp
+</button>
+
 </div>
 
+
 <script>
-async function checkout() {
 
-  const customerName = document.getElementById("customerName").value;
-  const phone = document.getElementById("phone").value;
-  const deliveryLocation = document.getElementById("deliveryLocation").value;
-  const product = document.getElementById("product").value;
+async function submitOrder(){
 
-  const deliverySelect = document.getElementById("deliveryArea");
-  const deliveryArea = deliverySelect.value;
-  const deliveryFee = parseInt(deliverySelect.options[deliverySelect.selectedIndex].dataset.fee);
+const customerName = document.getElementById("customerName").value
+const phone = document.getElementById("phone").value
+const location = document.getElementById("location").value
+const product = document.getElementById("product").value
+const deliveryArea = document.getElementById("deliveryArea").value
 
-  if (!customerName || !phone || !deliveryLocation) {
-    alert("Please complete all customer details.");
-    return;
-  }
+const productPrice = parseInt(product.split(" - ").pop())
+const deliveryFee = parseInt(deliveryArea.split(" - ").pop())
 
-  const productPrice = parseInt(product.split("-")[2]);
-  const total = productPrice + deliveryFee;
+const total = productPrice + deliveryFee
 
-  const orderData = {
-    orderId: "ORD-" + Date.now(),
-    date: new Date().toISOString(),
-    customerName: customerName,
-    phone: phone,
-    products: product,
-    deliveryLocation: deliveryArea + " - " + deliveryLocation,
-    deliveryFee: deliveryFee,
-    total: total,
-    status: "New"
-  };
+const order = {
+orderId: Date.now(),
+date: new Date().toLocaleString(),
+customerName,
+phone,
+products: product,
+deliveryLocation: location,
+deliveryFee,
+total,
+status: "NEW"
+}
 
-  try {
+await fetch("/.netlify/functions/create-order",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body: JSON.stringify(order)
+})
 
-    await fetch("/.netlify/functions/create-order", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(orderData)
-    });
+const message =
+`Najah Chemist Order
 
-    const message =
-`Najah Chemist Wholesale Order
-Customer: ${customerName}
+Name: ${customerName}
 Phone: ${phone}
 Product: ${product}
-Delivery: ${deliveryArea}
-Address: ${deliveryLocation}
-Total: JMD ${total}`;
+Delivery Location: ${location}
+Delivery Fee: ${deliveryFee}
+Total: JMD ${total}`
 
-    const url = "https://api.whatsapp.com/send?phone=18768510998&text=" + encodeURIComponent(message);
+const whatsapp =
+`https://wa.me/18765551234?text=${encodeURIComponent(message)}`
 
-    window.open(url, "_blank");
+window.open(whatsapp,"_blank")
 
-  } catch (error) {
-    alert("Error processing order.");
-    console.error(error);
-  }
 }
+
 </script>
 
 </body>
