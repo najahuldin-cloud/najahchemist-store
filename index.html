@@ -2516,6 +2516,8 @@ function waOrder(productName) {
   window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 window.waOrder = waOrder;
+window.SYS = SYS;
+window.WA_NUMBER = WA_NUMBER;
 
 </script>
 
@@ -3093,7 +3095,7 @@ function sfHideChatTyping() { const t=document.getElementById('sf-typing'); if(t
 async function sfCallChat(msg) {
   sfChatHist.push({role:'user',content:msg});
   const extra = window._extraChatbotKnowledge ? '\n\nADDITIONAL BUSINESS INFORMATION:\n'+window._extraChatbotKnowledge : '';
-  const SYS = window.SYS || 'You are a helpful assistant for Najah Chemist, a Jamaican natural skincare brand.';
+  const SYS = window.SYS || 'You are the friendly customer service assistant for Najah Chemist, a Jamaican natural skincare manufacturer. Be warm, helpful and concise. All prices are in Jamaican Dollars (J$). Answer questions about products, prices, shipping and ordering.';
   try {
     const r = await fetch('/.netlify/functions/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:sfChatHist.slice(-16),system:SYS+extra})});
     const d = await r.json();
