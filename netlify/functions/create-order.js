@@ -1,9 +1,21 @@
+// netlify/functions/create-order.js
+// Saves order to Google Sheets
+// Required env vars: GOOGLE_SERVICE_ACCOUNT, GOOGLE_SHEET_ID
+
 const { google } = require("googleapis");
 
 exports.handler = async (event) => {
+  // Allow HEAD for connectivity checks
+  if (event.httpMethod === "HEAD") {
+    return { statusCode: 200, body: "" };
+  }
+
+  if (event.httpMethod !== "POST") {
+    return { statusCode: 405, body: "Method Not Allowed" };
+  }
+
   try {
     const body = JSON.parse(event.body);
-
     const {
       orderId,
       date,
@@ -16,10 +28,7 @@ exports.handler = async (event) => {
       status
     } = body;
 
-    console.log("Received order:", JSON.stringify(body));
-
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
-    console.log("Service account email:", credentials.client_email);
 
     const auth = new google.auth.GoogleAuth({
       credentials,
@@ -27,11 +36,9 @@ exports.handler = async (event) => {
     });
 
     const sheets = google.sheets({ version: "v4", auth });
-
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
-    console.log("Sheet ID:", spreadsheetId);
 
-    const response = await sheets.spreadsheets.values.append({
+    await sheets.spreadsheets.values.append({
       spreadsheetId,
       range: "Sheet1!A1",
       valueInputOption: "RAW",
@@ -41,28 +48,27 @@ exports.handler = async (event) => {
           orderId,
           date,
           customerName,
-          phone,
+          phone || "",
           products,
           deliveryLocation,
           deliveryFee,
           total,
-          status
+          status || "NEW"
         ]]
       }
     });
 
-    console.log("Sheets API response:", JSON.stringify(response.data));
-
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: "Order saved successfully" })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ success: true, orderId })
     };
 
   } catch (error) {
-    console.error("ERROR:", error.message);
-    console.error("Full error:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    console.error("create-order error:", error.message);
     return {
       statusCode: 500,
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ error: error.message })
     };
   }
