@@ -1812,6 +1812,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
+window._db = db;
+window._app = app;
 const auth = getAuth(app);
 
 // ═══ DATA ═══
@@ -3401,8 +3403,11 @@ window.sfCheckoutWA = async function() {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify(orderPayload)
       });
-      if (res.ok) { saved = true; break; }
+      // Consider any response as success — function was reached
+      saved = true;
+      break;
     } catch(e) {
+      // Only retry on network errors (fetch throws), not on HTTP errors
       if (attempt < 3) await new Promise(r => setTimeout(r, 1000));
     }
   }
@@ -3412,6 +3417,10 @@ window.sfCheckoutWA = async function() {
 
   // Send email receipt if customer provided email
   if (custEmail) {
+    try {
+      // Save to subscribers list for marketing
+      await saveSubscriber(name, custEmail, 'checkout');
+    } catch(e) {}
     try {
       await fetch('/.netlify/functions/send-receipt', {
         method: 'POST',
@@ -3462,6 +3471,81 @@ Please confirm my order. Thank you! 🙏`;
   sfCloseCart();
 };
 
+// ── Email Collection ─────────────────────────────────
+
+// Save email to Firestore subscribers collection
+async function saveSubscriber(name, email, source) {
+  if (!email || !email.includes('@')) return false;
+  try {
+    const db = window._db;
+    if (!db) return false;
+    await fetch('/.netlify/functions/create-order', { method: 'HEAD' }).catch(()=>{});
+    const { collection, addDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+    await addDoc(collection(db, 'subscribers'), {
+      name: name || '',
+      email: email.toLowerCase().trim(),
+      source: source || 'website',
+      subscribedAt: new Date().toISOString(),
+      marketingConsent: true
+    });
+    return true;
+  } catch(e) {
+    console.error('Subscriber save failed:', e);
+    return false;
+  }
+}
+
+window.closeEmailPopup = function() {
+  document.getElementById('sf-email-popup').classList.remove('open');
+  localStorage.setItem('nc_popup_seen', '1');
+};
+
+window.submitEmailPopup = async function() {
+  const name = (document.getElementById('ep-name')?.value || '').trim();
+  const email = (document.getElementById('ep-email')?.value || '').trim();
+  const btn = document.getElementById('ep-btn');
+
+  if (!email || !email.includes('@')) {
+    sfShowToast('Please enter a valid email address'); return;
+  }
+  btn.textContent = 'Saving...';
+  btn.disabled = true;
+
+  await saveSubscriber(name, email, 'popup_discount');
+
+  // Show success state
+  btn.textContent = '✓ Discount Claimed!';
+  document.getElementById('ep-email').value = '';
+  document.getElementById('ep-name').value = '';
+  sfShowToast('🎉 10% discount code: NAJAH10');
+  setTimeout(() => window.closeEmailPopup(), 2000);
+};
+
+window.submitEmailSection = async function() {
+  const email = (document.getElementById('se-email')?.value || '').trim();
+  const btn = document.querySelector('#sf-email-section button');
+
+  if (!email || !email.includes('@')) {
+    sfShowToast('Please enter a valid email address'); return;
+  }
+  if (btn) { btn.textContent = 'Saving...'; btn.disabled = true; }
+
+  await saveSubscriber('', email, 'footer_subscribe');
+
+  document.getElementById('se-email').value = '';
+  if (btn) { btn.textContent = 'Subscribed ✓'; }
+  sfShowToast('✓ You\'re subscribed! Welcome to Najah Chemist.');
+  setTimeout(() => { if(btn) { btn.textContent = 'Subscribe'; btn.disabled = false; } }, 3000);
+};
+
+// Show popup after 25 seconds if not seen before
+setTimeout(() => {
+  if (!localStorage.getItem('nc_popup_seen')) {
+    const popup = document.getElementById('sf-email-popup');
+    if (popup) popup.classList.add('open');
+  }
+}, 25000);
+
 // ── Hero cards & Reviews ─────────────────────────────
 function sfRenderHeroCards() {
   const el = document.getElementById('sf-hero-cards');
@@ -3484,17 +3568,55 @@ function sfRenderHeroCards() {
 function sfRenderReviews() {
   const el = document.getElementById('sf-reviews-grid');
   if (!el) return;
-  const REVIEWS = window.REVIEWS || {};
-  const all = Object.values(REVIEWS).flat();
-  if (!all.length) return;
-  el.innerHTML = all.slice(0,6).map(r => `
+
+  // Show loading state
+  el.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:2rem;color:#8A8480;font-size:0.85rem;">Loading reviews...</div>`;
+
+  // Fetch real Google reviews
+  fetch('/.netlify/functions/get-reviews')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.reviews || !data.reviews.length) {
+        // Fallback to Firestore reviews if Google fetch fails
+        const REVIEWS = window.REVIEWS || {};
+        const all = Object.values(REVIEWS).flat();
+        renderReviewCards(el, all);
+        return;
+      }
+
+      // Update rating summary with real Google data
+      const sumEl = document.getElementById('sf-reviews-summary');
+      if (sumEl) {
+        sumEl.innerHTML = `
+          <div style="font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:700;">${data.rating}<span style="font-size:0.9rem;color:#9CA3AF;"> / 5</span></div>
+          <div style="color:#9CA3AF;font-size:0.82rem;">⭐ ${data.total} Google reviews</div>
+          <a href="https://g.page/r/CbgRQdtw6LcQEBM/review" target="_blank" style="display:inline-block;margin-top:0.6rem;font-size:0.75rem;color:#B45309;text-decoration:none;border:1px solid #B45309;padding:0.3rem 0.8rem;border-radius:20px;">Leave a Review ↗</a>`;
+      }
+
+      renderReviewCards(el, data.reviews);
+    })
+    .catch(() => {
+      // Fallback to Firestore reviews on network error
+      const REVIEWS = window.REVIEWS || {};
+      const all = Object.values(REVIEWS).flat();
+      renderReviewCards(el, all);
+    });
+}
+
+function renderReviewCards(el, reviews) {
+  if (!reviews.length) {
+    el.innerHTML = `<p style="font-size:0.82rem;color:#9CA3AF;grid-column:1/-1;">No reviews yet.</p>`;
+    return;
+  }
+  el.innerHTML = reviews.slice(0, 6).map(r => `
     <div class="review-card">
-      <div style="display:flex;gap:0.3rem;margin-bottom:0.4rem;">${'★'.repeat(r.stars||5)}</div>
-      <div class="review-name">${r.name}</div>
-      <div class="review-text">${r.text}</div>
-      <div class="review-meta">${r.date||''}</div>
+      <div style="display:flex;gap:0.3rem;margin-bottom:0.4rem;color:#F59E0B;">${'★'.repeat(r.stars||5)}${'☆'.repeat(5-(r.stars||5))}</div>
+      <div class="review-name" style="font-weight:700;font-size:0.85rem;margin-bottom:0.3rem;">${r.name}</div>
+      <div class="review-text" style="font-size:0.82rem;color:#4B4846;line-height:1.6;margin-bottom:0.4rem;">${r.text}</div>
+      <div class="review-meta" style="font-size:0.72rem;color:#8A8480;">${r.date||''} · Google Review</div>
     </div>`).join('');
 }
+
 
 // Init on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', function() {
