@@ -1168,7 +1168,7 @@ tr:hover td{background:var(--warm);}
 <!-- ════════════════════════════════════════
      INTERNAL DASHBOARD — Staff only
      ════════════════════════════════════════ -->
-<div id="app">
+<div id="app" style="display:none;">
 
 
 <nav>
@@ -2199,6 +2199,16 @@ let DB_MESSAGES = [
 
 const IMG_CLASS = {soap:'img-soap',cream:'img-cream',serum:'img-serum',wash:'img-wash',hair:'img-cream',label:'img-label'};
 
+// ═══ UI SWITCHING ═══
+function showDashboard() {
+  document.getElementById('storefront').style.display = 'none';
+  document.getElementById('app').style.display = '';
+}
+function showStorefront() {
+  document.getElementById('storefront').style.display = '';
+  document.getElementById('app').style.display = 'none';
+}
+
 // ═══ AUTH STATE — this is the single source of truth ═══
 onAuthStateChanged(auth, (user) => {
   const btn = document.getElementById('nav-admin');
@@ -2247,10 +2257,16 @@ window.staffLogin = async function() {
   try {
     await signInWithEmailAndPassword(auth, email, pass);
     closeStaffModal();
-    // Navigate to admin panel
+    // Navigate to admin panel using the nav function
     document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
     document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
     document.getElementById('v-admin').classList.add('on');
+    document.getElementById('nav-admin').classList.add('on');
+    // Hide storefront, show admin app
+    const sf = document.getElementById('storefront');
+    if (sf) sf.style.display = 'none';
+    const app = document.getElementById('app');
+    if (app) app.style.display = '';
     renderAdminProducts(); renderAdminReviews();
   } catch (e) {
     btn.textContent = 'Sign In';
