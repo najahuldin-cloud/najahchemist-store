@@ -2912,12 +2912,106 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateBadges();
   updateStatRevs();
   await loadFromDB();
+  sfRenderReviews();
 });
 
 
 // ════════════════════════════════════════
 // STOREFRONT LOGIC
 // ════════════════════════════════════════
+
+// ── Google Reviews ────────────────────────────────────
+function sfRenderReviews() {
+  const el = document.getElementById('sf-reviews-grid');
+  if (!el) return;
+  el.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:#8A8480;font-size:0.85rem;">Loading reviews...</div>';
+  fetch('/.netlify/functions/get-reviews')
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if (!data.reviews || !data.reviews.length) { renderReviewCards(el, sfFallbackReviews()); return; }
+      const sumEl = document.getElementById('sf-reviews-summary');
+      if (sumEl) {
+        sumEl.innerHTML = '<div style="font-family:\'Playfair Display\',serif;font-size:2.5rem;font-weight:700;">'+data.rating+'<span style="font-size:0.9rem;color:#9CA3AF;"> / 5</span></div><div style="color:#9CA3AF;font-size:0.82rem;">&#11088; '+data.total+' Google reviews</div><a href="https://g.page/r/CbgRQdtw6LcQEBM/review" target="_blank" style="display:inline-block;margin-top:0.6rem;font-size:0.75rem;color:#B45309;text-decoration:none;border:1px solid #B45309;padding:0.3rem 0.8rem;border-radius:20px;">Leave a Review &#8599;</a>';
+      }
+      renderReviewCards(el, data.reviews);
+    })
+    .catch(function() { renderReviewCards(el, sfFallbackReviews()); });
+}
+window.sfRenderReviews = sfRenderReviews;
+
+function renderReviewCards(el, reviews) {
+  if (!reviews || !reviews.length) { el.innerHTML = '<p style="font-size:0.82rem;color:#9CA3AF;grid-column:1/-1;">No reviews yet.</p>'; return; }
+  el.innerHTML = reviews.slice(0,6).map(function(r) {
+    return '<div class="review-card"><div style="display:flex;gap:0.3rem;margin-bottom:0.4rem;color:#F59E0B;">'+'&#9733;'.repeat(r.stars||5)+'&#9734;'.repeat(5-(r.stars||5))+'</div><div class="review-name" style="font-weight:700;font-size:0.85rem;margin-bottom:0.3rem;">'+r.name+'</div><div class="review-text" style="font-size:0.82rem;color:#4B4846;line-height:1.6;margin-bottom:0.4rem;">'+r.text+'</div><div class="review-meta" style="font-size:0.72rem;color:#8A8480;">'+(r.date||'')+' &middot; Google Review</div></div>';
+  }).join('');
+}
+
+function sfFallbackReviews() {
+  return [
+    {name:'Yanique T.', stars:5, text:'This soap changed my skin completely! Dark spots are fading fast. I reorder every month.', date:'Feb 2026'},
+    {name:'Latoya R.', stars:5, text:'I ordered the litre and it lasted months. Amazing results and my customers love it.', date:'Feb 2026'},
+    {name:'Shanice M.', stars:4, text:'Love the probiotic wash. No irritation at all. Great for sensitive skin.', date:'Jan 2026'},
+    {name:'Kezia B.', stars:5, text:'Best wholesale supplier in Jamaica. Fast delivery and the products actually work.', date:'Jan 2026'},
+    {name:'Tanya F.', stars:5, text:'Started my own brand with their private label service. Professional and affordable.', date:'Dec 2025'},
+    {name:'Marcia W.', stars:5, text:'The turmeric soap is incredible. My whole family uses it now. Will definitely reorder.', date:'Dec 2025'}
+  ];
+}
+
+// ── Email Popup ───────────────────────────────────────
+window.closeEmailPopup = function() {
+  const el = document.getElementById('sf-email-popup');
+  if (el) el.classList.remove('open');
+  try { localStorage.setItem('nc_popup_seen', '1'); } catch(e) {}
+};
+
+window.submitEmailPopup = async function() {
+  const name = (document.getElementById('ep-name')?.value||'').trim();
+  const email = (document.getElementById('ep-email')?.value||'').trim();
+  const btn = document.getElementById('ep-btn');
+  if (!email || !email.includes('@')) { sfShowToast('Please enter a valid email'); return; }
+  if (btn) { btn.textContent = 'Saving...'; btn.disabled = true; }
+  try { await saveSubscriber(name, email, 'popup_discount'); } catch(e) {}
+  if (btn) { btn.textContent = 'Done! Use code NAJAH10'; btn.style.background = '#16a34a'; }
+  sfShowToast('Discount code: NAJAH10 — use at checkout!');
+  setTimeout(window.closeEmailPopup, 2500);
+};
+
+window.submitEmailSection = async function() {
+  const email = (document.getElementById('se-email')?.value||'').trim();
+  if (!email || !email.includes('@')) { sfShowToast('Please enter a valid email'); return; }
+  try { await saveSubscriber('', email, 'footer_subscribe'); } catch(e) {}
+  sfShowToast('Subscribed! Welcome to Najah Chemist.');
+  const inp = document.getElementById('se-email');
+  if (inp) inp.value = '';
+};
+
+// Auto-show popup after 25 seconds (once per visitor)
+setTimeout(function() {
+  try {
+    if (localStorage.getItem('nc_popup_seen')) return;
+  } catch(e) {}
+  const el = document.getElementById('sf-email-popup');
+  if (el) el.classList.add('open');
+}, 25000);
+
+// ── Save Subscriber to Firestore ──────────────────────
+async function saveSubscriber(name, email, source) {
+  if (!email || !email.includes('@')) return false;
+  try {
+    const db = window._db;
+    if (!db) return false;
+    const { collection, addDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+    await addDoc(collection(db, 'subscribers'), {
+      name: name || '',
+      email: email.toLowerCase().trim(),
+      source: source || 'website',
+      subscribedAt: new Date().toISOString(),
+      marketingConsent: true
+    });
+    return true;
+  } catch(e) { console.error('saveSubscriber error:', e); return false; }
+}
+window.saveSubscriber = saveSubscriber;
 const WA_NUMBER = '18768851099';
 
 // Expose all storefront functions to window (required for module script inline onclick)
@@ -3362,7 +3456,7 @@ function sfRenderCartFooter() {
 }
 
 // ── Checkout ─────────────────────────────────────────
-window.sfCheckoutWA = async function() {
+window.sfCheckoutWA = function() {
   const name = (document.getElementById('sf-cust-name')?.value||'').trim();
   const phone = (document.getElementById('sf-cust-phone')?.value||'').trim();
   const custEmail = (document.getElementById('sf-cust-email')?.value||'').trim();
@@ -3379,18 +3473,18 @@ window.sfCheckoutWA = async function() {
   let shipDetail = '', deliveryLocation = '', deliveryFee = 0;
   if (sfSelectedShip === 'knutsford') {
     const branch = (document.getElementById('sf-knutsford-branch')?.value||'').trim();
-    shipDetail = 'Knutsford Express'+(branch?' — '+branch+' branch':'')+' (bearer fee $500 JMD)';
-    deliveryLocation = 'Knutsford Express'+(branch?' — '+branch:'');
+    shipDetail = 'Knutsford Express'+(branch?' - '+branch+' branch':'')+' (bearer fee $500 JMD)';
+    deliveryLocation = 'Knutsford Express'+(branch?' - '+branch:'');
     deliveryFee = 500;
   } else if (sfSelectedShip === 'zipmail') {
     const loc = (document.getElementById('sf-zipmail-branch')?.value||'').trim();
-    shipDetail = 'Zipmail'+(loc?' — '+loc:'')+' (~$1,000 JMD under 10lbs)';
-    deliveryLocation = 'Zipmail'+(loc?' — '+loc:'');
+    shipDetail = 'Zipmail'+(loc?' - '+loc:'')+' (~$1,000 JMD under 10lbs)';
+    deliveryLocation = 'Zipmail'+(loc?' - '+loc:'');
     deliveryFee = 1000;
   } else {
     const addr = (document.getElementById('sf-delivery-address')?.value||'').trim();
-    shipDetail = 'Kingston/St. Andrew Delivery'+(addr?' — Address: '+addr:'')+' (from $1,000 JMD)';
-    deliveryLocation = 'Kingston/St. Andrew'+(addr?' — '+addr:'');
+    shipDetail = 'Kingston/St. Andrew Delivery'+(addr?' - Address: '+addr:'')+' (from $1,000 JMD)';
+    deliveryLocation = 'Kingston/St. Andrew'+(addr?' - '+addr:'');
     deliveryFee = 1000;
   }
 
@@ -3399,321 +3493,47 @@ window.sfCheckoutWA = async function() {
   const orderId = 'NC-' + Math.floor(10000 + Math.random()*90000);
   const date = new Date().toLocaleString('en-JM');
   const productsStr = sfCart.map(i=>`${i.name} (${i.size} x${i.qty})`).join(' | ');
-  const items = sfCart.map(i=>`  • ${i.name} (${i.size}) × ${i.qty} = J$${(i.price*i.qty).toLocaleString()}`).join('\n');
+  const items = sfCart.map(i=>`  * ${i.name} (${i.size}) x${i.qty} = J$${(i.price*i.qty).toLocaleString()}`).join('\n');
+  const cartSnapshot = [...sfCart];
 
-  // Save to Google Sheets — with retry
-  const orderPayload = {orderId, date, customerName:name, phone, products:productsStr, deliveryLocation, deliveryFee, total, status:'NEW'};
-  let saved = false;
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      const res = await fetch('/.netlify/functions/create-order', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(orderPayload)
-      });
-      // Consider any response as success — function was reached
-      saved = true;
-      break;
-    } catch(e) {
-      // Only retry on network errors (fetch throws), not on HTTP errors
-      if (attempt < 3) await new Promise(r => setTimeout(r, 1000));
-    }
-  }
-  if (!saved) {
-    sfShowToast('⚠️ Order not saved to records — screenshot your WhatsApp message as backup');
-  }
-
-  // Send email receipt if customer provided email
-  if (custEmail) {
-    try {
-      // Save to subscribers list for marketing
-      await saveSubscriber(name, custEmail, 'checkout');
-    } catch(e) {}
-    try {
-      await fetch('/.netlify/functions/send-receipt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId, customerName: name, email: custEmail,
-          items: sfCart.map(i => ({ name: i.name, size: i.size, qty: i.qty, price: i.price })),
-          subtotal: sub, deliveryFee, total, shipDetail
-        })
-      });
-    } catch(e) { console.error('Receipt email failed:', e); }
-  }
-
+  // 1. Open WhatsApp IMMEDIATELY - synchronous to avoid browser popup block
   const WA = window.WA_NUMBER || '18768851099';
-  const msg = `Hi Najah Chemist! 👋 I'd like to place an order.
+  const msg = 'Hi Najah Chemist! I would like to place an order.\n\nORDER ID: ' + orderId + '\n\nCUSTOMER\nName: ' + name + (phone?'\nPhone: '+phone:'') + '\n\nORDER\n' + items + '\n\nSUBTOTAL: J$' + sub.toLocaleString() + '\nSHIPPING: ' + shipDetail + '\n\nPAYMENT\nI understand payment is required upfront (no COD).\nI will pay via bank transfer, Fygaro, or Lynk.\n\nPlease confirm my order. Thank you!';
+  window.open('https://wa.me/' + WA + '?text=' + encodeURIComponent(msg), '_blank');
 
-ORDER ID: ${orderId}
-
-CUSTOMER
-Name: ${name}${phone?'\nPhone: '+phone:''}
-
-ORDER
-${items}
-
-SUBTOTAL: J$${sub.toLocaleString()}
-SHIPPING: ${shipDetail}
-
-PAYMENT
-I understand payment is required upfront (no COD).
-I will pay via bank transfer, Fygaro, or Lynk.
-
-Please confirm my order. Thank you! 🙏`;
-
-  window.open(`https://wa.me/${WA}?text=${encodeURIComponent(msg)}`,'_blank');
-
-  // Show order confirmation modal
+  // 2. Show confirmation modal immediately
   document.getElementById('cf-order-id').textContent = orderId;
-  document.getElementById('cf-items').innerHTML = sfCart.map(i=>
-    `<div style="display:flex;justify-content:space-between;"><span>${i.name} (${i.size}) ×${i.qty}</span><span>J$${(i.price*i.qty).toLocaleString()}</span></div>`
+  document.getElementById('cf-items').innerHTML = cartSnapshot.map(i=>
+    '<div style="display:flex;justify-content:space-between;"><span>'+i.name+' ('+i.size+') x'+i.qty+'</span><span>J$'+(i.price*i.qty).toLocaleString()+'</span></div>'
   ).join('');
-  document.getElementById('cf-sub').textContent = `J$${sub.toLocaleString()}`;
-  document.getElementById('cf-ship').textContent = `J$${deliveryFee.toLocaleString()}`;
-  document.getElementById('cf-total').textContent = `J$${total.toLocaleString()}`;
+  document.getElementById('cf-sub').textContent = 'J$' + sub.toLocaleString();
+  document.getElementById('cf-ship').textContent = 'J$' + deliveryFee.toLocaleString();
+  document.getElementById('cf-total').textContent = 'J$' + total.toLocaleString();
   document.getElementById('sf-confirm-overlay').classList.add('open');
 
+  // 3. Clear cart immediately
   sfCart = [];
   sfUpdateCartBtn();
   sfCloseCart();
+
+  // 4. Save to Sheets + email in background (non-blocking)
+  setTimeout(async function() {
+    try {
+      await fetch('/.netlify/functions/create-order', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({orderId:orderId, date:date, customerName:name, phone:phone, products:productsStr, deliveryLocation:deliveryLocation, deliveryFee:deliveryFee, total:total, status:'NEW'})
+      });
+    } catch(e) { console.error('Order save failed:', e); }
+    if (custEmail) {
+      try { await saveSubscriber(name, custEmail, 'checkout'); } catch(e) {}
+      try {
+        await fetch('/.netlify/functions/send-receipt', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({orderId:orderId, customerName:name, email:custEmail,
+            items:cartSnapshot.map(function(i){return {name:i.name,size:i.size,qty:i.qty,price:i.price};}),
+            subtotal:sub, deliveryFee:deliveryFee, total:total, shipDetail:shipDetail})
+        });
+      } catch(e) {}
+    }
+  }, 100);
 };
-
-// ── Email Collection ─────────────────────────────────
-
-// Save email to Firestore subscribers collection
-async function saveSubscriber(name, email, source) {
-  if (!email || !email.includes('@')) return false;
-  try {
-    const db = window._db;
-    if (!db) return false;
-    await fetch('/.netlify/functions/create-order', { method: 'HEAD' }).catch(()=>{});
-    const { collection, addDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
-    await addDoc(collection(db, 'subscribers'), {
-      name: name || '',
-      email: email.toLowerCase().trim(),
-      source: source || 'website',
-      subscribedAt: new Date().toISOString(),
-      marketingConsent: true
-    });
-    return true;
-  } catch(e) {
-    console.error('Subscriber save failed:', e);
-    return false;
-  }
-}
-
-window.closeEmailPopup = function() {
-  document.getElementById('sf-email-popup').classList.remove('open');
-  localStorage.setItem('nc_popup_seen', '1');
-};
-
-window.submitEmailPopup = async function() {
-  const name = (document.getElementById('ep-name')?.value || '').trim();
-  const email = (document.getElementById('ep-email')?.value || '').trim();
-  const btn = document.getElementById('ep-btn');
-
-  if (!email || !email.includes('@')) {
-    sfShowToast('Please enter a valid email address'); return;
-  }
-  btn.textContent = 'Saving...';
-  btn.disabled = true;
-
-  await saveSubscriber(name, email, 'popup_discount');
-
-  // Show success state
-  btn.textContent = '✓ Discount Claimed!';
-  document.getElementById('ep-email').value = '';
-  document.getElementById('ep-name').value = '';
-  sfShowToast('🎉 10% discount code: NAJAH10');
-  setTimeout(() => window.closeEmailPopup(), 2000);
-};
-
-window.submitEmailSection = async function() {
-  const email = (document.getElementById('se-email')?.value || '').trim();
-  const btn = document.querySelector('#sf-email-section button');
-
-  if (!email || !email.includes('@')) {
-    sfShowToast('Please enter a valid email address'); return;
-  }
-  if (btn) { btn.textContent = 'Saving...'; btn.disabled = true; }
-
-  await saveSubscriber('', email, 'footer_subscribe');
-
-  document.getElementById('se-email').value = '';
-  if (btn) { btn.textContent = 'Subscribed ✓'; }
-  sfShowToast('✓ You\'re subscribed! Welcome to Najah Chemist.');
-  setTimeout(() => { if(btn) { btn.textContent = 'Subscribe'; btn.disabled = false; } }, 3000);
-};
-
-// Show popup after 25 seconds if not seen before
-setTimeout(() => {
-  if (!localStorage.getItem('nc_popup_seen')) {
-    const popup = document.getElementById('sf-email-popup');
-    if (popup) popup.classList.add('open');
-  }
-}, 25000);
-
-// ── Hero cards & Reviews ─────────────────────────────
-function sfRenderHeroCards() {
-  const el = document.getElementById('sf-hero-cards');
-  if (!el) return;
-  const prods = window.PRODUCTS || [];
-  const featured = prods.filter(p => p.tag || ['tk','ds','ha'].includes(p.id)).slice(0,3);
-  el.innerHTML = featured.map(p => `
-    <div class="sf-hero-card" onclick="sfOpenProduct('${p.id}')">
-      <div class="sf-hero-card-top">
-        <span class="sf-hero-card-emoji">${p.emoji}</span>
-        <div>
-          <div class="sf-hero-card-name">${p.name}</div>
-          ${p.tag?`<span class="sf-hero-card-tag">${p.tag}</span>`:''}
-        </div>
-      </div>
-      <div class="sf-hero-card-tl">${p.tagline}</div>
-    </div>`).join('');
-}
-
-function sfRenderReviews() {
-  const el = document.getElementById('sf-reviews-grid');
-  if (!el) return;
-
-  // Show loading state
-  el.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:2rem;color:#8A8480;font-size:0.85rem;">Loading reviews...</div>`;
-
-  // Fetch real Google reviews
-  fetch('/.netlify/functions/get-reviews')
-    .then(r => r.json())
-    .then(data => {
-      if (!data.reviews || !data.reviews.length) {
-        // Fallback to hardcoded reviews if Google fetch fails
-        const fallback = [
-          {name:'Yanique T.', stars:5, text:'This soap changed my skin completely! Dark spots are fading fast. I reorder every month for my store.', date:'Feb 2026'},
-          {name:'Latoya R.', stars:5, text:'I ordered the litre and it lasted months. Amazing results and my customers love it.', date:'Feb 2026'},
-          {name:'Shanice M.', stars:4, text:'Love the probiotic wash. No irritation at all. Great for sensitive skin.', date:'Jan 2026'},
-          {name:'Kezia B.', stars:5, text:'Best wholesale supplier in Jamaica. Fast delivery and the products actually work.', date:'Jan 2026'},
-          {name:'Tanya F.', stars:5, text:'Started my own brand with their private label service. Professional and affordable.', date:'Dec 2025'},
-          {name:'Marcia W.', stars:5, text:'The turmeric soap is incredible. My whole family uses it now. Will definitely reorder.', date:'Dec 2025'}
-        ];
-        renderReviewCards(el, fallback);
-        return;
-      }
-
-      // Update rating summary with real Google data
-      const sumEl = document.getElementById('sf-reviews-summary');
-      if (sumEl) {
-        sumEl.innerHTML = `
-          <div style="font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:700;">${data.rating}<span style="font-size:0.9rem;color:#9CA3AF;"> / 5</span></div>
-          <div style="color:#9CA3AF;font-size:0.82rem;">⭐ ${data.total} Google reviews</div>
-          <a href="https://g.page/r/CbgRQdtw6LcQEBM/review" target="_blank" style="display:inline-block;margin-top:0.6rem;font-size:0.75rem;color:#B45309;text-decoration:none;border:1px solid #B45309;padding:0.3rem 0.8rem;border-radius:20px;">Leave a Review ↗</a>`;
-      }
-
-      renderReviewCards(el, data.reviews);
-    })
-    .catch(() => {
-      const fallback = [
-        {name:'Yanique T.', stars:5, text:'This soap changed my skin completely! Dark spots are fading fast. I reorder every month for my store.', date:'Feb 2026'},
-        {name:'Latoya R.', stars:5, text:'I ordered the litre and it lasted months. Amazing results and my customers love it.', date:'Feb 2026'},
-        {name:'Shanice M.', stars:4, text:'Love the probiotic wash. No irritation at all. Great for sensitive skin.', date:'Jan 2026'},
-        {name:'Kezia B.', stars:5, text:'Best wholesale supplier in Jamaica. Fast delivery and the products actually work.', date:'Jan 2026'},
-        {name:'Tanya F.', stars:5, text:'Started my own brand with their private label service. Professional and affordable.', date:'Dec 2025'},
-        {name:'Marcia W.', stars:5, text:'The turmeric soap is incredible. My whole family uses it now. Will definitely reorder.', date:'Dec 2025'}
-      ];
-      renderReviewCards(el, fallback);
-    });
-}
-
-function renderReviewCards(el, reviews) {
-  if (!reviews.length) {
-    el.innerHTML = `<p style="font-size:0.82rem;color:#9CA3AF;grid-column:1/-1;">No reviews yet.</p>`;
-    return;
-  }
-  el.innerHTML = reviews.slice(0, 6).map(r => `
-    <div class="review-card">
-      <div style="display:flex;gap:0.3rem;margin-bottom:0.4rem;color:#F59E0B;">${'★'.repeat(r.stars||5)}${'☆'.repeat(5-(r.stars||5))}</div>
-      <div class="review-name" style="font-weight:700;font-size:0.85rem;margin-bottom:0.3rem;">${r.name}</div>
-      <div class="review-text" style="font-size:0.82rem;color:#4B4846;line-height:1.6;margin-bottom:0.4rem;">${r.text}</div>
-      <div class="review-meta" style="font-size:0.72rem;color:#8A8480;">${r.date||''} · Google Review</div>
-    </div>`).join('');
-}
-
-
-// Init on DOMContentLoaded
-document.addEventListener('DOMContentLoaded', function() {
-  // Wait briefly for module to set window.PRODUCTS
-  setTimeout(function() {
-    sfRenderProducts('all');
-    sfRenderHeroCards();
-    sfRenderReviews();
-  }, 300);
-});
-
-// ── Chat widget ──────────────────────────────────────
-let sfChatOpen = false;
-let sfChatHist = [];
-
-window.sfToggleChat = function() {
-  sfChatOpen = !sfChatOpen;
-  const box = document.getElementById('sf-chat-box');
-  if (box) box.classList.toggle('open', sfChatOpen);
-  const fabIcon = document.getElementById('sf-fab-icon');
-  const closeIcon = document.getElementById('sf-close-icon');
-  const unread = document.getElementById('sf-chat-unread');
-  if (fabIcon) fabIcon.style.display = sfChatOpen ? 'none' : 'block';
-  if (closeIcon) closeIcon.style.display = sfChatOpen ? 'block' : 'none';
-  if (unread) unread.style.display = 'none';
-  if (sfChatOpen) setTimeout(()=>{ const i=document.getElementById('sf-ch-in'); if(i) i.focus(); },200);
-};
-
-setTimeout(()=>{ if(!sfChatOpen){ const u=document.getElementById('sf-chat-unread'); if(u) u.style.display='flex'; }},12000);
-
-function sfAddChatMsg(txt, isUser) {
-  const m = document.getElementById('sf-ch-msgs');
-  if (!m) return;
-  const el = document.createElement('div');
-  el.className = 'sf-ch-msg '+(isUser?'sf-ch-msg-user':'sf-ch-msg-bot');
-  el.innerHTML = txt.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
-  m.appendChild(el); m.scrollTop = m.scrollHeight;
-}
-function sfShowChatTyping() {
-  const m = document.getElementById('sf-ch-msgs');
-  if (!m) return;
-  const el = document.createElement('div');
-  el.className='sf-ch-typing'; el.id='sf-typing';
-  el.innerHTML='<div class="dot-a"><span></span><span></span><span></span></div>';
-  m.appendChild(el); m.scrollTop=m.scrollHeight;
-}
-function sfHideChatTyping() { const t=document.getElementById('sf-typing'); if(t) t.remove(); }
-
-async function sfCallChat(msg) {
-  sfChatHist.push({role:'user',content:msg});
-  const extra = window._extraChatbotKnowledge ? '\n\nADDITIONAL BUSINESS INFORMATION:\n'+window._extraChatbotKnowledge : '';
-  const SYS = window.SYS || 'You are the friendly customer service assistant for Najah Chemist, a Jamaican natural skincare manufacturer. Be warm, helpful and concise. All prices are in Jamaican Dollars (J$). Answer questions about products, prices, shipping and ordering.';
-  try {
-    const r = await fetch('/.netlify/functions/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:sfChatHist.slice(-16),system:SYS+extra})});
-    const d = await r.json();
-    const reply = d.content?.[0]?.text || "I'm having trouble. Please DM @najahchemist!";
-    sfChatHist.push({role:'assistant',content:reply});
-    return reply;
-  } catch(e) { return 'Having trouble connecting. Please DM @najahchemist on Instagram 💚'; }
-}
-
-window.sfChatQ = async function(txt) {
-  if (!sfChatOpen) sfToggleChat();
-  const qr = document.getElementById('sf-ch-qr');
-  if (qr) qr.style.display='none';
-  sfAddChatMsg(txt,true); sfShowChatTyping();
-  const r = await sfCallChat(txt); sfHideChatTyping(); sfAddChatMsg(r,false);
-};
-window.sfChatSend = async function() {
-  const inp = document.getElementById('sf-ch-in');
-  if (!inp) return;
-  const txt = inp.value.trim(); if(!txt) return;
-  inp.value='';
-  const qr = document.getElementById('sf-ch-qr');
-  if (qr) qr.style.display='none';
-  sfAddChatMsg(txt,true); sfShowChatTyping();
-  const r = await sfCallChat(txt); sfHideChatTyping(); sfAddChatMsg(r,false);
-};
-
-</script>
-</body>
-</html>
