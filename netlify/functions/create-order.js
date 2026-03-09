@@ -2,61 +2,51 @@
 // Saves order to Google Sheets
 // Required env vars: GOOGLE_SERVICE_ACCOUNT, GOOGLE_SHEET_ID
 
-const { google } = require("googleapis");
-
 exports.handler = async (event) => {
-  // Allow HEAD for connectivity checks
   if (event.httpMethod === "HEAD") {
     return { statusCode: 200, body: "" };
   }
-
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
 
   try {
     const body = JSON.parse(event.body);
-    const {
-      orderId,
-      date,
-      customerName,
-      phone,
-      products,
-      deliveryLocation,
-      deliveryFee,
-      total,
-      status
-    } = body;
+    const { orderId, date, customerName, phone, products, deliveryLocation, deliveryFee, total, status } = body;
 
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
-
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ["https://www.googleapis.com/auth/spreadsheets"]
-    });
-
-    const sheets = google.sheets({ version: "v4", auth });
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
 
-    await sheets.spreadsheets.values.append({
-      spreadsheetId,
-      range: "Sheet1!A1",
-      valueInputOption: "RAW",
-      insertDataOption: "INSERT_ROWS",
-      requestBody: {
+    // Get access token directly via JWT — no googleapis package needed
+    const token = await getAccessToken(credentials);
+
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
         values: [[
-          orderId,
-          date,
-          customerName,
+          orderId || "",
+          date || new Date().toLocaleString("en-JM"),
+          customerName || "",
           phone || "",
-          products,
-          deliveryLocation,
-          deliveryFee,
-          total,
+          products || "",
+          deliveryLocation || "",
+          deliveryFee || 0,
+          total || 0,
           status || "NEW"
         ]]
-      }
+      })
     });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Sheets API error ${res.status}: ${err}`);
+    }
 
     return {
       statusCode: 200,
@@ -73,3 +63,39 @@ exports.handler = async (event) => {
     };
   }
 };
+
+// JWT auth — no external packages, works reliably on Netlify
+async function getAccessToken(credentials) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: "RS256", typ: "JWT" };
+  const claim = {
+    iss: credentials.client_email,
+    scope: "https://www.googleapis.com/auth/spreadsheets",
+    aud: "https://oauth2.googleapis.com/token",
+    exp: now + 3600,
+    iat: now
+  };
+
+  const b64 = (obj) => Buffer.from(JSON.stringify(obj)).toString("base64url");
+  const unsigned = `${b64(header)}.${b64(claim)}`;
+
+  // Sign with RS256 using built-in crypto
+  const { createSign } = require("crypto");
+  const sign = createSign("RSA-SHA256");
+  sign.update(unsigned);
+  const signature = sign.sign(credentials.private_key, "base64url");
+  const jwt = `${unsigned}.${signature}`;
+
+  // Exchange JWT for access token
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`
+  });
+
+  const tokenData = await tokenRes.json();
+  if (!tokenData.access_token) {
+    throw new Error("Failed to get access token: " + JSON.stringify(tokenData));
+  }
+  return tokenData.access_token;
+}
