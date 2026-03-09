@@ -1,7 +1,5 @@
 {
   "name": "najah-chemist-functions",
   "version": "1.0.0",
-  "dependencies": {
-    "googleapis": "^140.0.0"
-  }
+  "description": "Netlify functions — no external packages needed"
 }
