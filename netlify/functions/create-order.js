@@ -17,7 +17,9 @@ exports.handler = async (event) => {
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
 
-    // Get access token directly via JWT — no googleapis package needed
+    // Fix: Netlify stores \n as literal backslash-n in env vars — convert to real newlines
+    credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+
     const token = await getAccessToken(credentials);
 
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
@@ -64,7 +66,6 @@ exports.handler = async (event) => {
   }
 };
 
-// JWT auth — no external packages, works reliably on Netlify
 async function getAccessToken(credentials) {
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: "RS256", typ: "JWT" };
@@ -79,14 +80,13 @@ async function getAccessToken(credentials) {
   const b64 = (obj) => Buffer.from(JSON.stringify(obj)).toString("base64url");
   const unsigned = `${b64(header)}.${b64(claim)}`;
 
-  // Sign with RS256 using built-in crypto
   const { createSign } = require("crypto");
   const sign = createSign("RSA-SHA256");
   sign.update(unsigned);
+  // private_key newlines already fixed above
   const signature = sign.sign(credentials.private_key, "base64url");
   const jwt = `${unsigned}.${signature}`;
 
-  // Exchange JWT for access token
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
