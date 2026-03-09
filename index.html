@@ -3537,3 +3537,64 @@ window.sfCheckoutWA = function() {
     }
   }, 100);
 };
+
+// ── Email Collection ──────────────────────────────────
+// (saveSubscriber is defined in the module script above line 3033)
+
+// ── Chat widget ───────────────────────────────────────
+let sfChatOpen = false;
+let sfChatHistory = [];
+
+window.sfToggleChat = function() {
+  sfChatOpen = !sfChatOpen;
+  const box = document.getElementById('sf-chat-box');
+  const fab = document.getElementById('sf-chat-fab');
+  if (box) box.classList.toggle('open', sfChatOpen);
+  if (fab) fab.style.display = sfChatOpen ? 'none' : 'flex';
+  if (sfChatOpen && sfChatHistory.length === 0) {
+    sfAddChatMsg('Hi! I\'m the Najah Chemist assistant. Ask me anything about our products, pricing, or shipping.', false);
+  }
+};
+
+window.sfChatQ = function(q) {
+  document.getElementById('sf-ch-in').value = q;
+  window.sfChatSend();
+};
+
+window.sfChatSend = async function() {
+  const inp = document.getElementById('sf-ch-in');
+  const msg = (inp ? inp.value : '').trim();
+  if (!msg) return;
+  if (inp) inp.value = '';
+  sfAddChatMsg(msg, true);
+  const typing = sfAddChatMsg('...', false, true);
+  try {
+    const res = await fetch('/.netlify/functions/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: msg, history: sfChatHistory.slice(-6)})
+    });
+    const data = await res.json();
+    if (typing) typing.remove();
+    sfAddChatMsg(data.reply || 'Sorry, I could not get a response. Please try again.', false);
+  } catch(e) {
+    if (typing) typing.remove();
+    sfAddChatMsg('Sorry, something went wrong. Please WhatsApp us directly at +1 876-885-1099.', false);
+  }
+};
+
+function sfAddChatMsg(text, isUser, isTyping) {
+  const msgs = document.getElementById('sf-ch-msgs');
+  if (!msgs) return null;
+  const div = document.createElement('div');
+  div.className = isUser ? 'sf-ch-msg sf-ch-user' : 'sf-ch-msg sf-ch-bot';
+  div.textContent = text;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  if (!isTyping) sfChatHistory.push({role: isUser ? 'user' : 'assistant', content: text});
+  return div;
+}
+
+</script>
+</body>
+</html>
