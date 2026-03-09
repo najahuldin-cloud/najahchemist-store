@@ -80,6 +80,12 @@ Payment required BEFORE processing. 2-3 business day turnaround.
 
 CONTACT: WhatsApp 18768851099 · @najahchemist on Instagram & TikTok
 
+INGREDIENTS & SAFETY:
+  • Natural ingredients: All products are made with natural ingredients but are NOT certified 100% organic.
+  • Pregnant women: Consult your doctor before using any skincare product during pregnancy.
+    - AVOID during pregnancy: Yoni Steam Herbs, Boric Acid Capsules, Yoni Pops, Fertility Drops.
+    - All other products are generally considered safe but doctor consultation is still recommended.
+
 Suggest products for skin concerns proactively. Give full pricing when asked about any product.`;
 
 exports.handler = async (event) => {
