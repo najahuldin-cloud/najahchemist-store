@@ -507,6 +507,7 @@ tr:hover td{background:var(--warm);}
       <button class="sf-nav-link" onclick="sfScroll('sf-about')">About</button>
       <button class="sf-nav-link" onclick="sfScroll('sf-reviews-section')">Reviews</button>
       <button class="sf-nav-link" onclick="sfScroll('sf-faq')">FAQ</button>
+      <button class="sf-nav-link" onclick="sfScroll('sf-policies')">Policies</button>
       <button class="sf-nav-link" onclick="sfScroll('sf-why')">Why Us</button>
       <button class="sf-nav-link" onclick="sfScroll('sf-contact')">Contact</button>
     </div>
@@ -588,6 +589,124 @@ tr:hover td{background:var(--warm);}
     </div>
     <p style="margin-top:1.5rem;font-size:0.75rem;color:#4B5563;">najahchemist.com · @najahchemist on Instagram & TikTok</p>
   </div>
+
+  <!-- ══ POLICIES SECTION ══ -->
+  <section id="sf-policies" style="padding:4.5rem 2rem;background:#FAFAF8;">
+    <div style="max-width:820px;margin:0 auto;">
+      <div class="sf-section-label">Legal</div>
+      <h2 class="sf-section-h2">Our Policies & <em>Terms</em></h2>
+      <p style="font-size:0.85rem;color:#8A8480;margin-bottom:2rem;">Effective March 2026. By placing an order you agree to these terms.</p>
+
+      <!-- Tab buttons -->
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.5rem;">
+        <button onclick="sfPolicyTab('privacy',this)" id="ptab-privacy" style="padding:0.45rem 1rem;border-radius:20px;border:1.5px solid #0F0E0D;background:#0F0E0D;color:white;font-family:'Outfit',sans-serif;font-size:0.78rem;font-weight:600;cursor:pointer;">Privacy Policy</button>
+        <button onclick="sfPolicyTab('terms',this)" id="ptab-terms" style="padding:0.45rem 1rem;border-radius:20px;border:1.5px solid #E8E4DE;background:white;color:#8A8480;font-family:'Outfit',sans-serif;font-size:0.78rem;font-weight:600;cursor:pointer;">Terms & Conditions</button>
+        <button onclick="sfPolicyTab('shipping',this)" id="ptab-shipping" style="padding:0.45rem 1rem;border-radius:20px;border:1.5px solid #E8E4DE;background:white;color:#8A8480;font-family:'Outfit',sans-serif;font-size:0.78rem;font-weight:600;cursor:pointer;">Shipping & Returns</button>
+      </div>
+
+      <!-- Privacy Policy -->
+      <div id="ppanel-privacy" style="background:white;border-radius:16px;padding:2rem;border:1px solid #E8E4DE;font-size:0.85rem;color:#4B4846;line-height:1.9;">
+        <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;color:#0F0E0D;margin-bottom:1.2rem;">Privacy Policy</h3>
+
+        <p style="margin-bottom:1rem;">Welcome to Najah Chemist. We are a Jamaican manufacturer of skincare, feminine care, men's care, and haircare products. By using our website or purchasing our products, you agree to this Privacy Policy.</p>
+
+        <strong style="color:#0F0E0D;">1.1 Information We Collect</strong>
+        <p style="margin:0.5rem 0 1rem;">We may collect your name, email, phone number, shipping address, payment data, order history, usage data, and marketing preferences when you use our website or place an order.</p>
+
+        <strong style="color:#0F0E0D;">1.2 How We Use Your Information</strong>
+        <p style="margin:0.5rem 0 1rem;">To process and fulfil orders, manage your account, respond to enquiries, send order confirmations, send promotional emails (where consented), improve our services, comply with legal obligations, and detect fraud.</p>
+
+        <strong style="color:#0F0E0D;">1.3 Sharing Your Information</strong>
+        <p style="margin:0.5rem 0 1rem;">We do not sell your personal information. We may share data with payment processors, shipping partners, technology providers, and regulatory authorities where required by law.</p>
+
+        <strong style="color:#0F0E0D;">1.4 Cookies</strong>
+        <p style="margin:0.5rem 0 1rem;">We use essential, analytics, and marketing cookies. You may manage cookies through your browser settings.</p>
+
+        <strong style="color:#0F0E0D;">1.5 Data Retention</strong>
+        <p style="margin:0.5rem 0 1rem;">Order and transaction records are retained for seven (7) years in accordance with Jamaican tax and commercial law.</p>
+
+        <strong style="color:#0F0E0D;">1.6 Your Rights</strong>
+        <p style="margin:0.5rem 0 1rem;">You may request access to, correction of, or deletion of your personal data. To exercise your rights, contact us via the Contact section of this website. You may withdraw marketing consent at any time by clicking "Unsubscribe" in any email.</p>
+
+        <strong style="color:#0F0E0D;">1.7 Children's Privacy</strong>
+        <p style="margin:0.5rem 0 0;">Our website is not directed to children under 13. We do not knowingly collect data from children.</p>
+      </div>
+
+      <!-- Terms & Conditions -->
+      <div id="ppanel-terms" style="display:none;background:white;border-radius:16px;padding:2rem;border:1px solid #E8E4DE;font-size:0.85rem;color:#4B4846;line-height:1.9;">
+        <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;color:#0F0E0D;margin-bottom:1.2rem;">Terms & Conditions</h3>
+
+        <strong style="color:#0F0E0D;">2.1 Acceptance of Terms</strong>
+        <p style="margin:0.5rem 0 1rem;">By using our website or purchasing our products, you confirm you are at least 18 years of age and agree to these Terms & Conditions.</p>
+
+        <strong style="color:#0F0E0D;">2.2 Products & Descriptions</strong>
+        <p style="margin:0.5rem 0 1rem;">We make every effort to ensure product descriptions and images are accurate. Slight variations in colour or packaging may occur. All products are for external use only unless otherwise stated. Consult a healthcare professional before use if you have known allergies.</p>
+
+        <strong style="color:#0F0E0D;">2.3 Pricing & Payment</strong>
+        <p style="margin:0.5rem 0 1rem;">All prices are in Jamaican Dollars (JMD) unless otherwise stated. We reserve the right to change prices at any time. The price at time of order applies.</p>
+
+        <strong style="color:#0F0E0D;">2.4 All Sales Final</strong>
+        <p style="margin:0.5rem 0 1rem;">Due to the personal and hygienic nature of our products, all sales are final once an order has been dispatched. No returns for change of mind. Exceptions apply only as set out in the Shipping & Returns policy.</p>
+
+        <strong style="color:#0F0E0D;">2.5 Chargebacks & Payment Disputes</strong>
+        <p style="margin:0.5rem 0 1rem;">You agree to contact us directly before initiating a chargeback. Najah Chemist retains order details, payment confirmation, and courier tracking for every order. Fraudulent chargebacks on valid, fulfilled orders may result in a permanent ban from ordering.</p>
+
+        <strong style="color:#0F0E0D;">2.6 Uncollected Packages</strong>
+        <p style="margin:0.5rem 0 1rem;">Once tracking is issued, it is your responsibility to collect your package from the courier. Refunds will not be issued for uncollected packages. Re-shipping fees apply if a package is returned to us.</p>
+
+        <strong style="color:#0F0E0D;">2.7 Private Label Services</strong>
+        <p style="margin:0.5rem 0 1rem;">Private label clients receive a licence to sell under their own brand. Najah Chemist retains ownership of all base formulations. A non-refundable deposit may be required before production. Full terms are set out in a separate written agreement.</p>
+
+        <strong style="color:#0F0E0D;">2.8 Intellectual Property</strong>
+        <p style="margin:0.5rem 0 1rem;">All content on this website is the intellectual property of Najah Chemist. You may not reproduce or distribute any content without our prior written consent.</p>
+
+        <strong style="color:#0F0E0D;">2.9 Limitation of Liability</strong>
+        <p style="margin:0.5rem 0 1rem;">To the maximum extent permitted by Jamaican law, Najah Chemist shall not be liable for any indirect or consequential damages. Our total liability shall not exceed the amount paid for the product giving rise to the claim.</p>
+
+        <strong style="color:#0F0E0D;">2.10 Governing Law</strong>
+        <p style="margin:0.5rem 0 0;">These Terms are governed by the laws of Jamaica. Disputes are subject to the exclusive jurisdiction of the courts of Jamaica.</p>
+      </div>
+
+      <!-- Shipping & Returns -->
+      <div id="ppanel-shipping" style="display:none;background:white;border-radius:16px;padding:2rem;border:1px solid #E8E4DE;font-size:0.85rem;color:#4B4846;line-height:1.9;">
+        <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;color:#0F0E0D;margin-bottom:1.2rem;">Shipping & Returns Policy</h3>
+
+        <strong style="color:#0F0E0D;">3.1 Shipping Coverage</strong>
+        <p style="margin:0.5rem 0 1rem;">Najah Chemist ships within Jamaica only. We do not currently offer international shipping.</p>
+
+        <strong style="color:#0F0E0D;">3.2 Shipping Partners & Fees</strong>
+        <p style="margin:0.5rem 0 1rem;"><strong>Knutsford Express</strong> — J$500 bearer fee. Cash on Delivery available.<br>
+        <strong>Zipmail</strong> — approximately J$1,000 for packages under 9 lbs. Full payment required upfront.<br>
+        <strong>Kingston & St. Andrew Delivery</strong> — from J$1,000.</p>
+
+        <strong style="color:#0F0E0D;">3.3 Processing & Dispatch</strong>
+        <p style="margin:0.5rem 0 1rem;">Orders are processed within 2–3 business days of payment confirmation. You will receive a shipping receipt with tracking information once dispatched.</p>
+
+        <strong style="color:#0F0E0D;">3.4 Order Issues</strong>
+        <p style="margin:0.5rem 0 1rem;">If your order arrives damaged, incorrect, or incomplete, contact us within 7 days of delivery with photographic evidence.</p>
+
+        <strong style="color:#0F0E0D;">3.5 Returns & Refunds</strong>
+        <p style="margin:0.5rem 0 1rem;">We do not accept returns for change of mind. We will offer a replacement or refund if the product arrived damaged, you received the wrong product, or the product is materially different from its description. Requests must be made within 7 days of receipt. Refunds are processed within 10–14 business days.</p>
+
+        <strong style="color:#0F0E0D;">3.6 Cancellations</strong>
+        <p style="margin:0.5rem 0 0;">Orders may be cancelled within 24 hours of placement. After 24 hours or once dispatched, cancellations may not be possible. Private label orders are non-cancellable once production has commenced.</p>
+      </div>
+
+      <p style="font-size:0.75rem;color:#8A8480;margin-top:1.5rem;text-align:center;">Questions? Contact us via the Contact section above · start@najahchemist.com · @najahchemist</p>
+    </div>
+  </section>
+
+  <script>
+  window.sfPolicyTab = function(tab, btn) {
+    ['privacy','terms','shipping'].forEach(t => {
+      document.getElementById('ppanel-'+t).style.display = t===tab ? 'block' : 'none';
+      const b = document.getElementById('ptab-'+t);
+      b.style.background = t===tab ? '#0F0E0D' : 'white';
+      b.style.color = t===tab ? 'white' : '#8A8480';
+      b.style.borderColor = t===tab ? '#0F0E0D' : '#E8E4DE';
+    });
+  };
+  </script>
 
   <!-- Footer -->
   
@@ -849,7 +968,62 @@ tr:hover td{background:var(--warm);}
   }
   </script>
 
-  <!-- ══ CART BUTTON ══ -->
+  <!-- ══ ORDER CONFIRMATION MODAL ══ -->
+  <div class="sf-overlay" id="sf-confirm-overlay" style="z-index:900;">
+    <div style="background:white;width:100%;max-width:480px;border-radius:20px;overflow:hidden;animation:sfUp 0.25s ease;max-height:94vh;overflow-y:auto;">
+      <!-- Green header -->
+      <div style="background:#0F0E0D;padding:2rem 1.5rem;text-align:center;">
+        <div style="width:56px;height:56px;background:#25D366;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;font-size:1.5rem;">✓</div>
+        <h2 style="color:white;font-family:'Playfair Display',serif;font-size:1.4rem;margin-bottom:0.25rem;">Order Sent!</h2>
+        <p style="color:#9CA3AF;font-size:0.8rem;">Your WhatsApp message has been prepared</p>
+      </div>
+      <!-- Order details -->
+      <div style="padding:1.5rem;">
+        <div style="background:#F5F2ED;border-radius:12px;padding:1.1rem;margin-bottom:1rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+            <span style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#8A8480;">Order ID</span>
+            <span id="cf-order-id" style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:#0F0E0D;"></span>
+          </div>
+          <div id="cf-items" style="font-size:0.82rem;color:#4B4846;line-height:1.9;border-top:1px solid #E8E4DE;padding-top:0.75rem;"></div>
+          <div style="border-top:1px solid #E8E4DE;margin-top:0.75rem;padding-top:0.75rem;">
+            <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:#8A8480;margin-bottom:0.3rem;">
+              <span>Subtotal</span><span id="cf-sub"></span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:#8A8480;margin-bottom:0.3rem;">
+              <span>Shipping</span><span id="cf-ship"></span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:0.95rem;font-weight:700;color:#0F0E0D;margin-top:0.4rem;">
+              <span>Total</span><span id="cf-total"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment instructions -->
+        <div style="background:#FFF3E0;border-radius:12px;padding:1rem;margin-bottom:1rem;border-left:3px solid #B45309;">
+          <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#B45309;margin-bottom:0.5rem;">💳 Payment Instructions</div>
+          <div style="font-size:0.8rem;color:#4B4846;line-height:1.8;">
+            Bank Transfer — NCB<br>
+            <strong>JMD:</strong> 354-747-294 &nbsp;|&nbsp; <strong>USD:</strong> 354-747-308<br>
+            <strong>Lynk:</strong> @najahchemist<br>
+            <span style="font-size:0.75rem;color:#8A8480;">Payment required before processing</span>
+          </div>
+        </div>
+
+        <!-- Next steps -->
+        <div style="font-size:0.8rem;color:#8A8480;line-height:1.9;margin-bottom:1.2rem;">
+          <strong style="color:#0F0E0D;">What happens next:</strong><br>
+          1. Send the WhatsApp message that just opened<br>
+          2. Make your payment using the details above<br>
+          3. Send proof of payment on WhatsApp<br>
+          4. We process your order in 2–3 business days ✅
+        </div>
+
+        <button onclick="document.getElementById('sf-confirm-overlay').classList.remove('open')" style="width:100%;padding:0.85rem;background:#0F0E0D;color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;">
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
   <button id="sf-cart-btn" onclick="sfOpenCart()">
     🛒 Cart <span class="sf-cart-count-badge" id="sf-cart-badge">0</span>
   </button>
@@ -3167,6 +3341,10 @@ function sfRenderCartFooter() {
       <span>Total</span>
       <span>${sfSelectedShip ? 'J$'+grandTotal.toLocaleString() : 'J$'+sub.toLocaleString()+' + shipping'}</span>
     </div>
+    <label style="display:flex;align-items:flex-start;gap:0.6rem;font-size:0.75rem;color:#4B4846;line-height:1.6;margin-bottom:0.85rem;cursor:pointer;">
+      <input type="checkbox" id="sf-terms-check" style="margin-top:2px;flex-shrink:0;width:14px;height:14px;cursor:pointer;">
+      I agree to the <span onclick="sfScroll('sf-policies');sfCloseCart();" style="color:#0F0E0D;font-weight:700;text-decoration:underline;cursor:pointer;">Terms & Conditions</span>, Refund Policy and Shipping Policy of Najah Chemist
+    </label>
     <button onclick="sfCheckoutWA()" ${!sfSelectedShip?'disabled':''} style="width:100%;padding:0.85rem;background:${sfSelectedShip?'#25D366':'#9CA3AF'};color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.9rem;font-weight:700;cursor:${sfSelectedShip?'pointer':'not-allowed'};">
       📱 Send Order via WhatsApp
     </button>
@@ -3178,6 +3356,7 @@ function sfRenderCartFooter() {
 window.sfCheckoutWA = async function() {
   const name = (document.getElementById('sf-cust-name')?.value||'').trim();
   const phone = (document.getElementById('sf-cust-phone')?.value||'').trim();
+  const custEmail = (document.getElementById('sf-cust-email')?.value||'').trim();
   if (!name) {
     const n = document.getElementById('sf-cust-name');
     if (n) { n.focus(); n.style.borderColor='#DC2626'; }
@@ -3185,6 +3364,8 @@ window.sfCheckoutWA = async function() {
     return;
   }
   if (!sfSelectedShip) { sfShowToast('Please select a shipping method'); return; }
+  const termsCheck = document.getElementById('sf-terms-check');
+  if (termsCheck && !termsCheck.checked) { sfShowToast('Please agree to the Terms & Conditions to continue'); return; }
 
   let shipDetail = '', deliveryLocation = '', deliveryFee = 0;
   if (sfSelectedShip === 'knutsford') {
@@ -3211,13 +3392,38 @@ window.sfCheckoutWA = async function() {
   const productsStr = sfCart.map(i=>`${i.name} (${i.size} x${i.qty})`).join(' | ');
   const items = sfCart.map(i=>`  • ${i.name} (${i.size}) × ${i.qty} = J$${(i.price*i.qty).toLocaleString()}`).join('\n');
 
-  // Save to Google Sheets
-  try {
-    await fetch('/.netlify/functions/create-order', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({orderId, date, customerName:name, phone, products:productsStr, deliveryLocation, deliveryFee, total, status:'NEW'})
-    });
-  } catch(e) { console.error('Sheet save failed:', e); }
+  // Save to Google Sheets — with retry
+  const orderPayload = {orderId, date, customerName:name, phone, products:productsStr, deliveryLocation, deliveryFee, total, status:'NEW'};
+  let saved = false;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch('/.netlify/functions/create-order', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(orderPayload)
+      });
+      if (res.ok) { saved = true; break; }
+    } catch(e) {
+      if (attempt < 3) await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+  if (!saved) {
+    sfShowToast('⚠️ Order not saved to records — screenshot your WhatsApp message as backup');
+  }
+
+  // Send email receipt if customer provided email
+  if (custEmail) {
+    try {
+      await fetch('/.netlify/functions/send-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId, customerName: name, email: custEmail,
+          items: sfCart.map(i => ({ name: i.name, size: i.size, qty: i.qty, price: i.price })),
+          subtotal: sub, deliveryFee, total, shipDetail
+        })
+      });
+    } catch(e) { console.error('Receipt email failed:', e); }
+  }
 
   const WA = window.WA_NUMBER || '18768851099';
   const msg = `Hi Najah Chemist! 👋 I'd like to place an order.
@@ -3240,6 +3446,17 @@ I will pay via bank transfer, Fygaro, or Lynk.
 Please confirm my order. Thank you! 🙏`;
 
   window.open(`https://wa.me/${WA}?text=${encodeURIComponent(msg)}`,'_blank');
+
+  // Show order confirmation modal
+  document.getElementById('cf-order-id').textContent = orderId;
+  document.getElementById('cf-items').innerHTML = sfCart.map(i=>
+    `<div style="display:flex;justify-content:space-between;"><span>${i.name} (${i.size}) ×${i.qty}</span><span>J$${(i.price*i.qty).toLocaleString()}</span></div>`
+  ).join('');
+  document.getElementById('cf-sub').textContent = `J$${sub.toLocaleString()}`;
+  document.getElementById('cf-ship').textContent = `J$${deliveryFee.toLocaleString()}`;
+  document.getElementById('cf-total').textContent = `J$${total.toLocaleString()}`;
+  document.getElementById('sf-confirm-overlay').classList.add('open');
+
   sfCart = [];
   sfUpdateCartBtn();
   sfCloseCart();
