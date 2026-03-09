@@ -559,7 +559,8 @@ tr:hover td{background:var(--warm);}
     <div class="sf-reviews-inner">
       <div class="sf-section-label" style="color:#B45309;">Customer Reviews</div>
       <h2 class="sf-section-h2" style="color:white;">Real results, <em style="color:#9CA3AF;">real people</em></h2>
-      <div class="sf-rev-grid" id="sf-reviews-grid"></div>
+
+      <div class="sf-rev-grid" id="sf-reviews-grid"><div class="review-card"><div style="display:flex;gap:0.3rem;margin-bottom:0.4rem;color:#F59E0B;">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="review-name" style="font-weight:700;font-size:0.85rem;margin-bottom:0.3rem;">Yanique T.</div><div class="review-text" style="font-size:0.82rem;color:#4B4846;line-height:1.6;margin-bottom:0.4rem;">This soap changed my skin completely! Dark spots are fading fast. I reorder every month.</div><div class="review-meta" style="font-size:0.72rem;color:#8A8480;">Feb 2026 &middot; Google Review</div></div><div class="review-card"><div style="display:flex;gap:0.3rem;margin-bottom:0.4rem;color:#F59E0B;">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="review-name" style="font-weight:700;font-size:0.85rem;margin-bottom:0.3rem;">Latoya R.</div><div class="review-text" style="font-size:0.82rem;color:#4B4846;line-height:1.6;margin-bottom:0.4rem;">I ordered the litre and it lasted months. Amazing results and my customers love it.</div><div class="review-meta" style="font-size:0.72rem;color:#8A8480;">Feb 2026 &middot; Google Review</div></div><div class="review-card"><div style="display:flex;gap:0.3rem;margin-bottom:0.4rem;color:#F59E0B;">&#9733;&#9733;&#9733;&#9733;&#9734;</div><div class="review-name" style="font-weight:700;font-size:0.85rem;margin-bottom:0.3rem;">Shanice M.</div><div class="review-text" style="font-size:0.82rem;color:#4B4846;line-height:1.6;margin-bottom:0.4rem;">Love the probiotic wash. No irritation at all. Great for sensitive skin.</div><div class="review-meta" style="font-size:0.72rem;color:#8A8480;">Jan 2026 &middot; Google Review</div></div><div class="review-card"><div style="display:flex;gap:0.3rem;margin-bottom:0.4rem;color:#F59E0B;">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="review-name" style="font-weight:700;font-size:0.85rem;margin-bottom:0.3rem;">Kezia B.</div><div class="review-text" style="font-size:0.82rem;color:#4B4846;line-height:1.6;margin-bottom:0.4rem;">Best wholesale supplier in Jamaica. Fast delivery and the products actually work.</div><div class="review-meta" style="font-size:0.72rem;color:#8A8480;">Jan 2026 &middot; Google Review</div></div><div class="review-card"><div style="display:flex;gap:0.3rem;margin-bottom:0.4rem;color:#F59E0B;">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="review-name" style="font-weight:700;font-size:0.85rem;margin-bottom:0.3rem;">Tanya F.</div><div class="review-text" style="font-size:0.82rem;color:#4B4846;line-height:1.6;margin-bottom:0.4rem;">Started my own brand with their private label service. Professional and affordable.</div><div class="review-meta" style="font-size:0.72rem;color:#8A8480;">Dec 2025 &middot; Google Review</div></div><div class="review-card"><div style="display:flex;gap:0.3rem;margin-bottom:0.4rem;color:#F59E0B;">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="review-name" style="font-weight:700;font-size:0.85rem;margin-bottom:0.3rem;">Marcia W.</div><div class="review-text" style="font-size:0.82rem;color:#4B4846;line-height:1.6;margin-bottom:0.4rem;">The turmeric soap is incredible. My whole family uses it now. Will definitely reorder.</div><div class="review-meta" style="font-size:0.72rem;color:#8A8480;">Dec 2025 &middot; Google Review</div></div></div>
     </div>
   </div>
 
@@ -2202,7 +2203,7 @@ const IMG_CLASS = {soap:'img-soap',cream:'img-cream',serum:'img-serum',wash:'img
 // ═══ UI SWITCHING ═══
 function showDashboard() {
   document.getElementById('storefront').style.display = 'none';
-  document.getElementById('app').style.display = '';
+  document.getElementById('app').style.display = 'block';
 }
 function showStorefront() {
   document.getElementById('storefront').style.display = '';
@@ -2261,7 +2262,7 @@ window.staffLogin = async function() {
     const sf = document.getElementById('storefront');
     if (sf) sf.style.display = 'none';
     const app = document.getElementById('app');
-    if (app) app.style.display = '';
+    if (app) app.style.display = 'block';
     renderAdminProducts(); renderAdminReviews();
   } catch (e) {
     btn.textContent = 'Sign In';
@@ -2275,6 +2276,7 @@ window.staffLogin = async function() {
 window.openAdminLogin = function() {
   // If already logged in, go straight to admin
   if (auth.currentUser) {
+    showDashboard();
     document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
     document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
     document.getElementById('v-admin').classList.add('on');
@@ -2924,18 +2926,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 function sfRenderReviews() {
   const el = document.getElementById('sf-reviews-grid');
   if (!el) return;
-  el.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:#8A8480;font-size:0.85rem;">Loading reviews...</div>';
+  // Don't wipe existing cards — only replace if we get real data from Google
   fetch('/.netlify/functions/get-reviews')
     .then(function(r){ return r.json(); })
     .then(function(data) {
-      if (!data.reviews || !data.reviews.length) { renderReviewCards(el, sfFallbackReviews()); return; }
-      const sumEl = document.getElementById('sf-reviews-summary');
-      if (sumEl) {
-        sumEl.innerHTML = '<div style="font-family:\'Playfair Display\',serif;font-size:2.5rem;font-weight:700;">'+data.rating+'<span style="font-size:0.9rem;color:#9CA3AF;"> / 5</span></div><div style="color:#9CA3AF;font-size:0.82rem;">&#11088; '+data.total+' Google reviews</div><a href="https://g.page/r/CbgRQdtw6LcQEBM/review" target="_blank" style="display:inline-block;margin-top:0.6rem;font-size:0.75rem;color:#B45309;text-decoration:none;border:1px solid #B45309;padding:0.3rem 0.8rem;border-radius:20px;">Leave a Review &#8599;</a>';
-      }
+      if (!data.reviews || !data.reviews.length) return; // keep hardcoded cards
       renderReviewCards(el, data.reviews);
     })
-    .catch(function() { renderReviewCards(el, sfFallbackReviews()); });
+    .catch(function() { /* keep hardcoded cards on any error */ });
 }
 window.sfRenderReviews = sfRenderReviews;
 
