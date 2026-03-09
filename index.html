@@ -2213,20 +2213,15 @@ function showStorefront() {
 onAuthStateChanged(auth, (user) => {
   const btn = document.getElementById('nav-admin');
   if (user) {
-    // ✅ LOGGED IN — show full dashboard
-    showDashboard();
+    // Logged in — update admin button but STAY on storefront
+    // Only switch to admin if user explicitly clicked Staff login
     btn.textContent = '✓ Admin';
     btn.classList.add('on');
     document.getElementById('admin-user-label').textContent = `Signed in as ${user.email}`;
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
-    document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
-    document.getElementById('v-home').classList.add('on');
-    document.getElementById('nav-home').classList.add('on');
     renderAdminProducts();
     renderAdminReviews();
-    showToast('Welcome back, Najah ✓');
   } else {
-    // ❌ LOGGED OUT — show public storefront
+    // Logged out — show storefront
     showStorefront();
     btn.innerHTML = '⚙ Admin';
     btn.classList.remove('on');
