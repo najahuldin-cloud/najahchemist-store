@@ -538,7 +538,7 @@ tr:hover td{background:var(--warm);}
   <section id="sf-products">
     <div class="sf-section">
       <div class="sf-section-label">Our Products</div>
-      <h2 class="sf-section-h2">Natural formulas <em>that work</em></h2>
+      <h2 class="sf-section-h2">Effective formulas <em>that deliver results</em></h2>
       <p class="sf-section-sub">All products available wholesale. Liquids sold in Litre, Gallon & 5 Gallon sizes.</p>
       <div class="sf-cats" id="sf-cat-btns">
         <button class="sf-cat on" onclick="sfFilter('all',this)">All</button>
@@ -827,7 +827,6 @@ tr:hover td{background:var(--warm);}
       </div>
       <div style="position:relative;">
         <div class="sf-about-visual">🌿</div>
-        <div class="sf-about-badge"><div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;line-height:1;">100%</div><div style="font-size:0.62rem;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.1em;">Natural</div></div>
       </div>
     </div>
   </div>
@@ -865,10 +864,10 @@ tr:hover td{background:var(--warm);}
 
         <details style="background:white;border-radius:12px;padding:1.2rem 1.4rem;margin-bottom:0.85rem;border:1px solid #E8E4DE;cursor:pointer;">
           <summary style="font-weight:600;font-size:0.95rem;color:#0F0E0D;list-style:none;display:flex;justify-content:space-between;align-items:center;">
-            Are Najah Chemist products effective and professional-grade?
+            What ingredients does Najah Chemist use?
             <span style="font-size:1.2rem;color:#8A8480;">+</span>
           </summary>
-          <p style="margin-top:0.85rem;font-size:0.88rem;color:#8A8480;line-height:1.8;">Yes. All Najah Chemist products are manufactured in Jamaica using effective, professional-grade formulations — including turmeric, kojic acid, vitamin C, aloe vera, tea tree oil, herbal blends and essential oils.</p>
+          <p style="margin-top:0.85rem;font-size:0.88rem;color:#8A8480;line-height:1.8;">Najah Chemist uses professional-grade actives including kojic acid, AHAs, glycolic acid, turmeric, vitamin C, hyaluronic acid and other efficacy-focused ingredients. We are not a natural or organic brand — we focus on results.</p>
         </details>
 
         <details style="background:white;border-radius:12px;padding:1.2rem 1.4rem;margin-bottom:0.85rem;border:1px solid #E8E4DE;cursor:pointer;">
@@ -931,10 +930,10 @@ tr:hover td{background:var(--warm);}
       },
       {
         "@type": "Question",
-        "name": "Are Najah Chemist products effective and professional-grade?",
+        "name": "What ingredients does Najah Chemist use?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes. All Najah Chemist products are manufactured in Jamaica using effective, professional-grade formulations including turmeric, kojic acid, vitamin C, aloe vera, tea tree oil, herbal blends and essential oils."
+          "text": "Najah Chemist uses professional-grade actives including kojic acid, AHAs, glycolic acid, turmeric, vitamin C, hyaluronic acid and other efficacy-focused ingredients. We are not a natural or organic brand — we focus on results."
         }
       },
       {
@@ -2862,9 +2861,8 @@ function buildReceipt(id,client,product,qty,total,pay,date){
     </div>
     <div style="font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#888;margin-bottom:0.5rem;">Order Details</div>
     <div class="rcpt-row"><span>${product}</span><span>× ${qty}</span></div>
-    <div class="rcpt-row"><span>Shipping (Jamaica)</span><span style="color:#2D6A4F;">FREE</span></div>
     <div class="rcpt-row rcpt-total"><span>Total</span><span>J$${Math.round(parseFloat(total||0)).toLocaleString()}</span></div>
-    <div class="rcpt-footer">Thank you for choosing Najah Chemist!<br>najahchemistja.com · Free shipping in Jamaica</div>
+    <div class="rcpt-footer">Thank you for choosing Najah Chemist! · najahchemistja.com</div>
   </div>`;
 }
 
