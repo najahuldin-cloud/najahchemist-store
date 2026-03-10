@@ -4,3 +4,9 @@
 
 [functions]
   node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/__/auth/*"
+  to = "https://najah-chemist.firebaseapp.com/__/auth/:splat"
+  status = 200
+  force = true
