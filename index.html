@@ -2210,17 +2210,27 @@ function showStorefront() {
   document.getElementById('app').style.display = 'none';
 }
 
+// Flag: set to true before login so onAuthStateChanged knows to navigate to admin
+let pendingAdminNav = false;
+
 // ═══ AUTH STATE — this is the single source of truth ═══
 onAuthStateChanged(auth, (user) => {
   const btn = document.getElementById('nav-admin');
   if (user) {
-    // Logged in — update admin button but STAY on storefront
-    // Only switch to admin if user explicitly clicked Staff login
     btn.textContent = '✓ Admin';
     btn.classList.add('on');
     document.getElementById('admin-user-label').textContent = `Signed in as ${user.email}`;
     renderAdminProducts();
     renderAdminReviews();
+    // Navigate to admin if user explicitly triggered a login
+    if (pendingAdminNav) {
+      pendingAdminNav = false;
+      showDashboard();
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
+      document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
+      document.getElementById('v-admin').classList.add('on');
+      document.getElementById('nav-admin').classList.add('on');
+    }
   } else {
     // Logged out — show storefront
     showStorefront();
@@ -2249,22 +2259,22 @@ window.staffLogin = async function() {
   btn.textContent = 'Signing in…';
   btn.disabled = true;
   errEl.style.display = 'none';
+  pendingAdminNav = true;
 
   try {
     await signInWithEmailAndPassword(auth, email, pass);
     closeStaffModal();
-    // Navigate to admin panel using the nav function
+    // Navigate to admin (onAuthStateChanged handles it via pendingAdminNav,
+    // but also do it here as a belt-and-suspenders fallback)
+    pendingAdminNav = false;
+    showDashboard();
     document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
     document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
     document.getElementById('v-admin').classList.add('on');
     document.getElementById('nav-admin').classList.add('on');
-    // Hide storefront, show admin app
-    const sf = document.getElementById('storefront');
-    if (sf) sf.style.display = 'none';
-    const app = document.getElementById('app');
-    if (app) app.style.display = 'block';
     renderAdminProducts(); renderAdminReviews();
   } catch (e) {
+    pendingAdminNav = false;
     btn.textContent = 'Sign In';
     btn.disabled = false;
     errEl.textContent = '❌ Login failed: ' + (e.code || e.message);
@@ -2309,12 +2319,20 @@ window.doLogin = async function() {
   btn.textContent = 'Signing in…';
   btn.disabled = true;
   errEl.style.display = 'none';
+  pendingAdminNav = true;
 
   try {
     await signInWithEmailAndPassword(auth, email, pass);
     closeM('m-admin-login');
-    // onAuthStateChanged handles everything else
+    pendingAdminNav = false;
+    showDashboard();
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
+    document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
+    document.getElementById('v-admin').classList.add('on');
+    document.getElementById('nav-admin').classList.add('on');
+    renderAdminProducts(); renderAdminReviews();
   } catch (e) {
+    pendingAdminNav = false;
     btn.textContent = 'Sign In to Admin';
     btn.disabled = false;
     errEl.textContent = '❌ Login failed: ' + (e.code || e.message) + ' — check email/password';
