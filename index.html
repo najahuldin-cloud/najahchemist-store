@@ -2460,14 +2460,14 @@ async function loadFromDB() {
     // Re-render storefront with loaded products + reviews
     if (typeof sfRenderProducts === 'function') {
       sfRenderProducts('all');
-      sfRenderHeroCards();
+      if (typeof sfRenderHeroCards === 'function') sfRenderHeroCards();
       sfRenderReviews();
     }
   } catch(e){ console.log('Firebase load:', e.message); }
   // Always render storefront even if Firebase fails
   if (typeof sfRenderProducts === 'function') {
     sfRenderProducts('all');
-    sfRenderHeroCards();
+    if (typeof sfRenderHeroCards === 'function') sfRenderHeroCards();
     sfRenderReviews();
   }
 }
@@ -2592,6 +2592,7 @@ function renderOrdersTable(){
     <td class="no-print" style="display:flex;gap:0.3rem;">
       <button class="btn-gh btn-xs" onclick="showReceipt('${o.id}','${o.client}','${o.product}',${o.qty},${o.total||0},'${o.payMethod||o.payment}','${o.date}')">View</button>
       <button class="btn btn-pr btn-xs" onclick="printR('${o.id}','${o.client}','${o.product}',${o.qty},${o.total||0},'${o.payMethod||o.payment}','${o.date}')">🖨</button>
+      <button class="btn btn-ol btn-xs" onclick="sendOrderReceipt('${o.id}','${o.client}','${o.product}',${o.qty},${o.total||0},'${o.payMethod||o.payment}','${o.date}')">📧</button>
     </td></tr>`).join('');
   // Dash recent orders
   const dt=document.getElementById('dash-orders-body'); if(dt)
@@ -2606,6 +2607,30 @@ window.updateOrderStatus = async function(orderId,newStatus){
     const snap=await getDocs(collection(db,'orders'));
     snap.docs.forEach(async d=>{if(d.data().id===orderId) await updateDoc(doc(db,'orders',d.id),{status:newStatus});});
   }catch(e){}
+};
+
+window.sendOrderReceipt = async function(id, client, product, qty, total, payMethod, date) {
+  const email = prompt('Send receipt to email address:', '');
+  if (!email || !email.includes('@')) { if (email !== null) showToast('Invalid email'); return; }
+  try {
+    showToast('Sending receipt…');
+    const res = await fetch('/.netlify/functions/send-receipt', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        orderId: id,
+        customerName: client,
+        email,
+        items: [{name: product, size: '—', qty, price: total}],
+        subtotal: total,
+        deliveryFee: 0,
+        total,
+        shipDetail: payMethod
+      })
+    });
+    if (res.ok) { showToast('Receipt sent to ' + email); }
+    else { const err = await res.text(); showToast('Send failed: ' + err); }
+  } catch(e) { showToast('Send failed: ' + (e.message||'Network error')); }
 };
 
 window.createOrder = async function(){
@@ -2685,14 +2710,62 @@ function renderAdminReviews(){
 window.toggleProductHidden = async function(id) {
   const idx = PRODUCTS.findIndex(p => p.id === id);
   if (idx < 0) return;
-  PRODUCTS[idx].hidden = !PRODUCTS[idx].hidden;
-  const p = PRODUCTS[idx];
+  const newHidden = !PRODUCTS[idx].hidden;
+  PRODUCTS[idx].hidden = newHidden;
   try {
-    await setDoc(doc(db,'products',id), p);
-    showToast(p.hidden ? 'Product hidden from shop' : 'Product visible in shop');
-  } catch(e) { showToast('Saved locally (Firebase error)'); }
-  renderAdminProducts();
-  if (typeof sfRenderProducts === 'function') sfRenderProducts('all');
+    try {
+      await updateDoc(doc(db,'products',id), {hidden: newHidden});
+    } catch(e2) {
+      await setDoc(doc(db,'products',id), PRODUCTS[idx]);
+    }
+    showToast(newHidden ? 'Product hidden from shop' : 'Product visible in shop');
+    renderAdminProducts();
+    if (typeof sfRenderProducts === 'function') sfRenderProducts('all');
+  } catch(e) {
+    PRODUCTS[idx].hidden = !newHidden;
+    showToast('Could not save — try again');
+  }
+};
+
+// ═══ SUBSCRIBERS ═══
+window.renderAdminSubscribers = async function() {
+  const tb = document.getElementById('subscribers-body');
+  if (!tb) return;
+  try {
+    const snap = await getDocs(query(collection(db,'subscribers'), orderBy('subscribedAt','desc')));
+    const docs = snap.docs.map(d => d.data());
+    const countEl = document.getElementById('subscribers-count');
+    if (countEl) countEl.textContent = docs.length + ' subscriber' + (docs.length !== 1 ? 's' : '');
+    if (!docs.length) {
+      tb.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--mid);padding:1.5rem;">No subscribers yet</td></tr>';
+      return;
+    }
+    tb.innerHTML = docs.map(s => {
+      const date = s.subscribedAt ? new Date(s.subscribedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+      return `<tr><td>${s.name||'—'}</td><td>${s.email||'—'}</td><td>${s.source||'—'}</td><td>${date}</td></tr>`;
+    }).join('');
+  } catch(e) {
+    tb.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--mid);padding:1.5rem;">Failed to load subscribers</td></tr>';
+  }
+};
+
+window.exportSubscribers = async function() {
+  try {
+    const snap = await getDocs(query(collection(db,'subscribers'), orderBy('subscribedAt','desc')));
+    const docs = snap.docs.map(d => d.data());
+    if (!docs.length) { showToast('No subscribers to export'); return; }
+    const rows = [['Name','Email','Source','Date']].concat(docs.map(s => [
+      (s.name||'').replace(/,/g,''),
+      (s.email||'').replace(/,/g,''),
+      (s.source||'').replace(/,/g,''),
+      s.subscribedAt ? new Date(s.subscribedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : ''
+    ]));
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = 'subscribers-' + new Date().toISOString().slice(0,10) + '.csv';
+    a.click();
+  } catch(e) { showToast('Export failed'); }
 };
 
 function showPricingSection(cat, pricingType) {
@@ -2762,7 +2835,7 @@ window.deleteProduct = async function(id){
   PRODUCTS = PRODUCTS.filter(p=>p.id!==id);
   try { await deleteDoc(doc(db,'products',id)); } catch(e){}
   renderAdminProducts(); renderShop();
-  if(typeof sfRenderProducts==='function'){ sfRenderProducts('all'); sfRenderHeroCards(); }
+  if(typeof sfRenderProducts==='function'){ sfRenderProducts('all'); if(typeof sfRenderHeroCards==='function') sfRenderHeroCards(); }
   showToast('Product deleted');
 };
 
@@ -2821,7 +2894,7 @@ window.saveProduct = async function(){
     document.getElementById('edit-prod-id').value='';
     document.getElementById('prod-modal-title').textContent='Add New Product';
     // Refresh storefront
-    if(typeof sfRenderProducts==='function'){ sfRenderProducts('all'); sfRenderHeroCards(); }
+    if(typeof sfRenderProducts==='function'){ sfRenderProducts('all'); if(typeof sfRenderHeroCards==='function') sfRenderHeroCards(); }
   } catch(e) { console.error('saveProduct error:', e); showToast('Save failed: ' + (e.message||e.code||'Firebase error')); }
 };
 
