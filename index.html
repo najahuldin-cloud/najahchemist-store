@@ -2717,12 +2717,12 @@ window.saveProduct = async function(){
       await setDoc(doc(db,'products',newId), prodToSave);
     }
     showToast('Product saved ✓');
+    closeM('m-add-prod'); renderShop(); renderAdminProducts();
+    document.getElementById('edit-prod-id').value='';
+    document.getElementById('prod-modal-title').textContent='Add New Product';
+    // Refresh storefront
+    if(typeof sfRenderProducts==='function'){ sfRenderProducts('all'); sfRenderHeroCards(); }
   } catch(e) { showToast('Saved locally (Firebase error)'); }
-  closeM('m-add-prod'); renderShop(); renderAdminProducts();
-  document.getElementById('edit-prod-id').value='';
-  document.getElementById('prod-modal-title').textContent='Add New Product';
-  // Refresh storefront
-  if(typeof sfRenderProducts==='function'){ sfRenderProducts('all'); sfRenderHeroCards(); }
 };
 
 window.previewImg = function(input){
