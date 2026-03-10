@@ -1436,7 +1436,7 @@ tr:hover td{background:var(--warm);}
   <div class="admin-header">
     <div><h2>⚙ Admin Panel</h2><p id="admin-user-label">Manage products, prices, sizes, images and reviews</p></div>
     <div style="display:flex;gap:0.6rem;align-items:center;">
-      <button class="btn btn-sm" style="background:var(--white);color:var(--black);" onclick="openM('m-add-prod')">+ Add Product</button>
+      <button class="btn btn-sm" style="background:var(--white);color:var(--black);" onclick="resetProductForm();openM('m-add-prod')">+ Add Product</button>
       <button class="btn btn-sm" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3);" onclick="doSignOut()">Sign Out</button>
     </div>
   </div>
@@ -2434,6 +2434,20 @@ document.addEventListener('change', e=>{
   }
 });
 
+function resetProductForm(){
+  ['ap-name','ap-tl','ap-tag','ap-ing','ap-ben','ap-use',
+   'ap-p-bar','ap-m-bar','ap-p-l','ap-m-l','ap-p-g','ap-m-g','ap-p-5g','ap-m-5g',
+   'ap-p-lb2','ap-m-lb2','ap-p-lb8','ap-m-lb8','ap-p-lb40','ap-m-lb40',
+   'ap-p-unit','ap-m-unit'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const cat=document.getElementById('ap-cat');
+  if(cat){cat.selectedIndex=0;cat.dispatchEvent(new Event('change'));}
+  const prev=document.getElementById('img-preview');
+  if(prev){prev.src='';prev.style.display='none';}
+  document.getElementById('edit-prod-id').value='';
+  document.getElementById('prod-modal-title').textContent='Add New Product';
+}
+window.resetProductForm=resetProductForm;
+
 window.editProduct = function(id){
   const p=PRODUCTS.find(x=>x.id===id); if(!p) return;
   document.getElementById('prod-modal-title').textContent='Edit Product';
@@ -2532,8 +2546,7 @@ window.saveProduct = async function(){
     await setDoc(doc(db,'products',docId), docToSave);
     showToast('Product saved ✓');
     closeM('m-add-prod'); renderShop(); renderAdminProducts();
-    document.getElementById('edit-prod-id').value='';
-    document.getElementById('prod-modal-title').textContent='Add New Product';
+    resetProductForm();
     // Refresh storefront
     if(typeof sfRenderProducts==='function'){ sfRenderProducts('all'); if(typeof sfRenderHeroCards==='function') sfRenderHeroCards(); }
   } catch(e) {
@@ -2639,85 +2652,119 @@ window.genLink = function(){
 };
 
 // ═══ CHATBOT ═══
-const SYS=`You are the friendly customer service assistant for Najah Chemist, a Jamaican professional-grade skincare manufacturer. Be warm, helpful and concise. All prices are in Jamaican Dollars (J$). Answer questions immediately and fully.
+function getSYS(){
+  // Build live product catalogue from Firestore-loaded PRODUCTS array
+  const sizeLabels={litre:'1L',gallon:'Gal','5gal':'5 Gal',lb2:'2lbs',lb8:'8lbs',lb40:'40lbs',
+    bars10:'10 bars',bars100:'100 bars',caps100:'100 caps',caps1000:'1000 caps',
+    halfLb:'½lb',lb1:'1lb',kit:'per unit',unit:'per unit',design:'per design',bar:'per bar'};
+  function fmtPricing(pricing){
+    return Object.entries(pricing).map(([k,v])=>`J$${v.price.toLocaleString()} (${sizeLabels[k]||k})`).join(' | ');
+  }
+  const cats={yoni:'YONI CARE',skincare:'SKIN CARE',soap:'BAR SOAPS',mencare:'MEN CARE',haircare:'HAIR CARE',bundle:'BUNDLES',label:'DESIGN SERVICES'};
+  const grouped={};
+  (window.PRODUCTS||[]).filter(p=>!p.hidden).forEach(p=>{
+    const c=cats[p.cat]||p.cat.toUpperCase();
+    if(!grouped[c]) grouped[c]=[];
+    grouped[c].push(`  • ${p.name} — ${fmtPricing(p.pricing)}${p.ingredients?'\n    Ingredients: '+p.ingredients:''}${p.benefits?'\n    Benefits: '+(Array.isArray(p.benefits)?p.benefits.join(', '):p.benefits):''}`);
+  });
+  const catalogue=Object.entries(grouped).map(([cat,lines])=>`${cat}:\n${lines.join('\n')}`).join('\n\n');
 
-PRODUCTS & PRICES (J$ — Jamaican Dollars):
+  return `You are the friendly, knowledgeable customer service assistant for Najah Chemist — a Jamaican professional-grade skincare manufacturer. Be warm, helpful and concise. All prices are in Jamaican Dollars (J$). Answer questions immediately and fully. When a customer asks about a product, share its benefits, key ingredients, how to use it, best skin type, and suggest 1–2 complementary products. Capture name and WhatsApp number when they want to place an order. For urgent issues direct them to WhatsApp (876) 885-1099 or @najahchemist.
+
+BRAND: Najah Chemist uses professional-grade actives — kojic acid, AHAs, salicylic acid, hyaluronic acid, etc. NOT a natural or organic brand. Focus is on results.
+
+══════════════════════════════════════
+LIVE PRODUCT CATALOGUE (from Firestore)
+══════════════════════════════════════
+${catalogue}
+
+══════════════════════════════════════
+INGREDIENTS & BENEFITS (detailed)
+══════════════════════════════════════
+BAR SOAPS:
+  • Turmeric & Kojic — Kojic Acid, Turmeric, Coconut Oil → fades dark spots, hyperpigmentation, acne
+  • Garlic & Lavender — Garlic Extract, Lavender, Coconut Oil → eczema, psoriasis, liver spots, antibacterial
+  • Vitamin C — Vitamin C, Kojic Acid, Olive Oil → brightens, discoloration, acne
+  • Glycolic Acid — Glycolic Acid (AHA), Coconut Oil → minimises pores, fine lines, exfoliates, acne
+  • Salicylic Acid — Salicylic Acid (BHA), Tea Tree, Coconut Oil → unclogs pores, acne, blackheads
+  • Skin Lightening — Kojic Acid, Snow White Complex, Charcoal → lightens, discoloration, acne
 
 YONI CARE:
-  • Yoni Foaming Wash — J$3,550 (1L) | J$12,500 (Gal) | J$56,250 (5 Gal)
-  • Yoni Foaming Scrub — J$4,000 (2lbs) | J$14,500 (8lbs) | J$65,250 (40lbs)
-  • Yoni Brightening Scrub — J$5,500 (2lbs) | J$20,500 (8lbs) | J$92,250 (40lbs)
-  • Yoni Oil (Without Petals) — J$5,500 (1L) | J$19,500 (Gal) | J$87,750 (5 Gal)
-  • Yoni Oil (With Petals) — J$6,300 (1L) | J$24,200 (Gal) | J$108,900 (5 Gal)
-  • VagiMist — J$4,600 (1L) | J$14,500 (Gal) | J$65,250 (5 Gal)
-  • Boric Acid & Probiotics Gel Wash — J$4,200 (1L) | J$15,000 (Gal) | J$67,500 (5 Gal)
-  • Yoni Pops Capsules — J$8,000 (100) | J$70,000 (1000)
-  • Boric Acid Capsules — J$3,750 (100) | J$26,500 (1000)
-  • Inner Thigh Cream — J$16,650 (2lbs) | J$60,000 (8lbs) | J$270,000 (40lbs)
-  • Yoni Anti-Itch Cream — J$9,000 (2lbs) | J$32,800 (8lbs) | J$147,600 (40lbs)
-  • Yoni Bar Soap — J$6,500 (10 bars) | J$63,000 (100 bars)
-  • Yoni Steam Herbs — J$5,600 (½lb) | J$9,800 (1lb)
-  • Fertility Drops — J$12,500 (1L) | J$48,500 (Gal) | J$218,250 (5 Gal)
-  • Maca Root Capsules — J$4,750 (100) | J$47,500 (1000)
+  • Yoni Foaming Wash — Aloe Vera, Lactic Acid, Calendula → pH-balanced daily intimate wash (6 scents)
+  • Boric Acid & Probiotics Gel Wash — Boric Acid, Probiotics, Lactic Acid → restores pH, fights BV
+  • Yoni Brightening Scrub — Sugar, Kojic Acid, Coconut Oil → brightens intimate skin, reduces ingrown hairs
+  • Luxury Yoni Oil — Sunflower Oil, Coconut Oil, Jojoba Oil, Sweet Almond Oil, Frankincense, Vitamin E → moisturises, antibacterial, balances
+  • VagiMist — Aloe Vera, Witch Hazel, Tea Tree Oil, Lactic Acid → on-the-go intimate freshness
+  • Yoni Pops / Boric Acid Suppositories — Boric Acid 600mg → eliminates BV and yeast infections, restores pH
+  • Yoni Steam Herbs — Lavender, Rosemary, Chamomile, Rose Petals, Mugwort → womb wellness steam therapy
 
 SKIN CARE:
-  • Soothing Rose Toner — J$6,000 (1L) | J$25,000 (Gal) | J$112,500 (5 Gal)
-  • Glycolic Acid AHA Toner — J$7,000 (1L) | J$27,500 (Gal) | J$123,750 (5 Gal)
-  • Turmeric Facial Cleanser — J$4,200 (1L) | J$16,000 (Gal) | J$72,000 (5 Gal)
-  • Peeling Oil — J$24,500 (1L) | J$97,000 (Gal) | J$436,500 (5 Gal)
-  • Lightening Serum — J$17,000 (1L) | J$58,000 (Gal) | J$261,000 (5 Gal)
-  • Hyaluronic Acid Serum — J$13,000 (1L) | J$50,000 (Gal) | J$225,000 (5 Gal)
-  • Rose Oil Serum — J$12,500 (1L) | J$48,000 (Gal) | J$216,000 (5 Gal)
-  • Papaya Serum — J$17,000 (1L) | J$58,000 (Gal) | J$261,000 (5 Gal)
-  • Papaya Oil — J$12,500 (1L) | J$48,000 (Gal) | J$216,000 (5 Gal)
-  • Hydrating Moisturiser — J$8,300 (2lbs) | J$32,000 (8lbs) | J$144,000 (40lbs)
-  • Spot Remover — J$16,650 (2lbs) | J$55,000 (8lbs) | J$247,500 (40lbs)
-  • Strong Lightening Cream — J$16,650 (2lbs) | J$80,000 (8lbs) | J$360,000 (40lbs)
-  • Turmeric Facial Scrub — J$4,400 (2lbs) | J$16,500 (8lbs) | J$74,250 (40lbs)
-  • Turmeric Facial Mask — J$4,300 (2lbs) | J$16,500 (8lbs) | J$74,250 (40lbs)
-  • Body Scrub — J$4,000 (2lbs) | J$14,000 (8lbs) | J$63,000 (40lbs)
-  • Brightening Body Scrub — J$5,500 (2lbs) | J$21,500 (8lbs) | J$96,750 (40lbs)
-  • Body Butter — J$4,000 (2lbs) | J$15,000 (8lbs) | J$67,500 (40lbs)
-  • Brightening Body Butter — J$6,500 (2lbs) | J$25,500 (8lbs) | J$114,750 (40lbs)
-
-BAR SOAPS (packs of 10):
-  Garlic & Lavender J$6,500 | Kojic & Turmeric J$6,500 | Turmeric Only J$6,500 | Kojic Only J$6,500
-  Salicylic Acid J$7,500 | Glycolic Acid J$7,500 | Vitamin C J$7,500 | Papaya J$7,500
-  Kojic & Charcoal J$7,500 | Skin Lightening Bar Soap J$8,000
+  • Dark Spot Remover / Spot Remover — Kojic Acid, Alpha Arbutin, Turmeric Oil, Vitamin E → fades dark spots, hyperpigmentation
+  • Lightening Serum — Kojic Acid, Alpha Arbutin, Niacinamide, Vitamin C → fades spots, evens tone
+  • Hyaluronic Acid Serum — Hyaluronic Acid, Niacinamide, Aloe Vera → intense hydration, plumps, minimises pores
+  • Rose Oil Serum — Rosehip Oil, Rose Essential Oil, Vitamin E, Jojoba Oil → anti-aging, nourishing
+  • Glycolic Acid Toner — Glycolic Acid, Witch Hazel, Niacinamide → resurfaces, refines pores
+  • Rose Toner — Rose Water, Aloe Vera, Witch Hazel → soothes, balances pH
+  • Turmeric Facial Cleanser — Turmeric, Niacinamide, Aloe Vera → brightens, deep cleanses
+  • Brightening Body Butter — Shea Butter, Kojic Acid, Vitamin E → moisturises and brightens body
+  • Brightening Body Scrub — Sugar, Avocado Butter, Shea Butter → exfoliates, fades discoloration, razor bumps, ingrown hairs
 
 MEN CARE:
-  • Beard Balm — J$5,500 (2lbs) | J$18,500 (Gal) | J$83,250 (5 Gal)
-  • Beard Shampoo — J$4,700 (1L) | J$17,600 (Gal) | J$79,200 (5 Gal)
-  • Beard Oil — J$6,750 (1L) | J$25,500 (Gal) | J$114,750 (5 Gal)
-  • Ryfle Wash — J$3,750 (1L) | J$14,000 (Gal) | J$63,000 (5 Gal)
-  • Jock Lube — J$6,550 (1L) | J$25,500 (Gal) | J$114,750 (5 Gal)
-  • Jock Mist — J$4,850 (1L) | J$18,800 (Gal) | J$84,600 (5 Gal)
-  • Jock Itch Cream — J$9,500 (2lbs) | J$32,800 (8lbs) | J$147,600 (40lbs)
+  • Beard Oil — Jojoba, Argan, Coconut Oil, Vitamin E → softens, conditions, reduces itch
+  • Beard Shampoo — Aloe Vera, SLES, Sunflower Oil → cleanses and conditions beard
+  • Beard Balm — Shea Butter, Beeswax, Argan Oil → styles, shapes, conditions
+  • Ryfle Wash / Body Wash 3-in-1 — Glycerine, Aloe Vera, Sunflower Oil → body + hair + face, 12hr freshness
 
 HAIR CARE:
-  • Hair Mist — J$5,500 (1L) | J$20,000 (Gal) | J$90,000 (5 Gal)
-  • Hair Butter — J$4,600 (2lbs) | J$18,500 (8lbs) | J$83,250 (40lbs)
-  • Hair Growth Oil — J$7,500 (1L) | J$28,000 (Gal) | J$126,000 (5 Gal)
+  • Hair Growth Oil — Castor Oil, Bhringraj, Amla, Neem, Coconut Oil, Peppermint → stimulates growth, strengthens
+  • Hair Butter — Shea Butter, Mango Butter, Argan Oil, Castor Oil → deep conditions, defines curls
 
 BUNDLES:
-  • Starter Kit Beginner Bundle — J$12,500
-  • Girls Night In Luxury Bundle — J$13,000
-  • Mencare Bundle — J$11,000
-  • Skincare Bundle — J$25,500
+  • Girls Night In Bundle — Yoni Wash + Yoni Oil + Yoni Scrub
 
-DESIGN: Label Design (1 product) — J$3,000
+══════════════════════════════════════
+SKINCARE ROUTINE RECOMMENDATIONS
+══════════════════════════════════════
+Brightening:  Turmeric Kojic Soap → Rose Toner → Lightening Serum → Moisturiser + SPF
+Acne:         Salicylic Acid Soap → Glycolic Toner → 2% Salicylic Serum → Moisturiser
+Hydration:    Milk Cleanser → Rose Toner → Hyaluronic Acid Serum → Moisturiser
+Anti-aging:   Glycolic Acid Soap → Glycolic Toner → Rose Oil Serum → Moisturiser
+Men's:        Body Wash 3-in-1 → Beard Shampoo → Beard Oil → Beard Balm
+Yoni routine: Yoni Cleanser daily + Yoni Oil daily + Yoni Scrub 2–3×/week
 
-SHIPPING (Jamaica):
-  • Knutsford Express — island-wide, next day. Bearer fee J$500. Customer pays Knutsford at pickup.
-  • Zipmail — ~J$1,000 total. Bearer J$500 + shipping J$500.
-  • Kingston/St. Andrew Delivery — from J$1,000.
+SKIN TYPE MATCHING:
+Oily/acne:          Salicylic Acid Bar, Glycolic Acid Bar, Glycolic Toner
+Dry/sensitive:      Milk Cleanser, Rose Toner, Hyaluronic Serum, Body Butter, Garlic Lavender Soap
+Hyperpigmentation:  Turmeric Kojic Soap, Lightening Serum, Dark Spot Remover, Skin Lightening Bar
+Aging:              Rose Oil Serum, Glycolic Toner, Moisturiser
+All skin types:     Hyaluronic Acid Serum, Rose Toner, Moisturiser, Turmeric Bar Soap
 
-PAYMENT (no COD): NCB Bank Transfer (JMD: 354-747-294, USD: 354-747-308, Swift: JNCBJMKX) | Fygaro (online card) | Lynk @najahchemist
+══════════════════════════════════════
+PREGNANCY & SAFETY
+══════════════════════════════════════
+NOT safe during pregnancy: Salicylic Acid products, Boric Acid products (Yoni Pops, Boric Acid Capsules, Probiotic Gel Wash), Glycolic Acid/AHA products, Peeling Oil, Yoni Steam Herbs, Male Enhancement Supplement.
+Use with caution / consult doctor: Kojic Acid, Alpha Arbutin, Lactic Acid, Peppermint Oil (avoid first trimester), Strong Lightening Cream.
+Generally safe: Hyaluronic Acid Serum, Rose Toner, Aloe Vera products, Shea Butter, Turmeric Soap, Vitamin C Soap, Body Butter, Hair Butter, Rose Oil Serum.
+SPF RULE: ALL lightening and brightening products require SPF 30+ daily.
+
+══════════════════════════════════════
+PAYMENT & SHIPPING
+══════════════════════════════════════
+Payment (NO cash on delivery):
+  • Online card: Fygaro via najahchemistja.com
+  • Bank Transfer: NCB — JMD account 354-747-294 | USD account 354-747-308 | Swift: JNCBJMKX | Business: Najah Chemist
+  • Lynk: @najahchemist | Cash: Kingston pickup only
 Payment required BEFORE processing. 2–3 business day turnaround.
 
-CONTACT: WhatsApp 18768851099 · @najahchemist on Instagram & TikTok · najahchemistja.com
+Shipping (Jamaica island-wide):
+  • Knutsford Express — island-wide, next-day. Bearer fee ~J$500.
+  • Zipmail — ~J$1,000 total.
+  • Kingston/St. Andrew direct delivery — from J$1,000.
 
-Suggest products for skin concerns proactively. Give full payment details when asked.`
+PRIVATE LABEL: MOQ 1 litre / 2 lbs | Lead time 7–14 days | 50% deposit | Custom labels available | Label Design J$3,000 | Formulation Consultation J$31,406
+
+CONTACT: WhatsApp (876) 885-1099 · @najahchemist on Instagram & TikTok · najahchemistja.com`;
+}
 
 let hist=[];
 function addMsg(txt,isUser){const m=document.getElementById('chat-msgs');const el=document.createElement('div');el.className='msg '+(isUser?'msg-user':'msg-bot');el.innerHTML=txt.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');m.appendChild(el);m.scrollTop=m.scrollHeight;}
@@ -2730,7 +2777,7 @@ async function callAI(msg){
     const r=await fetch('/.netlify/functions/chat',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({messages:hist.slice(-20),system:SYS+extraKb})
+      body:JSON.stringify({messages:hist.slice(-20),system:getSYS()+extraKb})
     });
     const d=await r.json();
     const reply=d.content?.[0]?.text||"I'm having trouble. Please DM us @najahchemist!";
