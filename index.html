@@ -401,7 +401,7 @@ tr:hover td{background:var(--warm);}
 
 /* ── CART OVERLAY ── */
 #sf-cart-overlay{z-index:800;}
-.sf-cart-modal{background:white;width:100%;max-width:500px;max-height:94vh;border-radius:20px;display:flex;flex-direction:column;overflow:hidden;animation:sfUp 0.25s ease;} .sf-cart-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.sf-cart-modal{background:white;width:100%;max-width:500px;max-height:94vh;border-radius:20px;display:flex;flex-direction:column;overflow:hidden;animation:sfUp 0.25s ease;} .sf-cart-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .sf-cart-hdr{padding:1.1rem 1.4rem;border-bottom:1px solid #E8E4DE;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .sf-cart-hdr h3{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;}
 .sf-cart-items-wrap{}
@@ -1871,7 +1871,7 @@ let PRODUCTS = [
     benefits:['pH Balance','Odour Control','Yeast Infection Relief','BV Support'],
     usage:'Insert one capsule vaginally as directed. Not for oral use.',
     img:'https://fygaro-subscribers.s3.amazonaws.com/40341bc0-0b62-4026-8b33-b7b7f2ee55a3/products/282958/f297e311-1ee4-41b5-b388-8b89e013d5dd.png'},
-  {id:'itc1',name:'Inner Thigh Cream',tagline:'Brightening cream for inner thighs and intimate areas',cat:'yoni',emoji:'✨',tag:'',
+  {id:'itc1',hidden:true,name:'Inner Thigh Cream',tagline:'Brightening cream for inner thighs and intimate areas',cat:'yoni',emoji:'✨',tag:'',
     pricing:{lb2:{price:16650,moq:1},lb8:{price:60000,moq:1},lb40:{price:270000,moq:1}},
     ingredients:'Alpha Arbutin, Kojic Acid, Niacinamide, Shea Butter, Vitamin C',
     benefits:['Brightening','Dark Spots','Even Tone','Moisturizing'],
@@ -1895,7 +1895,7 @@ let PRODUCTS = [
     benefits:['Uterine Health','Circulation','Cleansing','Relaxation'],
     usage:'Follow vaginal steam protocols. Steam for 15-20 minutes.',
     img:'https://fygaro-subscribers.s3.amazonaws.com/40341bc0-0b62-4026-8b33-b7b7f2ee55a3/products/345764/f3b89696-adac-4705-aede-79153962a433.png'},
-  {id:'fd1',name:'Fertility Drops',tagline:'Herbal tincture to support reproductive wellness',cat:'yoni',emoji:'🌱',tag:'',
+  {id:'fd1',hidden:true,name:'Fertility Drops',tagline:'Herbal tincture to support reproductive wellness',cat:'yoni',emoji:'🌱',tag:'',
     pricing:{litre:{price:12500,moq:1},gallon:{price:48500,moq:1},'5gal':{price:218250,moq:1}},
     ingredients:'Maca Root, Vitex, Red Raspberry Leaf, Dong Quai, Herbal Extracts',
     benefits:['Hormonal Balance','Cycle Regulation','Reproductive Support','Natural Herbs'],
@@ -2105,19 +2105,19 @@ let PRODUCTS = [
     benefits:['Daily Freshness','pH Balance','Cooling Effect','Masculine Scent'],
     usage:'Apply externally during shower. Rinse thoroughly.',
     img:'https://fygaro-subscribers.s3.amazonaws.com/40341bc0-0b62-4026-8b33-b7b7f2ee55a3/products/391658/4b63949c-1955-4a06-9e59-01b1faca3a39.png'},
-  {id:'jl1',name:'Jock Lube',tagline:'Intimate lubricant for men — smooth and long-lasting',cat:'mencare',emoji:'💧',tag:'',
+  {id:'jl1',hidden:true,name:'Jock Lube',tagline:'Intimate lubricant for men — smooth and long-lasting',cat:'mencare',emoji:'💧',tag:'',
     pricing:{litre:{price:6550,moq:1},gallon:{price:25500,moq:1},'5gal':{price:114750,moq:1}},
     ingredients:'Aloe Vera, Glycerin, Hydroxyethylcellulose, Vitamin E',
     benefits:['Lubrication','Comfort','Long-Lasting','Skin-Safe'],
     usage:'Apply as needed.',
     img:'https://fygaro-subscribers.s3.amazonaws.com/40341bc0-0b62-4026-8b33-b7b7f2ee55a3/products/409725/t/e2523d13-5bf2-4f1d-9612-05a7ba73f22c.png'},
-  {id:'jm1',name:'Jock Mist',tagline:'Refreshing intimate mist for men',cat:'mencare',emoji:'💦',tag:'',
+  {id:'jm1',hidden:true,name:'Jock Mist',tagline:'Refreshing intimate mist for men',cat:'mencare',emoji:'💦',tag:'',
     pricing:{litre:{price:4850,moq:1},gallon:{price:18800,moq:1},'5gal':{price:84600,moq:1}},
     ingredients:'Rose Water, Witch Hazel, Aloe Vera, Menthol, Tea Tree Oil',
     benefits:['Instant Freshness','Cooling','Odour Control','pH Balance'],
     usage:'Spray externally as needed throughout the day.',
     img:'https://fygaro-subscribers.s3.amazonaws.com/40341bc0-0b62-4026-8b33-b7b7f2ee55a3/products/409726/t/3a7fa0c0-5c2d-4359-acdf-f88b87cdf57c.png'},
-  {id:'ji1',name:'Jock Itch Cream',tagline:'Fast relief from jock itch and intimate irritation',cat:'mencare',emoji:'🌿',tag:'',
+  {id:'ji1',hidden:true,name:'Jock Itch Cream',tagline:'Fast relief from jock itch and intimate irritation',cat:'mencare',emoji:'🌿',tag:'',
     pricing:{lb2:{price:9500,moq:1},lb8:{price:32800,moq:1},lb40:{price:147600,moq:1}},
     ingredients:'Tea Tree Oil, Zinc Oxide, Aloe Vera, Calendula, Chamomile Extract',
     benefits:['Itch Relief','Anti-Fungal','Soothing','Fast Acting'],
@@ -2125,7 +2125,7 @@ let PRODUCTS = [
     img:'https://fygaro-subscribers.s3.amazonaws.com/40341bc0-0b62-4026-8b33-b7b7f2ee55a3/products/359776/t/bec7487b-e791-4f35-86dd-a5b150d73981.png'},
 
   // ═══ HAIRCARE ═══
-  {id:'hmi1',name:'Hair Mist',tagline:'Hydrating hair mist for moisture and shine',cat:'haircare',emoji:'💦',tag:'',
+  {id:'hmi1',name:'Hair Mist',tagline:'Hydrating hair mist for moisture and shine',cat:'haircare',emoji:'🧴',tag:'',
     pricing:{litre:{price:5500,moq:1},gallon:{price:20000,moq:1},'5gal':{price:90000,moq:1}},
     ingredients:'Rose Water, Aloe Vera, Glycerin, Argan Oil, Panthenol',
     benefits:['Hydration','Shine','Frizz Control','Refreshing'],
@@ -2137,7 +2137,7 @@ let PRODUCTS = [
     benefits:['Moisture','Strength','Growth','Thick Hair'],
     usage:'Apply to hair, focusing on ends and dry areas. Style as desired.',
     img:'https://fygaro-subscribers.s3.amazonaws.com/40341bc0-0b62-4026-8b33-b7b7f2ee55a3/products/345768/t/00fb8220-e417-4043-b3ad-c782aa4a9523.png'},
-  {id:'hgo1',name:'Hair Growth Oil',tagline:'Stimulating oil blend for hair growth and strength',cat:'haircare',emoji:'🌱',tag:'',
+  {id:'hgo1',name:'Hair Growth Oil',tagline:'Stimulating oil blend for hair growth and strength',cat:'haircare',emoji:'🧴',tag:'',
     pricing:{litre:{price:7500,moq:1},gallon:{price:28000,moq:1},'5gal':{price:126000,moq:1}},
     ingredients:'Castor Oil, Rosemary Essential Oil, Peppermint Oil, Argan Oil, Vitamin E',
     benefits:['Hair Growth','Scalp Stimulation','Strength','Thickness'],
@@ -2640,6 +2640,7 @@ function renderAdminProducts(){
       <div class="admin-prod-info"><div class="admin-prod-name">${p.name}</div><div class="admin-prod-meta">${price} · ${p.cat==='soap'?'Bar Soap':'Litre/Gallon/5 Gallon'} · ${(REVIEWS[p.id]||[]).length} review(s)</div></div>
       <div class="admin-actions">
         <button class="btn btn-ol btn-xs" onclick="editProduct('${p.id}')">Edit</button>
+        <button class="btn btn-xs" style="background:${p.hidden?'#6B7280':'#059669'};color:white;border:none;" onclick="toggleProductHidden('${p.id}')">${p.hidden?'Hidden':'Visible'}</button>
         <button class="btn btn-rd btn-xs" onclick="deleteProduct('${p.id}')">Delete</button>
       </div></div>`;
   }).join('');
@@ -2655,6 +2656,19 @@ function renderAdminReviews(){
   sumEl.innerHTML=`<div style="font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:700;">${avg}<span style="font-size:0.9rem;color:var(--mid);"> / 5</span></div><div>Total: <strong>${all.length}</strong></div>`;
   updateStatRevs();
 }
+
+window.toggleProductHidden = async function(id) {
+  const idx = PRODUCTS.findIndex(p => p.id === id);
+  if (idx < 0) return;
+  PRODUCTS[idx].hidden = !PRODUCTS[idx].hidden;
+  const p = PRODUCTS[idx];
+  try {
+    await setDoc(doc(db,'products',id), p);
+    showToast(p.hidden ? 'Product hidden from shop' : 'Product visible in shop');
+  } catch(e) { showToast('Saved locally (Firebase error)'); }
+  renderAdminProducts();
+  if (typeof sfRenderProducts === 'function') sfRenderProducts('all');
+};
 
 document.addEventListener('change', e=>{
   if(e.target.id==='ap-cat'){
@@ -2740,13 +2754,27 @@ window.saveProduct = async function(){
     document.getElementById('prod-modal-title').textContent='Add New Product';
     // Refresh storefront
     if(typeof sfRenderProducts==='function'){ sfRenderProducts('all'); sfRenderHeroCards(); }
-  } catch(e) { showToast('Saved locally (Firebase error)'); }
+  } catch(e) { console.error('saveProduct error:', e); showToast('Save failed: ' + (e.message||e.code||'Firebase error')); }
 };
 
 window.previewImg = function(input){
   const file=input.files[0]; if(!file) return;
   const reader=new FileReader();
-  reader.onload=e=>{const img=document.getElementById('img-preview');img.src=e.target.result;img.style.display='block';};
+  reader.onload=e=>{
+    const raw=new Image();
+    raw.onload=function(){
+      const MAX=400;
+      const scale=Math.min(1,MAX/Math.max(raw.width,raw.height));
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.round(raw.width*scale);
+      canvas.height=Math.round(raw.height*scale);
+      canvas.getContext('2d').drawImage(raw,0,0,canvas.width,canvas.height);
+      const img=document.getElementById('img-preview');
+      img.src=canvas.toDataURL('image/jpeg',0.72);
+      img.style.display='block';
+    };
+    raw.src=e.target.result;
+  };
   reader.readAsDataURL(file);
 };
 
@@ -3105,7 +3133,7 @@ function sfRenderProducts(filter) {
   const grid = document.getElementById('sf-products-grid');
   if (!grid) return;
   const prods = window.PRODUCTS || [];
-  const list = filter === 'all' ? prods : prods.filter(p => p.cat === filter);
+  const list = filter === 'all' ? prods.filter(p => !p.hidden) : prods.filter(p => p.cat === filter && !p.hidden);
   grid.innerHTML = list.map(p => {
     const {price, moq} = sfGetPrice(p);
     const imgHtml = p.img ? `<img src="${p.img}" alt="${p.name}">` : `<span style="font-size:3rem;">${p.emoji}</span>`;
