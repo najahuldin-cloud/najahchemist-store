@@ -2162,8 +2162,10 @@ window.openProduct = function(id){
   const sw=document.getElementById('pd-sizes-wrap');
   if(p.cat==='soap'){
     sw.style.display='none';
-    document.getElementById('pd-price').textContent='J$'+p.pricing.bar.price.toLocaleString()+'/bar';
-    document.getElementById('pd-moq').textContent='Min '+p.pricing.bar.moq+' bars';
+    const bk=Object.keys(p.pricing).find(k=>k.startsWith('bars')||k==='bar')||Object.keys(p.pricing)[0];
+    const sp=p.pricing[bk]||{price:0,moq:1};
+    document.getElementById('pd-price').textContent='J$'+sp.price.toLocaleString()+'/bar';
+    document.getElementById('pd-moq').textContent='Min '+sp.moq+' bars';
   } else {
     sw.style.display='block';
     const keys=Object.keys(p.pricing);
