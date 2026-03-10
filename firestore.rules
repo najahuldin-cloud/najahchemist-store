@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Authenticated admin: full read/write access ───────────────────────
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // ── Public storefront reads ───────────────────────────────────────────
+    match /products/{id}    { allow read: if true; }
+    match /settings/{id}    { allow read: if true; }
+    match /reviews/{id}     { allow read: if true; }
+
+    // ── Public storefront writes (checkout, contact, email signup, review) ─
+    match /orders/{id}      { allow write: if true; }
+    match /messages/{id}    { allow write: if true; }
+    match /subscribers/{id} { allow write: if true; }
+    match /reviews/{id}     { allow write: if true; }
+  }
+}

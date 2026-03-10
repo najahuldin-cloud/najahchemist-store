@@ -2710,20 +2710,19 @@ function renderAdminReviews(){
 window.toggleProductHidden = async function(id) {
   const idx = PRODUCTS.findIndex(p => p.id === id);
   if (idx < 0) return;
+  if (!auth.currentUser) { showToast('Session expired — please log in again'); return; }
   const newHidden = !PRODUCTS[idx].hidden;
   PRODUCTS[idx].hidden = newHidden;
+  renderAdminProducts();
+  if (typeof sfRenderProducts === 'function') sfRenderProducts('all');
   try {
-    try {
-      await updateDoc(doc(db,'products',id), {hidden: newHidden});
-    } catch(e2) {
-      await setDoc(doc(db,'products',id), PRODUCTS[idx]);
-    }
+    await setDoc(doc(db,'products',id), {hidden: newHidden}, {merge: true});
     showToast(newHidden ? 'Product hidden from shop' : 'Product visible in shop');
-    renderAdminProducts();
-    if (typeof sfRenderProducts === 'function') sfRenderProducts('all');
   } catch(e) {
     PRODUCTS[idx].hidden = !newHidden;
-    showToast('Could not save — try again');
+    renderAdminProducts();
+    if (typeof sfRenderProducts === 'function') sfRenderProducts('all');
+    showToast('Save failed: ' + (e.code || e.message || 'Firebase error'));
   }
 };
 
@@ -2881,21 +2880,31 @@ window.saveProduct = async function(){
     PRODUCTS.push({id:'p'+Date.now(),name,tagline:document.getElementById('ap-tl').value,cat,emoji:'🧴',tag:document.getElementById('ap-tag').value,ingredients:document.getElementById('ap-ing').value,benefits:document.getElementById('ap-ben').value.split(',').map(s=>s.trim()),usage:document.getElementById('ap-use').value,pricing,img:imgSrc});
   }
   // Save to Firebase so it persists across reloads
+  if (!auth.currentUser) { showToast('Session expired — please log in again'); return; }
   const prodToSave = editId ? PRODUCTS.find(p=>p.id===editId) : PRODUCTS[PRODUCTS.length-1];
+  // Strip img from Firestore doc to keep it small; store img separately
+  const {img, ...prodNoImg} = prodToSave;
+  const docToSave = img ? {...prodNoImg, img} : prodNoImg;
   try {
-    if (editId) {
-      await setDoc(doc(db,'products',editId), prodToSave);
-    } else {
-      const newId = prodToSave.id;
-      await setDoc(doc(db,'products',newId), prodToSave);
-    }
+    const docId = editId || prodToSave.id;
+    await setDoc(doc(db,'products',docId), docToSave);
     showToast('Product saved ✓');
     closeM('m-add-prod'); renderShop(); renderAdminProducts();
     document.getElementById('edit-prod-id').value='';
     document.getElementById('prod-modal-title').textContent='Add New Product';
     // Refresh storefront
     if(typeof sfRenderProducts==='function'){ sfRenderProducts('all'); if(typeof sfRenderHeroCards==='function') sfRenderHeroCards(); }
-  } catch(e) { console.error('saveProduct error:', e); showToast('Save failed: ' + (e.message||e.code||'Firebase error')); }
+  } catch(e) {
+    console.error('saveProduct error:', e);
+    const code = e.code || e.name || '';
+    if (code.includes('permission') || code.includes('PERMISSION')) {
+      showToast('Permission denied — check Firestore rules in Firebase Console');
+    } else if (code.includes('unavailable') || code.includes('network')) {
+      showToast('No connection — check internet and try again');
+    } else {
+      showToast('Save failed (' + (e.code||e.message||'unknown') + ')');
+    }
+  }
 };
 
 window.previewImg = function(input){
