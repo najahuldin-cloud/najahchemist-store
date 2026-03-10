@@ -2076,13 +2076,16 @@ async function loadFromDB() {
     const prodSnap = await getDocs(collection(db,'products'));
     if (!prodSnap.empty) {
       const dbProds = prodSnap.docs.map(d=>({...d.data()}));
-      // Merge: DB products override hardcoded ones, new ones are added
-      dbProds.forEach(dbP => {
-        const idx = PRODUCTS.findIndex(p=>p.id===dbP.id);
-        if(idx>-1) PRODUCTS[idx] = dbP;
-        else PRODUCTS.push(dbP);
-      });
+      // Replace PRODUCTS array contents with Firestore data
+      PRODUCTS.length = 0;
+      dbProds.forEach(dbP => PRODUCTS.push(dbP));
+      console.log(`[Najah] Loaded ${PRODUCTS.length} products from Firestore`);
+    } else {
+      console.log('[Najah] No products in Firestore — using hardcoded fallback');
     }
+    // Re-render admin views with loaded products
+    renderShop();
+    renderAdminProducts();
     // Load chatbot knowledge from Firebase
     try {
       const kbDoc = await getDocs(collection(db,'settings'));
@@ -2792,7 +2795,6 @@ window.chatSend = async function(){const inp=document.getElementById('chat-in');
 document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('today-lbl').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   updateSizeOpts();
-  renderShop();
   renderOrdersTable();
   renderInbox();
   updateBadges();
