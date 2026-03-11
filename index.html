@@ -1194,7 +1194,7 @@ tr:hover td{background:var(--warm);}
   <div class="g4" style="margin-bottom:1.5rem;">
     <div class="stat"><div class="slbl">Active Orders</div><div class="sval" id="stat-orders">0</div><div class="ssub">Pending + Processing</div></div>
     <div class="stat"><div class="slbl">Unread Messages</div><div class="sval" id="stat-msgs">0</div><div class="ssub">Needs response</div></div>
-    <div class="stat"><div class="slbl">Products</div><div class="sval" id="stat-prods">11</div><div class="ssub">In catalogue</div></div>
+    <div class="stat"><div class="slbl">Products</div><div class="sval" id="stat-prods">0</div><div class="ssub" id="stat-prods-sub">In catalogue</div></div>
     <div class="stat"><div class="slbl">Reviews</div><div class="sval" id="stat-revs">0</div><div class="ssub">From customers</div></div>
   </div>
   <div class="g2">
@@ -2093,6 +2093,7 @@ async function loadFromDB() {
     } else {
       console.log('[Najah] No products in Firestore — using hardcoded fallback');
     }
+    updateProductStat();
     renderShop();
     renderAdminProducts();
   } catch(e) { console.log('[Najah] Products load failed:', e.message); }
@@ -2153,6 +2154,17 @@ function getDisplayPrice(p){
   return {price:'From J$'+p.pricing[f].price.toLocaleString(),moq:sizeLabel(f)};
 }
 
+// ═══ PRODUCT STAT ═══
+function updateProductStat(){
+  const total = PRODUCTS.length;
+  const visible = PRODUCTS.filter(p=>!p.hidden).length;
+  const el = document.getElementById('stat-prods');
+  const sub = document.getElementById('stat-prods-sub');
+  if(el) el.textContent = total;
+  if(sub) sub.textContent = visible < total ? `${visible} visible, ${total-visible} hidden` : 'In catalogue';
+}
+window.updateProductStat = updateProductStat;
+
 // ═══ SHOP ═══
 function renderShop(){
   const g=document.getElementById('shop-grid'); if(!g) return;
@@ -2169,7 +2181,7 @@ function renderShop(){
         <button class="btn btn-dk btn-sm" onclick="event.stopPropagation();openProduct('${p.id}')">Details</button></div>
       </div></div>`;
   }).join('');
-  document.getElementById('stat-prods').textContent = PRODUCTS.length;
+  updateProductStat();
 }
 
 // ═══ PRODUCT DETAIL ═══
@@ -2380,6 +2392,7 @@ window.toggleProductHidden = async function(id) {
   if (!auth.currentUser) { showToast('Session expired — please log in again'); return; }
   const newHidden = !PRODUCTS[idx].hidden;
   PRODUCTS[idx].hidden = newHidden;
+  updateProductStat();
   renderAdminProducts();
   if (typeof sfRenderProducts === 'function') sfRenderProducts('all');
   try {
@@ -2516,6 +2529,7 @@ window.deleteProduct = async function(id){
   PRODUCTS.length = 0;
   filtered.forEach(p => PRODUCTS.push(p));
   try { await deleteDoc(doc(db,'products',id)); } catch(e){}
+  updateProductStat();
   renderAdminProducts(); renderShop();
   if(typeof sfRenderProducts==='function'){ sfRenderProducts('all'); if(typeof sfRenderHeroCards==='function') sfRenderHeroCards(); }
   showToast('Product deleted');
@@ -2572,7 +2586,7 @@ window.saveProduct = async function(){
     const docId = editId || prodToSave.id;
     await setDoc(doc(db,'products',docId), docToSave);
     showToast('Product saved ✓');
-    closeM('m-add-prod'); renderShop(); renderAdminProducts();
+    closeM('m-add-prod'); updateProductStat(); renderShop(); renderAdminProducts();
     resetProductForm();
     // Refresh storefront
     if(typeof sfRenderProducts==='function'){ sfRenderProducts('all'); if(typeof sfRenderHeroCards==='function') sfRenderHeroCards(); }
