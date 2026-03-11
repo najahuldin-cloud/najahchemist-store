@@ -2054,17 +2054,23 @@ async function saveReviewToDB(review) {
 }
 
 async function loadFromDB() {
+  // ── 1. Products (public read — always runs) ────────────────────────────
   try {
-    const ordSnap = await getDocs(query(collection(db,'orders'),orderBy('createdAt','desc')));
-    if (!ordSnap.empty) {
-      const dbO = ordSnap.docs.map(d=>({...d.data(),dbId:d.id}));
-      DB_ORDERS = [...dbO, ...DB_ORDERS.filter(o=>!dbO.find(d=>d.id===o.id))];
+    const prodSnap = await getDocs(collection(db,'products'));
+    if (!prodSnap.empty) {
+      const dbProds = prodSnap.docs.map(d=>({...d.data()}));
+      PRODUCTS.length = 0;
+      dbProds.forEach(dbP => PRODUCTS.push(dbP));
+      console.log(`[Najah] Loaded ${PRODUCTS.length} products from Firestore`);
+    } else {
+      console.log('[Najah] No products in Firestore — using hardcoded fallback');
     }
-    const msgSnap = await getDocs(query(collection(db,'messages'),orderBy('createdAt','desc')));
-    if (!msgSnap.empty) {
-      const dbM = msgSnap.docs.map(d=>({...d.data(),dbId:d.id}));
-      DB_MESSAGES = [...dbM, ...DB_MESSAGES.filter(m=>!dbM.find(d=>d.from===m.from))];
-    }
+    renderShop();
+    renderAdminProducts();
+  } catch(e) { console.log('[Najah] Products load failed:', e.message); }
+
+  // ── 2. Reviews (public read) ───────────────────────────────────────────
+  try {
     const revSnap = await getDocs(collection(db,'reviews'));
     revSnap.docs.forEach(d=>{
       const r=d.data();
@@ -2072,48 +2078,54 @@ async function loadFromDB() {
       if(!REVIEWS[r.productId].find(x=>x.name===r.name&&x.text===r.text))
         REVIEWS[r.productId].unshift({name:r.name,stars:r.stars,text:r.text,date:r.date});
     });
-    // Load products from Firebase (overrides hardcoded ones)
-    const prodSnap = await getDocs(collection(db,'products'));
-    if (!prodSnap.empty) {
-      const dbProds = prodSnap.docs.map(d=>({...d.data()}));
-      // Replace PRODUCTS array contents with Firestore data
-      PRODUCTS.length = 0;
-      dbProds.forEach(dbP => PRODUCTS.push(dbP));
-      console.log(`[Najah] Loaded ${PRODUCTS.length} products from Firestore`);
-    } else {
-      console.log('[Najah] No products in Firestore — using hardcoded fallback');
+  } catch(e) {}
+
+  // ── 3. Settings (public read) ──────────────────────────────────────────
+  try {
+    const kbDoc = await getDocs(collection(db,'settings'));
+    kbDoc.docs.forEach(d => {
+      if(d.id==='chatbot_knowledge' && d.data().content)
+        window._extraChatbotKnowledge = d.data().content;
+      if(d.id==='site_settings' && d.data().waNumber)
+        window.WA_NUMBER = d.data().waNumber;
+    });
+  } catch(e) {}
+
+  // ── 4. Orders (requires auth — silently skipped if unauthenticated) ────
+  try {
+    const ordSnap = await getDocs(query(collection(db,'orders'),orderBy('createdAt','desc')));
+    if (!ordSnap.empty) {
+      const dbO = ordSnap.docs.map(d=>({...d.data(),dbId:d.id}));
+      DB_ORDERS = [...dbO, ...DB_ORDERS.filter(o=>!dbO.find(d=>d.id===o.id))];
+      console.log(`[Najah] Loaded ${dbO.length} orders from Firestore`);
     }
-    // Re-render admin views with loaded products
-    renderShop();
-    renderAdminProducts();
-    // Load chatbot knowledge from Firebase
-    try {
-      const kbDoc = await getDocs(collection(db,'settings'));
-      kbDoc.docs.forEach(d => {
-        if(d.id==='chatbot_knowledge' && d.data().content) {
-          window._extraChatbotKnowledge = d.data().content;
-        }
-        if(d.id==='site_settings' && d.data()) {
-          const s = d.data();
-          if(s.waNumber) window.WA_NUMBER = s.waNumber;
-        }
-      });
-    } catch(e){}
-    renderOrdersTable(); renderInbox(); updateBadges();
-    // Re-render storefront with loaded products + reviews
-    if (typeof sfRenderProducts === 'function') {
-      sfRenderProducts('all');
-      if (typeof sfRenderHeroCards === 'function') sfRenderHeroCards();
-      sfRenderReviews();
+  } catch(e) { if(e.code!=='permission-denied') console.log('[Najah] Orders load:', e.message); }
+
+  // ── 5. Messages (requires auth — silently skipped if unauthenticated) ──
+  try {
+    const msgSnap = await getDocs(query(collection(db,'messages'),orderBy('createdAt','desc')));
+    if (!msgSnap.empty) {
+      const dbM = msgSnap.docs.map(d=>({...d.data(),dbId:d.id}));
+      DB_MESSAGES = [...dbM, ...DB_MESSAGES.filter(m=>!dbM.find(d=>d.from===m.from))];
     }
-  } catch(e){ console.log('Firebase load:', e.message); }
-  // Always render storefront even if Firebase fails
+  } catch(e) {}
+
+  renderOrdersTable(); renderInbox(); updateBadges();
+
+  // ── 6. Render storefront ───────────────────────────────────────────────
   if (typeof sfRenderProducts === 'function') {
     sfRenderProducts('all');
     if (typeof sfRenderHeroCards === 'function') sfRenderHeroCards();
     sfRenderReviews();
   }
 }
+
+// Expose for storefront script to save orders to Firestore silently
+async function saveOrderSilent(order) {
+  try { await addDoc(collection(db,'orders'),{...order,createdAt:serverTimestamp()}); }
+  catch(e){ console.error('[Najah] Firestore order save:', e.message); }
+}
+window.saveOrderSilent = saveOrderSilent;
 
 // ═══ TOAST ═══
 function showToast(msg){
@@ -2490,7 +2502,9 @@ window.editProduct = function(id){
 
 window.deleteProduct = async function(id){
   if(!confirm('Delete this product? This cannot be undone.')) return;
-  PRODUCTS = PRODUCTS.filter(p=>p.id!==id);
+  const filtered = PRODUCTS.filter(p=>p.id!==id);
+  PRODUCTS.length = 0;
+  filtered.forEach(p => PRODUCTS.push(p));
   try { await deleteDoc(doc(db,'products',id)); } catch(e){}
   renderAdminProducts(); renderShop();
   if(typeof sfRenderProducts==='function'){ sfRenderProducts('all'); if(typeof sfRenderHeroCards==='function') sfRenderHeroCards(); }
@@ -3400,7 +3414,7 @@ window.sfCheckoutWA = function() {
   sfUpdateCartBtn();
   sfCloseCart();
 
-  // 4. Save to Sheets + email in background (non-blocking)
+  // 4. Save to Sheets + Firestore + email in background (non-blocking)
   setTimeout(async function() {
     try {
       await fetch('/.netlify/functions/create-order', {
@@ -3408,6 +3422,11 @@ window.sfCheckoutWA = function() {
         body: JSON.stringify({orderId:orderId, date:date, customerName:name, phone:phone, products:productsStr, deliveryLocation:deliveryLocation, deliveryFee:deliveryFee, total:total, status:'NEW'})
       });
     } catch(e) { console.error('Order save failed:', e); }
+    // Save to Firestore so order appears in admin panel
+    if (typeof window.saveOrderSilent === 'function') {
+      const totalQty = cartSnapshot.reduce(function(s,i){return s+i.qty;},0);
+      await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',status:'Pending',date:date,total:total,payMethod:'Pending'});
+    }
     if (custEmail) {
       try { await saveSubscriber(name, custEmail, 'checkout'); } catch(e) {}
       try {
