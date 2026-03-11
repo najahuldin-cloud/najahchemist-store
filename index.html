@@ -1820,7 +1820,7 @@ Add anything else you want the chatbot to know..."></textarea>
 // ════════════════════════════════════════════════════
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -1877,9 +1877,10 @@ function showStorefront() {
 
 // Flag: set to true before login so onAuthStateChanged knows to navigate to admin
 let pendingAdminNav = false;
+let _ordersUnsub = null; // real-time orders listener unsubscribe handle
 
 // ═══ AUTH STATE — this is the single source of truth ═══
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   const btn = document.getElementById('nav-admin');
   if (user) {
     btn.textContent = '✓ Admin';
@@ -1887,6 +1888,32 @@ onAuthStateChanged(auth, (user) => {
     document.getElementById('admin-user-label').textContent = `Signed in as ${user.email}`;
     renderAdminProducts();
     renderAdminReviews();
+
+    // ── Real-time orders listener (set up once per login) ──────────────
+    if (!_ordersUnsub) {
+      _ordersUnsub = onSnapshot(
+        query(collection(db,'orders'), orderBy('createdAt','desc')),
+        (snap) => {
+          const dbO = snap.docs.map(d => ({...d.data(), dbId: d.id}));
+          // Replace DB_ORDERS with Firestore data, keep local-only rows at the end
+          DB_ORDERS = [...dbO, ...DB_ORDERS.filter(o => !dbO.find(d => d.id === o.id))];
+          console.log(`[Najah] Orders snapshot: ${dbO.length} orders`);
+          renderOrdersTable(); updateBadges();
+        },
+        (err) => { console.log('[Najah] Orders listener error:', err.message); }
+      );
+    }
+
+    // ── Load messages (one-time, requires auth) ────────────────────────
+    try {
+      const msgSnap = await getDocs(query(collection(db,'messages'), orderBy('createdAt','desc')));
+      if (!msgSnap.empty) {
+        const dbM = msgSnap.docs.map(d => ({...d.data(), dbId: d.id}));
+        DB_MESSAGES = [...dbM, ...DB_MESSAGES.filter(m => !dbM.find(d => d.from === m.from))];
+        renderInbox();
+      }
+    } catch(e) {}
+
     // Navigate to admin if user explicitly triggered a login
     if (pendingAdminNav) {
       pendingAdminNav = false;
@@ -1897,7 +1924,8 @@ onAuthStateChanged(auth, (user) => {
       document.getElementById('nav-admin').classList.add('on');
     }
   } else {
-    // Logged out — show storefront
+    // Logged out — tear down listener and show storefront
+    if (_ordersUnsub) { _ordersUnsub(); _ordersUnsub = null; }
     showStorefront();
     btn.innerHTML = '⚙ Admin';
     btn.classList.remove('on');
@@ -2091,28 +2119,10 @@ async function loadFromDB() {
     });
   } catch(e) {}
 
-  // ── 4. Orders (requires auth — silently skipped if unauthenticated) ────
-  try {
-    const ordSnap = await getDocs(query(collection(db,'orders'),orderBy('createdAt','desc')));
-    if (!ordSnap.empty) {
-      const dbO = ordSnap.docs.map(d=>({...d.data(),dbId:d.id}));
-      DB_ORDERS = [...dbO, ...DB_ORDERS.filter(o=>!dbO.find(d=>d.id===o.id))];
-      console.log(`[Najah] Loaded ${dbO.length} orders from Firestore`);
-    }
-  } catch(e) { if(e.code!=='permission-denied') console.log('[Najah] Orders load:', e.message); }
+  // Orders and messages are loaded in onAuthStateChanged via onSnapshot
+  // (they require auth and must wait for Firebase to restore the session)
 
-  // ── 5. Messages (requires auth — silently skipped if unauthenticated) ──
-  try {
-    const msgSnap = await getDocs(query(collection(db,'messages'),orderBy('createdAt','desc')));
-    if (!msgSnap.empty) {
-      const dbM = msgSnap.docs.map(d=>({...d.data(),dbId:d.id}));
-      DB_MESSAGES = [...dbM, ...DB_MESSAGES.filter(m=>!dbM.find(d=>d.from===m.from))];
-    }
-  } catch(e) {}
-
-  renderOrdersTable(); renderInbox(); updateBadges();
-
-  // ── 6. Render storefront ───────────────────────────────────────────────
+  // ── 4. Render storefront ───────────────────────────────────────────────
   if (typeof sfRenderProducts === 'function') {
     sfRenderProducts('all');
     if (typeof sfRenderHeroCards === 'function') sfRenderHeroCards();
