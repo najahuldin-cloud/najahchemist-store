@@ -440,6 +440,13 @@ tr:hover td{background:var(--warm);}
 .sf-checkout-btn{width:100%;padding:0.82rem;background:#25D366;color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.5rem;transition:all 0.2s;}
 .sf-checkout-btn:hover{background:#1ebe5a;}
 .sf-checkout-btn:disabled{background:#9CA3AF;cursor:not-allowed;}
+.sf-pay-opts{margin-bottom:0.75rem;}
+.sf-pay-opt-lbl{display:flex;align-items:center;gap:0.6rem;padding:0.55rem 0.75rem;border:1.5px solid #E8E4DE;border-radius:8px;cursor:pointer;font-size:0.8rem;margin-bottom:0.4rem;transition:border-color 0.15s;user-select:none;}
+.sf-pay-opt-lbl.on{border-color:#0F0E0D;background:#F5F2ED;}
+.sf-pay-opt-lbl input[type=radio]{width:14px;height:14px;cursor:pointer;accent-color:#0F0E0D;flex-shrink:0;}
+.sf-card-fee-box{background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;padding:0.55rem 0.75rem;font-size:0.75rem;color:#92400E;margin-bottom:0.75rem;line-height:1.6;}
+.sf-fygaro-btn{width:100%;padding:0.85rem;background:#1D4ED8;color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.9rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.5rem;transition:background 0.2s;}
+.sf-fygaro-btn:hover{background:#1e40af;}
 
 /* ── ABOUT SECTION ── */
 .sf-about-wrap{padding:4.5rem 2rem;background:#FAFAF8;}
@@ -2973,6 +2980,8 @@ let sfCurrentModalQty = 1;
 let sfCurrentModalScent = null;
 let sfCurrentModalMint = null;
 let sfSelectedShip = null;
+let sfSelectedPayment = 'wa'; // 'wa' = bank/lynk, 'card' = Fygaro
+let sfTermsChecked = false;
 let sfCartStep = 'cart';
 
 // ── Helpers ──────────────────────────────────────────
@@ -3353,29 +3362,52 @@ function sfRenderCartFooter() {
   const footer = document.getElementById('sf-cart-footer');
   if (!footer) return;
   const sub = sfCart.reduce((s,i)=>s+i.price*i.qty,0);
-  const shipMap = {knutsford:'J$500 bearer fee', zipmail:'~J$1,000', kingston:'From J$1,000'};
-  footer.style.display='block';
   const shipFees = {knutsford:500, zipmail:1000, kingston:1000};
   const shipLabels = {knutsford:'Knutsford (+J$500)', zipmail:'Zipmail (+~J$1,000)', kingston:'Kingston Delivery (+~J$1,000)'};
   const fee = sfSelectedShip ? shipFees[sfSelectedShip] : 0;
   const grandTotal = sub + fee;
+  const cardFee = Math.round(grandTotal * 0.15);
+  const cardTotal = grandTotal + cardFee;
+  const isCard = sfSelectedPayment === 'card';
+  footer.style.display = 'block';
   footer.innerHTML = `<div style="padding:0.75rem 1.4rem 1.2rem;border-top:1px solid #E8E4DE;">
     <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#8A8480;margin-bottom:0.25rem;"><span>Subtotal</span><span>J$${sub.toLocaleString()}</span></div>
     <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#8A8480;margin-bottom:0.45rem;padding-bottom:0.45rem;border-bottom:1px solid #E8E4DE;"><span>Shipping</span><span>${sfSelectedShip ? shipLabels[sfSelectedShip] : '— select shipping above'}</span></div>
     <div style="display:flex;justify-content:space-between;font-size:1.05rem;font-weight:800;margin-bottom:0.85rem;">
-      <span>Total</span>
-      <span>${sfSelectedShip ? 'J$'+grandTotal.toLocaleString() : 'J$'+sub.toLocaleString()+' + shipping'}</span>
+      <span>Total</span><span>${sfSelectedShip ? 'J$'+grandTotal.toLocaleString() : 'J$'+sub.toLocaleString()+' + shipping'}</span>
     </div>
+    ${sfSelectedShip ? `
+    <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#8A8480;margin-bottom:0.45rem;">Payment Method</div>
+    <div class="sf-pay-opts">
+      <label class="sf-pay-opt-lbl ${!isCard?'on':''}" onclick="sfSetPayment('wa')">
+        <input type="radio" name="sf-pay" ${!isCard?'checked':''} readonly> 🏦 Bank Transfer / Lynk &mdash; <strong>no extra fee</strong>
+      </label>
+      <label class="sf-pay-opt-lbl ${isCard?'on':''}" onclick="sfSetPayment('card')">
+        <input type="radio" name="sf-pay" ${isCard?'checked':''} readonly> 💳 Pay by Card via Fygaro &mdash; <strong>15% fee applies</strong>
+      </label>
+    </div>
+    ${isCard ? `<div class="sf-card-fee-box">Card processing fee (15%): <strong>J$${cardFee.toLocaleString()}</strong> &nbsp;&middot;&nbsp; Total charged to card: <strong>J$${cardTotal.toLocaleString()}</strong></div>` : ''}
+    ` : ''}
     <label style="display:flex;align-items:flex-start;gap:0.6rem;font-size:0.75rem;color:#4B4846;line-height:1.6;margin-bottom:0.85rem;cursor:pointer;">
-      <input type="checkbox" id="sf-terms-check" style="margin-top:2px;flex-shrink:0;width:14px;height:14px;cursor:pointer;">
-      I agree to the <span onclick="sfScroll('sf-policies');sfCloseCart();" style="color:#0F0E0D;font-weight:700;text-decoration:underline;cursor:pointer;">Terms & Conditions</span>, Refund Policy and Shipping Policy of Najah Chemist
+      <input type="checkbox" id="sf-terms-check" ${sfTermsChecked?'checked':''} onchange="sfTermsChecked=this.checked" style="margin-top:2px;flex-shrink:0;width:14px;height:14px;cursor:pointer;">
+      I agree to the <span onclick="sfScroll('sf-policies');sfCloseCart();" style="color:#0F0E0D;font-weight:700;text-decoration:underline;cursor:pointer;">Terms &amp; Conditions</span>, Refund Policy and Shipping Policy of Najah Chemist
     </label>
-    <button onclick="sfCheckoutWA()" ${!sfSelectedShip?'disabled':''} style="width:100%;padding:0.85rem;background:${sfSelectedShip?'#25D366':'#9CA3AF'};color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.9rem;font-weight:700;cursor:${sfSelectedShip?'pointer':'not-allowed'};">
-      📱 Send Order via WhatsApp
-    </button>
-    ${!sfSelectedShip ? '<p style="text-align:center;font-size:0.68rem;color:#8A8480;margin-top:0.4rem;">Select a shipping method above to continue</p>' : ''}
+    ${isCard && sfSelectedShip ? `
+      <button class="sf-fygaro-btn" onclick="sfCheckoutFygaro()">💳 Pay Now by Card &mdash; J$${cardTotal.toLocaleString()}</button>
+      <p style="text-align:center;font-size:0.68rem;color:#8A8480;margin-top:0.4rem;">Secure payment via Fygaro. Card total includes 15% processing fee.</p>
+    ` : `
+      <button onclick="sfCheckoutWA()" ${!sfSelectedShip?'disabled':''} style="width:100%;padding:0.85rem;background:${sfSelectedShip?'#25D366':'#9CA3AF'};color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.9rem;font-weight:700;cursor:${sfSelectedShip?'pointer':'not-allowed'};">
+        📱 Send Order via WhatsApp
+      </button>
+      ${!sfSelectedShip ? '<p style="text-align:center;font-size:0.68rem;color:#8A8480;margin-top:0.4rem;">Select a shipping method above to continue</p>' : ''}
+    `}
   </div>`;
 }
+
+window.sfSetPayment = function(method) {
+  sfSelectedPayment = method;
+  sfRenderCartFooter();
+};
 
 // ── Checkout ─────────────────────────────────────────
 window.sfCheckoutWA = function() {
@@ -3435,6 +3467,8 @@ window.sfCheckoutWA = function() {
 
   // 3. Clear cart immediately
   sfCart = [];
+  sfTermsChecked = false;
+  sfSelectedPayment = 'wa';
   sfUpdateCartBtn();
   sfCloseCart();
 
@@ -3459,6 +3493,97 @@ window.sfCheckoutWA = function() {
           body: JSON.stringify({orderId:orderId, customerName:name, email:custEmail,
             items:cartSnapshot.map(function(i){return {name:i.name,size:i.size,qty:i.qty,price:i.price};}),
             subtotal:sub, deliveryFee:deliveryFee, total:total, shipDetail:shipDetail})
+        });
+      } catch(e) {}
+    }
+  }, 100);
+};
+
+// ── Fygaro Card Checkout ─────────────────────────────
+// Must remain a sync function — window.open must be called synchronously
+window.sfCheckoutFygaro = function() {
+  const name = (document.getElementById('sf-cust-name')?.value||'').trim();
+  const phone = (document.getElementById('sf-cust-phone')?.value||'').trim();
+  const custEmail = (document.getElementById('sf-cust-email')?.value||'').trim();
+  if (!name) {
+    const n = document.getElementById('sf-cust-name');
+    if (n) { n.focus(); n.style.borderColor='#DC2626'; }
+    sfShowToast('Please enter your name');
+    return;
+  }
+  if (!sfSelectedShip) { sfShowToast('Please select a shipping method'); return; }
+  const termsCheck = document.getElementById('sf-terms-check');
+  if (termsCheck && !termsCheck.checked) { sfShowToast('Please agree to the Terms & Conditions to continue'); return; }
+
+  let shipDetail = '', deliveryLocation = '', deliveryFee = 0;
+  if (sfSelectedShip === 'knutsford') {
+    const branch = (document.getElementById('sf-knutsford-branch')?.value||'').trim();
+    shipDetail = 'Knutsford Express'+(branch?' - '+branch+' branch':'')+' (bearer fee J$500)';
+    deliveryLocation = 'Knutsford Express'+(branch?' - '+branch:'');
+    deliveryFee = 500;
+  } else if (sfSelectedShip === 'zipmail') {
+    const loc = (document.getElementById('sf-zipmail-branch')?.value||'').trim();
+    shipDetail = 'Zipmail'+(loc?' - '+loc:'')+' (~J$1,000 under 10lbs)';
+    deliveryLocation = 'Zipmail'+(loc?' - '+loc:'');
+    deliveryFee = 1000;
+  } else {
+    const addr = (document.getElementById('sf-delivery-address')?.value||'').trim();
+    shipDetail = 'Kingston/St. Andrew Delivery'+(addr?' - Address: '+addr:'')+' (from J$1,000)';
+    deliveryLocation = 'Kingston/St. Andrew'+(addr?' - '+addr:'');
+    deliveryFee = 1000;
+  }
+
+  const sub = sfCart.reduce((s,i)=>s+i.price*i.qty,0);
+  const grandTotal = sub + deliveryFee;
+  const cardFee = Math.round(grandTotal * 0.15);
+  const cardTotal = grandTotal + cardFee;
+  const orderId = 'NC-' + Math.floor(10000 + Math.random()*90000);
+  const date = new Date().toLocaleString('en-JM');
+  const productsStr = sfCart.map(i=>`${i.name} (${i.size} x${i.qty})`).join(' | ');
+  const cartSnapshot = [...sfCart];
+
+  // 1. Open Fygaro IMMEDIATELY — synchronous to avoid browser popup block
+  const FYGARO_URL = 'https://www.fygaro.com/en/pb/817f634a-4ee0-41c7-9ad2-6508ae2048c2/';
+  window.open(FYGARO_URL + '?amount=' + cardTotal + '&clientnote=' + encodeURIComponent(orderId), '_blank');
+
+  // 2. Show confirmation modal
+  document.getElementById('cf-order-id').textContent = orderId;
+  document.getElementById('cf-items').innerHTML = cartSnapshot.map(i=>
+    '<div style="display:flex;justify-content:space-between;"><span>'+i.name+' ('+i.size+') x'+i.qty+'</span><span>J$'+(i.price*i.qty).toLocaleString()+'</span></div>'
+  ).join('');
+  document.getElementById('cf-sub').textContent = 'J$' + sub.toLocaleString();
+  document.getElementById('cf-ship').textContent = 'J$' + deliveryFee.toLocaleString();
+  document.getElementById('cf-total').textContent = 'J$' + cardTotal.toLocaleString() + ' (incl. 15% card fee)';
+  document.getElementById('sf-confirm-overlay').classList.add('open');
+
+  // 3. Clear cart
+  sfCart = [];
+  sfTermsChecked = false;
+  sfSelectedPayment = 'wa';
+  sfUpdateCartBtn();
+  sfCloseCart();
+
+  // 4. Save to Sheets + Firestore + email in background
+  setTimeout(async function() {
+    try {
+      await fetch('/.netlify/functions/create-order', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({orderId, date, customerName:name, phone, products:productsStr, deliveryLocation, deliveryFee, total:cardTotal, status:'Awaiting Payment'})
+      });
+    } catch(e) { console.error('Order save failed:', e); }
+    if (typeof window.saveOrderSilent === 'function') {
+      const totalQty = cartSnapshot.reduce(function(s,i){return s+i.qty;},0);
+      await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',status:'Awaiting Payment',date:date,total:cardTotal,payMethod:'Fygaro Card'});
+    }
+    if (custEmail) {
+      try { await saveSubscriber(name, custEmail, 'checkout'); } catch(e) {}
+      try {
+        await fetch('/.netlify/functions/send-receipt', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({orderId, customerName:name, email:custEmail,
+            items:cartSnapshot.map(function(i){return {name:i.name,size:i.size,qty:i.qty,price:i.price};}),
+            subtotal:sub, deliveryFee, total:cardTotal, shipDetail,
+            note:'Payment via Fygaro card — total includes 15% processing fee'})
         });
       } catch(e) {}
     }
