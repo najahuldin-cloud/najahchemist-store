@@ -272,12 +272,13 @@ SPF RULE: ALL lightening and brightening products require SPF 30+ daily. Always 
 ══════════════════════════════════════
 PAYMENT & SHIPPING
 ══════════════════════════════════════
-Payment (NO cash on delivery):
+⚠️ NO COD — WE DO NOT OFFER CASH ON DELIVERY. Payment must be made IN FULL before any order is processed. Always state this clearly when payment is mentioned.
+
+Payment methods accepted:
   • Online card: Fygaro via najahchemistja.com
   • Bank Transfer: NCB — JMD account 354-747-294 | USD account 354-747-308 | Business name: Najah Chemist
   • Lynk: @najahchemist
-  • Cash: Kingston pickup only
-Payment required BEFORE processing. 2–3 business day turnaround.
+Payment required BEFORE processing. 2–3 business day turnaround. NO exceptions to upfront payment requirement.
 
 Shipping (Jamaica island-wide):
   • Knutsford Express — island-wide, next-day. Bearer fee ~J$500.
