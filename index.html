@@ -72,6 +72,7 @@
 }
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 :root{--black:#0F0E0D;--off:#FAFAF8;--warm:#F5F2ED;--warmer:#EDE8DF;--mid:#8A8480;--light:#DDD9D3;--border:#E8E4DE;--white:#FFFFFF;--green:#2D6A4F;--red:#DC2626;--blue:#1D4ED8;--gold:#B45309;--text:#1C1A18;}
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -447,6 +448,28 @@ tr:hover td{background:var(--warm);}
 .sf-card-fee-box{background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;padding:0.55rem 0.75rem;font-size:0.75rem;color:#92400E;margin-bottom:0.75rem;line-height:1.6;}
 .sf-fygaro-btn{width:100%;padding:0.85rem;background:#1D4ED8;color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.9rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.5rem;transition:background 0.2s;}
 .sf-fygaro-btn:hover{background:#1e40af;}
+/* Best Sellers section */
+.sf-bs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:1.5rem;}
+@media(max-width:768px){.sf-bs-grid{grid-template-columns:1fr;}}
+.sf-bs-card{background:white;border-radius:16px;overflow:hidden;border:1px solid var(--border);transition:box-shadow 0.2s;cursor:pointer;}
+.sf-bs-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.1);}
+.sf-bs-img{height:200px;display:flex;align-items:center;justify-content:center;font-size:3.5rem;overflow:hidden;}
+.sf-bs-body{padding:1.2rem;}
+.sf-bs-name{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;margin-bottom:0.3rem;}
+.sf-bs-tl{font-size:0.78rem;color:#8A8480;line-height:1.5;margin-bottom:0.75rem;}
+.sf-bs-price{font-size:1.05rem;font-weight:700;color:#0F0E0D;margin-bottom:0.75rem;}
+.sf-bs-btn{width:100%;padding:0.6rem;background:#0F0E0D;color:white;border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;transition:background 0.15s;}
+.sf-bs-btn:hover{background:#2D2B28;}
+/* Shipping label print */
+.nc-label{border:2px solid #0F0E0D;border-radius:4px;padding:1.2rem;max-width:440px;font-size:0.78rem;font-family:'Outfit',sans-serif;background:white;}
+.nc-label-hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #0F0E0D;padding-bottom:0.75rem;margin-bottom:0.75rem;}
+.nc-label-to{font-size:1.05rem;font-weight:700;margin-bottom:0.2rem;}
+.nc-label-to-sub{font-size:0.78rem;color:#444;line-height:1.5;}
+.nc-label-mid{border-top:1px dashed #ccc;padding-top:0.6rem;margin-top:0.6rem;font-size:0.75rem;line-height:1.7;}
+.nc-label-footer{display:flex;justify-content:space-between;border-top:1px solid #0F0E0D;padding-top:0.5rem;margin-top:0.6rem;font-size:0.65rem;}
+/* Payment status badges */
+.b-await{background:#FEF3C7;color:#92400E;}
+.b-refund{background:#EDE9FE;color:#5B21B6;}
 
 /* ── ABOUT SECTION ── */
 .sf-about-wrap{padding:4.5rem 2rem;background:#FAFAF8;}
@@ -538,6 +561,15 @@ tr:hover td{background:var(--warm);}
         </div>
       </div>
       <div class="sf-hero-right" id="sf-hero-cards"></div>
+    </div>
+  </section>
+
+  <!-- Best Sellers -->
+  <section id="sf-bestsellers-section" style="display:none;">
+    <div class="sf-section" style="padding-top:3rem;padding-bottom:3rem;">
+      <div class="sf-section-label">Best Sellers</div>
+      <h2 class="sf-section-h2">Our most popular <em>products</em></h2>
+      <div class="sf-bs-grid" id="sf-bs-grid"></div>
     </div>
   </section>
 
@@ -1237,9 +1269,9 @@ tr:hover td{background:var(--warm);}
       <button class="btn btn-dk btn-sm" onclick="openM('m-new-order')">+ New Order</button>
     </div>
   </div>
-  <div class="card" id="print-zone">
+  <div class="card">
     <table>
-      <thead><tr><th>Order ID</th><th>Client</th><th>Product</th><th>Size</th><th>Qty</th><th>Source</th><th>Payment</th><th>Status</th><th>Date</th><th class="no-print">Actions</th></tr></thead>
+      <thead><tr><th>Order ID</th><th>Client</th><th>Product</th><th>Size</th><th>Qty</th><th>Source</th><th>Pay Status</th><th>Order Status</th><th>Date</th><th class="no-print">Actions</th></tr></thead>
       <tbody id="orders-body"></tbody>
     </table>
   </div>
@@ -1249,6 +1281,16 @@ tr:hover td{background:var(--warm);}
 <div class="view" id="v-shop">
   <div class="ph-row">
     <div class="ph" style="margin-bottom:0;"><h1>Product <em>Catalogue</em></h1><p>Click any product for full details, sizes, ingredients & reviews</p></div>
+  </div>
+  <div class="card" style="margin-bottom:1.25rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+      <div class="clbl" style="margin-bottom:0;">Best Sellers Manager</div>
+      <button class="btn btn-dk btn-sm" onclick="saveBestSellers()">Save</button>
+    </div>
+    <p style="font-size:0.78rem;color:var(--mid);margin-bottom:1rem;">Select exactly 3 products to feature in the Best Sellers section on the homepage.</p>
+    <div id="bs-manager-list" style="display:flex;flex-direction:column;gap:0.5rem;">
+      <div style="font-size:0.82rem;color:var(--mid);">Loading products…</div>
+    </div>
   </div>
   <div class="g3" id="shop-grid"></div>
 </div>
@@ -1646,17 +1688,7 @@ Add anything else you want the chatbot to know..."></textarea>
     <div class="fg"><label class="fl">Client Name</label><input class="fi" id="no-c" placeholder="Name or brand"></div>
     <div class="fg"><label class="fl">Email</label><input class="fi" id="no-e" type="email" placeholder="client@email.com"></div>
     <div class="fg"><label class="fl">Product</label><select class="fs" id="no-p" onchange="updateSizeOpts()">
-      <option data-sizes="none">Turmeric Kojic Bar Soap</option>
-      <option data-sizes="none">Garlic Lavender Bar Soap</option>
-      <option data-sizes="none">Vitamin C Bar Soap</option>
-      <option data-sizes="none">Glycolic Acid Bar Soap</option>
-      <option data-sizes="none">Salicylic Acid Bar Soap</option>
-      <option data-sizes="none">Skin Lightening Bar Soap</option>
-      <option data-sizes="liquid">Dark Spot Remover Cream</option>
-      <option data-sizes="liquid">Probiotic Gel Wash</option>
-      <option data-sizes="liquid">Yoni Foaming Wash</option>
-      <option data-sizes="liquid">Hyaluronic Acid Serum</option>
-      <option data-sizes="liquid">Private Label Package</option>
+      <option value="">— Select Product —</option>
     </select></div>
     <div class="fg" id="size-fg"><label class="fl">Size</label><select class="fs" id="no-sz"><option>Litre</option><option>Gallon</option><option>5 Gallon</option></select></div>
     <div class="g2">
@@ -1681,6 +1713,7 @@ Add anything else you want the chatbot to know..."></textarea>
     <div class="g2">
       <div>
         <div class="fg"><label class="fl">Product Name</label><input class="fi" id="ap-name" placeholder="e.g. Turmeric Kojic Bar Soap"></div>
+        <div class="fg"><label class="fl">SKU Code</label><input class="fi" id="ap-sku" placeholder="e.g. NC-BA25"></div>
         <div class="fg"><label class="fl">Tagline</label><input class="fi" id="ap-tl" placeholder="e.g. For acne, dark spots and a natural glow"></div>
         <div class="fg"><label class="fl">Category</label><select class="fs" id="ap-cat">
           <option value="soap">Bar Soap</option>
@@ -1707,11 +1740,13 @@ Add anything else you want the chatbot to know..."></textarea>
         </div>
         <div style="background:var(--warm);border-radius:10px;padding:1rem;margin-bottom:0.9rem;">
           <div class="clbl" style="margin-bottom:0.7rem;">Pricing</div>
-          <div id="pricing-type-row" style="display:none;margin-bottom:0.75rem;">
+          <div id="pricing-type-row" style="margin-bottom:0.75rem;">
             <div class="fl" style="margin-bottom:0.35rem;">Pricing Format</div>
-            <div style="display:flex;gap:0.4rem;">
-              <button type="button" id="pt-liquid" class="btn btn-ol btn-xs" onclick="setPricingType('liquid')">By Volume (Litre/Gal)</button>
-              <button type="button" id="pt-weight" class="btn btn-ol btn-xs" onclick="setPricingType('weight')">By Weight (lbs)</button>
+            <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+              <button type="button" id="pt-bar" class="btn btn-ol btn-xs" onclick="setPricingType('bar')">Per Bar</button>
+              <button type="button" id="pt-liquid" class="btn btn-ol btn-xs" onclick="setPricingType('liquid')">By Volume</button>
+              <button type="button" id="pt-weight" class="btn btn-ol btn-xs" onclick="setPricingType('weight')">By Weight</button>
+              <button type="button" id="pt-unit" class="btn btn-ol btn-xs" onclick="setPricingType('unit')">Per Unit</button>
             </div>
           </div>
           <div id="soap-pricing">
@@ -1719,6 +1754,14 @@ Add anything else you want the chatbot to know..."></textarea>
             <div class="fg"><label class="fl">Min Order (bars)</label><input class="fi" id="ap-m-bar" placeholder="10"></div>
           </div>
           <div id="weight-pricing" style="display:none;">
+            <div class="g2">
+              <div class="fg"><label class="fl">½ lb Price (J$)</label><input class="fi" id="ap-p-hlb" placeholder="e.g. 2500"></div>
+              <div class="fg"><label class="fl">½ lb MOQ</label><input class="fi" id="ap-m-hlb" placeholder="1"></div>
+            </div>
+            <div class="g2">
+              <div class="fg"><label class="fl">1 lb Price (J$)</label><input class="fi" id="ap-p-1lb" placeholder="e.g. 4500"></div>
+              <div class="fg"><label class="fl">1 lb MOQ</label><input class="fi" id="ap-m-1lb" placeholder="1"></div>
+            </div>
             <div class="g2">
               <div class="fg"><label class="fl">2 lbs Price (J$)</label><input class="fi" id="ap-p-lb2" placeholder="e.g. 8300"></div>
               <div class="fg"><label class="fl">2 lbs MOQ</label><input class="fi" id="ap-m-lb2" placeholder="1"></div>
@@ -1747,6 +1790,7 @@ Add anything else you want the chatbot to know..."></textarea>
             </div>
           </div>
           <div id="bundle-pricing" style="display:none;">
+            <div class="fg"><label class="fl">Unit Description</label><input class="fi" id="ap-unit-desc" placeholder="e.g. 100 Capsules, Starter Kit, Per Bundle"></div>
             <div class="fg"><label class="fl">Price per Unit (J$)</label><input class="fi" id="ap-p-unit" placeholder="e.g. 12500"></div>
             <div class="fg"><label class="fl">Min Order (units)</label><input class="fi" id="ap-m-unit" placeholder="1"></div>
           </div>
@@ -1817,7 +1861,7 @@ Add anything else you want the chatbot to know..."></textarea>
   </div>
 </div>
 
-<div id="print-receipt-area" style="display:none;position:fixed;top:0;left:0;width:100%;background:white;padding:2rem;z-index:9999;"></div>
+<div id="print-zone" style="display:none;position:fixed;top:0;left:0;width:100%;background:white;padding:2rem;z-index:9999;"></div>
 
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="module">
 // ════════════════════════════════════════════════════
@@ -2116,7 +2160,7 @@ async function loadFromDB() {
     });
   } catch(e) {}
 
-  // ── 3. Settings (public read) ──────────────────────────────────────────
+  // ── 3. Settings + Best Sellers (public read) ──────────────────────────
   try {
     const kbDoc = await getDocs(collection(db,'settings'));
     kbDoc.docs.forEach(d => {
@@ -2124,6 +2168,11 @@ async function loadFromDB() {
         window._extraChatbotKnowledge = d.data().content;
       if(d.id==='site_settings' && d.data().waNumber)
         window.WA_NUMBER = d.data().waNumber;
+      if(d.id==='bestSellers'){
+        const bsData=d.data();
+        const bsIds=bsData.productIds||bsData.ids;
+        if(Array.isArray(bsIds)) window._bestSellerIds = bsIds;
+      }
     });
   } catch(e) {}
 
@@ -2136,6 +2185,9 @@ async function loadFromDB() {
     if (typeof sfRenderHeroCards === 'function') sfRenderHeroCards();
     sfRenderReviews();
   }
+  renderBestSellers();
+  renderAdminBestSellers();
+  rebuildOrderProductSelect();
 }
 
 // Expose for storefront script to save orders to Firestore silently
@@ -2144,6 +2196,73 @@ async function saveOrderSilent(order) {
   catch(e){ console.error('[Najah] Firestore order save:', e.message); }
 }
 window.saveOrderSilent = saveOrderSilent;
+
+// ═══ BEST SELLERS ═══
+const BS_IMG_CLASS={soap:'img-soap',yoni:'img-wash',skincare:'img-cream',mencare:'img-soap',haircare:'img-cream',bundle:'img-label',label:'img-label',cream:'img-cream',serum:'img-serum',wash:'img-wash',hair:'img-cream'};
+function renderBestSellers(){
+  const ids = window._bestSellerIds||[];
+  const section = document.getElementById('sf-bestsellers-section');
+  const grid = document.getElementById('sf-bs-grid');
+  if(!section||!grid) return;
+  const prods = ids.map(id=>PRODUCTS.find(p=>p.id===id)).filter(Boolean).slice(0,3);
+  if(!prods.length){ section.style.display='none'; return; }
+  section.style.display='block';
+  grid.innerHTML = prods.map(p=>{
+    const firstKey=Object.keys(p.pricing)[0];
+    const price='J$'+p.pricing[firstKey].price.toLocaleString();
+    const imgCls=BS_IMG_CLASS[p.cat]||'img-cream';
+    const img=p.img?`<img src="${p.img}" style="width:100%;height:100%;object-fit:cover;">`:`<span style="font-size:3.5rem;">${p.emoji||'🧴'}</span>`;
+    return `<div class="sf-bs-card" onclick="sfOpenProduct('${p.id}')">
+      <div class="sf-bs-img ${imgCls}">${img}${p.tag?`<span class="pc-tag">${p.tag}</span>`:''}</div>
+      <div class="sf-bs-body">
+        <div class="sf-bs-name">${p.name}</div>
+        <div class="sf-bs-tl">${p.tagline}</div>
+        <div class="sf-bs-price">From ${price}</div>
+        <button class="sf-bs-btn" onclick="event.stopPropagation();sfOpenProduct('${p.id}')">View Product</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+window.renderBestSellers = renderBestSellers;
+
+function renderAdminBestSellers(){
+  const container=document.getElementById('bs-manager-list'); if(!container) return;
+  const ids=window._bestSellerIds||[];
+  if(!PRODUCTS.length){ container.innerHTML='<div style="font-size:0.82rem;color:var(--mid);">No products loaded yet.</div>'; return; }
+  container.innerHTML=PRODUCTS.map(p=>{
+    const checked=ids.includes(p.id)?'checked':'';
+    return `<label style="display:flex;align-items:center;gap:0.6rem;font-size:0.82rem;padding:0.3rem 0;cursor:pointer;">
+      <input type="checkbox" class="bs-check" value="${p.id}" ${checked} style="width:15px;height:15px;accent-color:#0F0E0D;">
+      <span>${p.name}</span>
+    </label>`;
+  }).join('');
+}
+window.renderAdminBestSellers = renderAdminBestSellers;
+
+function rebuildOrderProductSelect(){
+  const sel=document.getElementById('no-p'); if(!sel) return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— Select Product —</option>'+PRODUCTS.map(p=>{
+    const isSoap=p.cat==='soap';
+    const isByWeight=Object.keys(p.pricing||{}).some(k=>k.startsWith('lb')||k==='halfLb'||k==='lb1');
+    const sizes=isSoap?'none':isByWeight?'weight':'liquid';
+    return `<option value="${p.id}" data-sizes="${sizes}">${p.name}</option>`;
+  }).join('');
+  if(cur) sel.value=cur;
+}
+window.rebuildOrderProductSelect=rebuildOrderProductSelect;
+
+window.saveBestSellers = async function(){
+  const checks=document.querySelectorAll('.bs-check:checked');
+  if(checks.length!==3){ showToast('Select exactly 3 products'); return; }
+  const ids=Array.from(checks).map(c=>c.value);
+  window._bestSellerIds=ids;
+  try {
+    await setDoc(doc(db,'settings','bestSellers'),{productIds:ids,ids});
+    renderBestSellers();
+    showToast('Best Sellers saved ✓');
+  } catch(e){ showToast('Save failed: '+(e.message||'error')); }
+};
 
 // ═══ TOAST ═══
 function showToast(msg){
@@ -2167,14 +2286,15 @@ function updateProductStat(){
   const visible = PRODUCTS.filter(p=>!p.hidden).length;
   const el = document.getElementById('stat-prods');
   const sub = document.getElementById('stat-prods-sub');
-  if(el) el.textContent = total;
-  if(sub) sub.textContent = visible < total ? `${visible} visible, ${total-visible} hidden` : 'In catalogue';
+  if(el) el.textContent = total + ' total';
+  if(sub) sub.textContent = total > 0 ? `${visible} visible · ${total-visible} hidden` : 'In catalogue';
 }
 window.updateProductStat = updateProductStat;
 
 // ═══ SHOP ═══
 function renderShop(){
   const g=document.getElementById('shop-grid'); if(!g) return;
+  if(typeof renderAdminBestSellers==='function') renderAdminBestSellers();
   g.innerHTML=PRODUCTS.map(p=>{
     const {price,moq}=getDisplayPrice(p);
     const img=p.img?`<img src="${p.img}" style="width:100%;height:100%;object-fit:cover;">`:`<span class="emoji-fb">${p.emoji}</span>`;
@@ -2213,9 +2333,13 @@ window.openProduct = function(id){
   } else {
     sw.style.display='block';
     const keys=Object.keys(p.pricing);
-    document.getElementById('pd-size-btns').innerHTML=keys.map((k,i)=>`<button class="size-btn${i===0?' on':''}" onclick="selectSize('${p.id}','${k}',this)">${sizeLabel(k)}</button>`).join('');
+    const isUnit=keys.some(k=>k==='kit'||k==='unit'||k==='design');
+    document.getElementById('pd-size-btns').innerHTML=keys.map((k,i)=>{
+      const lbl=isUnit&&p.unitDesc?p.unitDesc:(p.pricing[k]?.desc||sizeLabel(k));
+      return `<button class="size-btn${i===0?' on':''}" onclick="selectSize('${p.id}','${k}',this)">${lbl}</button>`;
+    }).join('');
     document.getElementById('pd-price').textContent='J$'+p.pricing[keys[0]].price.toLocaleString();
-    document.getElementById('pd-moq').textContent='MOQ '+p.pricing[keys[0]].moq+' units';
+    document.getElementById('pd-moq').textContent=(isUnit&&p.unitDesc)?'Min '+p.pricing[keys[0]].moq+' × '+p.unitDesc:'MOQ '+p.pricing[keys[0]].moq+' units';
   }
   currentReviewProduct=id;
   renderProdReviews(id);
@@ -2228,8 +2352,9 @@ window.selectSize = function(prodId,sizeKey,btn){
   btn.classList.add('on');
   const p=PRODUCTS.find(x=>x.id===prodId);
   if(!p||!p.pricing[sizeKey]) return;
+  const isUnit=['kit','unit','design'].includes(sizeKey);
   document.getElementById('pd-price').textContent='J$'+p.pricing[sizeKey].price.toLocaleString();
-  document.getElementById('pd-moq').textContent='MOQ '+p.pricing[sizeKey].moq+' units';
+  document.getElementById('pd-moq').textContent=(isUnit&&p.unitDesc)?'Min '+p.pricing[sizeKey].moq+' × '+p.unitDesc:'MOQ '+p.pricing[sizeKey].moq+' units';
 };
 
 // ═══ REVIEWS ═══
@@ -2270,19 +2395,25 @@ window.submitReview = async function(){
 // ═══ ORDERS ═══
 function renderOrdersTable(){
   const tb=document.getElementById('orders-body'); if(!tb) return;
-  tb.innerHTML=DB_ORDERS.map(o=>`<tr>
-    <td><strong>${o.id}</strong></td><td>${o.client}</td><td>${o.product}</td><td>${o.size||'—'}</td><td>${o.qty}</td><td>${o.source||'—'}</td>
-    <td><span class="bge ${o.payment==='Paid'?'b-paid':'b-unp'}">${o.payment}</span></td>
+  const payStatuses=['Unpaid','Awaiting Payment','Paid','Refunded'];
+  const payCls={Unpaid:'b-unp','Awaiting Payment':'b-await',Paid:'b-paid',Refunded:'b-refund'};
+  tb.innerHTML=DB_ORDERS.map(o=>{
+    const ps=o.paymentStatus||'Unpaid';
+    return `<tr>
+    <td><strong>${o.id}</strong></td><td>${o.client}</td><td style="max-width:180px;word-break:break-word;">${(o.product||'').substring(0,60)}${(o.product||'').length>60?'…':''}</td><td>${o.size||'—'}</td><td>${o.qty}</td><td>${o.source||'—'}</td>
+    <td><select onchange="updatePaymentStatus('${o.id}',this.value)" style="border:1px solid var(--border);padding:0.2rem 0.4rem;font-size:0.72rem;font-family:Outfit,sans-serif;border-radius:4px;">${payStatuses.map(s=>`<option${s===ps?' selected':''}>${s}</option>`).join('')}</select></td>
     <td><select onchange="updateOrderStatus('${o.id}',this.value)" style="border:1px solid var(--border);padding:0.2rem 0.4rem;font-size:0.72rem;font-family:Outfit,sans-serif;border-radius:4px;">${['Pending','Processing','Shipped','Complete','Cancelled'].map(s=>`<option${s===o.status?' selected':''}>${s}</option>`).join('')}</select></td>
     <td>${o.date}</td>
-    <td class="no-print" style="display:flex;gap:0.3rem;">
+    <td class="no-print" style="display:flex;gap:0.3rem;flex-wrap:wrap;">
       <button class="btn-gh btn-xs" onclick="showReceipt('${o.id}','${o.client}','${o.product}',${o.qty},${o.total||0},'${o.payMethod||o.payment}','${o.date}')">View</button>
-      <button class="btn btn-pr btn-xs" onclick="printR('${o.id}','${o.client}','${o.product}',${o.qty},${o.total||0},'${o.payMethod||o.payment}','${o.date}')">🖨</button>
+      <button class="btn btn-pr btn-xs" onclick="printR('${o.id}')">🖨</button>
+      <button class="btn btn-xs" style="background:#1D4ED8;color:white;border:none;" onclick="printLabel('${o.id}')">🏷</button>
       <button class="btn btn-ol btn-xs" onclick="sendOrderReceipt('${o.id}','${o.client}','${o.product}',${o.qty},${o.total||0},'${o.payMethod||o.payment}','${o.date}')">📧</button>
-    </td></tr>`).join('');
+    </td></tr>`;
+  }).join('');
   // Dash recent orders
   const dt=document.getElementById('dash-orders-body'); if(dt)
-    dt.innerHTML=DB_ORDERS.slice(0,4).map(o=>`<tr><td>${o.client}</td><td>${o.product}</td><td><span class="bge b-${o.status==='Shipped'?'ship':o.status==='Processing'?'proc':o.status==='Complete'?'done':'pend'}">${o.status}</span></td><td><span class="bge ${o.payment==='Paid'?'b-paid':'b-unp'}">${o.payment}</span></td><td><button class="btn-gh btn-xs" onclick="showReceipt('${o.id}','${o.client}','${o.product}',${o.qty},${o.total||0},'${o.payMethod||o.payment}','${o.date}')">View</button></td></tr>`).join('');
+    dt.innerHTML=DB_ORDERS.slice(0,4).map(o=>`<tr><td>${o.client}</td><td>${o.product}</td><td><span class="bge b-${o.status==='Shipped'?'ship':o.status==='Processing'?'proc':o.status==='Complete'?'done':'pend'}">${o.status}</span></td><td><span class="bge ${(o.paymentStatus||o.payment)==='Paid'?'b-paid':'b-unp'}">${o.paymentStatus||o.payment}</span></td><td><button class="btn-gh btn-xs" onclick="showReceipt('${o.id}','${o.client}','${o.product}',${o.qty},${o.total||0},'${o.payMethod||o.payment}','${o.date}')">View</button></td></tr>`).join('');
 }
 
 window.updateOrderStatus = async function(orderId,newStatus){
@@ -2292,6 +2423,16 @@ window.updateOrderStatus = async function(orderId,newStatus){
   try{
     const snap=await getDocs(collection(db,'orders'));
     snap.docs.forEach(async d=>{if(d.data().id===orderId) await updateDoc(doc(db,'orders',d.id),{status:newStatus});});
+  }catch(e){}
+};
+
+window.updatePaymentStatus = async function(orderId,newStatus){
+  const idx=DB_ORDERS.findIndex(o=>o.id===orderId);
+  if(idx>-1) DB_ORDERS[idx].paymentStatus=newStatus;
+  showToast(`${orderId} payment → ${newStatus}`);
+  try{
+    const snap=await getDocs(collection(db,'orders'));
+    snap.docs.forEach(async d=>{if(d.data().id===orderId) await updateDoc(doc(db,'orders',d.id),{paymentStatus:newStatus});});
   }catch(e){}
 };
 
@@ -2342,7 +2483,9 @@ window.createAndPrint = async function(){
 
 window.updateSizeOpts = function(){
   const sel=document.getElementById('no-p');
-  document.getElementById('size-fg').style.display=sel.options[sel.selectedIndex].dataset.sizes==='none'?'none':'block';
+  const opt=sel.options[sel.selectedIndex];
+  const sizes=opt?opt.dataset.sizes:'liquid';
+  document.getElementById('size-fg').style.display=sizes==='none'?'none':'block';
 };
 
 // ═══ INBOX ═══
@@ -2462,12 +2605,11 @@ function showPricingSection(cat, pricingType) {
   document.getElementById('weight-pricing').style.display = type === 'weight' ? 'block' : 'none';
   document.getElementById('liquid-pricing').style.display = type === 'liquid' ? 'block' : 'none';
   document.getElementById('bundle-pricing').style.display = type === 'unit' ? 'block' : 'none';
-  const row = document.getElementById('pricing-type-row');
-  if (row) row.style.display = (!isSoap && !isBundle) ? 'block' : 'none';
-  const ptL = document.getElementById('pt-liquid');
-  const ptW = document.getElementById('pt-weight');
-  if (ptL) ptL.classList.toggle('on', type === 'liquid');
-  if (ptW) ptW.classList.toggle('on', type === 'weight');
+  ['bar','liquid','weight','unit'].forEach(t=>{
+    const btn=document.getElementById('pt-'+t);
+    if(btn){btn.classList.toggle('btn-dk',t===type);btn.classList.toggle('btn-ol',t!==type);}
+  });
+  window._apPricingType = type;
 }
 window.setPricingType = function(type) {
   showPricingSection(document.getElementById('ap-cat').value, type);
@@ -2480,10 +2622,11 @@ document.addEventListener('change', e=>{
 });
 
 function resetProductForm(){
-  ['ap-name','ap-tl','ap-tag','ap-ing','ap-ben','ap-use',
+  ['ap-sku','ap-name','ap-tl','ap-tag','ap-ing','ap-ben','ap-use',
    'ap-p-bar','ap-m-bar','ap-p-l','ap-m-l','ap-p-g','ap-m-g','ap-p-5g','ap-m-5g',
+   'ap-p-hlb','ap-m-hlb','ap-p-1lb','ap-m-1lb',
    'ap-p-lb2','ap-m-lb2','ap-p-lb8','ap-m-lb8','ap-p-lb40','ap-m-lb40',
-   'ap-p-unit','ap-m-unit'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+   'ap-p-unit','ap-m-unit','ap-unit-desc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const cat=document.getElementById('ap-cat');
   if(cat){cat.selectedIndex=0;cat.dispatchEvent(new Event('change'));}
   const prev=document.getElementById('img-preview');
@@ -2497,6 +2640,7 @@ window.editProduct = function(id){
   const p=PRODUCTS.find(x=>x.id===id); if(!p) return;
   document.getElementById('prod-modal-title').textContent='Edit Product';
   document.getElementById('edit-prod-id').value=id;
+  const apSkuEl=document.getElementById('ap-sku'); if(apSkuEl) apSkuEl.value=p.sku||'';
   document.getElementById('ap-name').value=p.name;
   document.getElementById('ap-tl').value=p.tagline;
   document.getElementById('ap-cat').value=p.cat;
@@ -2509,19 +2653,22 @@ window.editProduct = function(id){
   const pKeys = Object.keys(p.pricing);
   let pType = 'liquid';
   if (pKeys.some(k => k.startsWith('bars') || k === 'bar')) pType = 'bar';
-  else if (pKeys.some(k => k === 'lb2' || k === 'lb8' || k === 'lb40' || k === 'halfLb')) pType = 'weight';
+  else if (pKeys.some(k => k === 'lb2' || k === 'lb8' || k === 'lb40' || k === 'halfLb' || k === 'lb1')) pType = 'weight';
   else if (pKeys.some(k => k === 'kit' || k === 'unit' || k === 'design')) pType = 'unit';
   showPricingSection(p.cat, pType);
   if (pType === 'bar') {
     const bk = pKeys.find(k => k.startsWith('bars') || k === 'bar') || 'bars10';
     if (p.pricing[bk]) { document.getElementById('ap-p-bar').value=p.pricing[bk].price; document.getElementById('ap-m-bar').value=p.pricing[bk].moq; }
   } else if (pType === 'weight') {
+    if(p.pricing.halfLb){document.getElementById('ap-p-hlb').value=p.pricing.halfLb.price;document.getElementById('ap-m-hlb').value=p.pricing.halfLb.moq||1;}
+    if(p.pricing.lb1){document.getElementById('ap-p-1lb').value=p.pricing.lb1.price;document.getElementById('ap-m-1lb').value=p.pricing.lb1.moq||1;}
     if(p.pricing.lb2){document.getElementById('ap-p-lb2').value=p.pricing.lb2.price;document.getElementById('ap-m-lb2').value=p.pricing.lb2.moq;}
     if(p.pricing.lb8){document.getElementById('ap-p-lb8').value=p.pricing.lb8.price;document.getElementById('ap-m-lb8').value=p.pricing.lb8.moq;}
     if(p.pricing.lb40){document.getElementById('ap-p-lb40').value=p.pricing.lb40.price;document.getElementById('ap-m-lb40').value=p.pricing.lb40.moq;}
   } else if (pType === 'unit') {
     const uk = pKeys.find(k => k === 'kit' || k === 'unit' || k === 'design') || 'kit';
     if (p.pricing[uk]) { document.getElementById('ap-p-unit').value=p.pricing[uk].price; document.getElementById('ap-m-unit').value=p.pricing[uk].moq||1; }
+    const udEl=document.getElementById('ap-unit-desc'); if(udEl) udEl.value=p.unitDesc||p.pricing[uk]?.desc||p.pricing[uk]?.unitDesc||'';
   } else {
     if(p.pricing.litre){document.getElementById('ap-p-l').value=p.pricing.litre.price;document.getElementById('ap-m-l').value=p.pricing.litre.moq;}
     if(p.pricing.gallon){document.getElementById('ap-p-g').value=p.pricing.gallon.price;document.getElementById('ap-m-g').value=p.pricing.gallon.moq;}
@@ -2553,16 +2700,21 @@ window.saveProduct = async function(){
   if(soapVisible){
     pricing.bars10={price:parseFloat(document.getElementById('ap-p-bar').value)||0,moq:parseInt(document.getElementById('ap-m-bar').value)||1};
   } else if(weightVisible){
+    const phlb=document.getElementById('ap-p-hlb')?.value, mhlb=document.getElementById('ap-m-hlb')?.value;
+    const p1lb=document.getElementById('ap-p-1lb')?.value, m1lb=document.getElementById('ap-m-1lb')?.value;
     const p2=document.getElementById('ap-p-lb2').value,m2=document.getElementById('ap-m-lb2').value;
     const p8=document.getElementById('ap-p-lb8').value,m8=document.getElementById('ap-m-lb8').value;
     const p40=document.getElementById('ap-p-lb40').value,m40=document.getElementById('ap-m-lb40').value;
+    if(phlb) pricing.halfLb={price:parseFloat(phlb),moq:parseInt(mhlb)||1};
+    if(p1lb) pricing.lb1={price:parseFloat(p1lb),moq:parseInt(m1lb)||1};
     if(p2) pricing.lb2={price:parseFloat(p2),moq:parseInt(m2)||1};
     if(p8) pricing.lb8={price:parseFloat(p8),moq:parseInt(m8)||1};
     if(p40) pricing.lb40={price:parseFloat(p40),moq:parseInt(m40)||1};
     if(!Object.keys(pricing).length) pricing.lb2={price:0,moq:1};
   } else if(bundleVisible){
-    const uk=cat==='label'?'design':'kit';
-    pricing[uk]={price:parseFloat(document.getElementById('ap-p-unit').value)||0,moq:parseInt(document.getElementById('ap-m-unit').value)||1};
+    const uk=cat==='label'?'design':cat==='bundle'?'kit':'unit';
+    const unitDesc=(document.getElementById('ap-unit-desc')?.value||'').trim();
+    pricing[uk]={price:parseFloat(document.getElementById('ap-p-unit').value)||0,moq:parseInt(document.getElementById('ap-m-unit').value)||1,...(unitDesc?{unitDesc}:{})};
   } else {
     const pl=document.getElementById('ap-p-l').value,ml=document.getElementById('ap-m-l').value;
     const pg=document.getElementById('ap-p-g').value,mg=document.getElementById('ap-m-g').value;
@@ -2577,11 +2729,14 @@ window.saveProduct = async function(){
   const newImgSrc=imgEl.style.display!=='none'?imgEl.src:'';
   const existingImg=editId?(PRODUCTS.find(p=>p.id===editId)||{}).img||'':'';
   const imgSrc=newImgSrc||existingImg;
+  const unitDesc=(document.getElementById('ap-unit-desc')?.value||'').trim()||undefined;
   if(editId){
     const idx=PRODUCTS.findIndex(p=>p.id===editId);
-    if(idx>-1) PRODUCTS[idx]={...PRODUCTS[idx],name,tagline:document.getElementById('ap-tl').value,cat,tag:document.getElementById('ap-tag').value,ingredients:document.getElementById('ap-ing').value,benefits:document.getElementById('ap-ben').value.split(',').map(s=>s.trim()),usage:document.getElementById('ap-use').value,pricing,img:imgSrc};
+    const _editSku=(document.getElementById('ap-sku')?.value||'').trim();
+    if(idx>-1) PRODUCTS[idx]={...PRODUCTS[idx],sku:_editSku,name,tagline:document.getElementById('ap-tl').value,cat,tag:document.getElementById('ap-tag').value,ingredients:document.getElementById('ap-ing').value,benefits:document.getElementById('ap-ben').value.split(',').map(s=>s.trim()),usage:document.getElementById('ap-use').value,pricing,img:imgSrc,...(unitDesc?{unitDesc}:{unitDesc:undefined})};
   } else {
-    PRODUCTS.push({id:'p'+Date.now(),name,tagline:document.getElementById('ap-tl').value,cat,emoji:'🧴',tag:document.getElementById('ap-tag').value,ingredients:document.getElementById('ap-ing').value,benefits:document.getElementById('ap-ben').value.split(',').map(s=>s.trim()),usage:document.getElementById('ap-use').value,pricing,img:imgSrc});
+    const _newSku=(document.getElementById('ap-sku')?.value||'').trim();
+    PRODUCTS.push({id:'p'+Date.now(),sku:_newSku,name,tagline:document.getElementById('ap-tl').value,cat,emoji:'🧴',tag:document.getElementById('ap-tag').value,ingredients:document.getElementById('ap-ing').value,benefits:document.getElementById('ap-ben').value.split(',').map(s=>s.trim()),usage:document.getElementById('ap-use').value,pricing,img:imgSrc,...(unitDesc?{unitDesc}:{})});
   }
   // Save to Firebase so it persists across reloads
   if (!auth.currentUser) { showToast('Session expired — please log in again'); return; }
@@ -2632,42 +2787,102 @@ window.previewImg = function(input){
 };
 
 // ═══ RECEIPTS ═══
-function buildReceipt(id,client,product,qty,total,pay,date){
-  return `<div class="receipt">
+function buildReceipt(o){
+  const id=o.id||'—', client=o.client||'—', product=o.product||'—';
+  const qty=o.qty||1, total=parseFloat(o.total||0), pay=o.payMethod||o.payment||'—';
+  const date=o.date||new Date().toLocaleDateString();
+  const wa=o.phone||o.wa||'—', addr=o.deliveryLocation||o.address||o.customerAddress||'—';
+  const ship=parseFloat(o.deliveryFee||0), sub=total-ship;
+  const ps=o.paymentStatus||o.payment||'—';
+  return `<div class="receipt" style="max-width:480px;margin:0 auto;font-family:'Outfit',sans-serif;">
     <div class="rcpt-hdr">
       <div class="rcpt-logo"><div class="rcpt-nc"><span>Nc</span></div><div><div style="font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:700;">Najah Chemist</div><div style="font-size:0.68rem;color:#888;">Jamaica's Skincare Manufacturer</div></div></div>
       <div style="font-size:0.7rem;color:#888;margin-top:0.25rem;">najahchemistja.com · @najahchemist</div>
     </div>
     <div style="margin-bottom:1rem;">
       <div class="rcpt-row"><span style="color:#888;">Order ID</span><strong>${id}</strong></div>
-      <div class="rcpt-row"><span style="color:#888;">Date</span><span>${date||new Date().toLocaleDateString()}</span></div>
+      <div class="rcpt-row"><span style="color:#888;">Date</span><span>${date}</span></div>
       <div class="rcpt-row"><span style="color:#888;">Client</span><span>${client}</span></div>
-      <div class="rcpt-row"><span style="color:#888;">Payment</span><span>${pay}</span></div>
+      ${wa!=='—'?`<div class="rcpt-row"><span style="color:#888;">WhatsApp</span><span>${wa}</span></div>`:''}
+      ${addr!=='—'?`<div class="rcpt-row"><span style="color:#888;">Delivery</span><span style="max-width:200px;text-align:right;">${addr}</span></div>`:''}
+      <div class="rcpt-row"><span style="color:#888;">Payment Method</span><span>${pay}</span></div>
+      <div class="rcpt-row"><span style="color:#888;">Payment Status</span><span>${ps}</span></div>
     </div>
     <div style="font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#888;margin-bottom:0.5rem;">Order Details</div>
-    <div class="rcpt-row"><span>${product}</span><span>× ${qty}</span></div>
-    <div class="rcpt-row rcpt-total"><span>Total</span><span>J$${Math.round(parseFloat(total||0)).toLocaleString()}</span></div>
+    ${Array.isArray(o.items)&&o.items.length?o.items.map(i=>{const prod=window.PRODUCTS.find(p=>p.id===i.productId);const sku=prod&&prod.sku?` [${prod.sku}]`:'';return `<div class="rcpt-row"><span style="max-width:260px;">${i.name}${sku} · ${i.size||'—'}</span><span>× ${i.qty}</span></div>`}).join(''):`<div class="rcpt-row"><span style="max-width:260px;">${product}</span><span>× ${qty}</span></div>`}
+    ${ship>0?`<div class="rcpt-row"><span style="color:#888;">Subtotal</span><span>J$${Math.round(sub).toLocaleString()}</span></div><div class="rcpt-row"><span style="color:#888;">Shipping</span><span>J$${Math.round(ship).toLocaleString()}</span></div>`:''}
+    <div class="rcpt-row rcpt-total"><span>Total</span><span>J$${Math.round(total).toLocaleString()}</span></div>
     <div class="rcpt-footer">Thank you for choosing Najah Chemist! · najahchemistja.com</div>
   </div>`;
 }
 
 window.showReceipt = function(id,client,product,qty,total,pay,date){
-  document.getElementById('receipt-content').innerHTML=buildReceipt(id,client,product,qty,total,pay,date);
+  document.getElementById('receipt-content').innerHTML=buildReceipt({id,client,product,qty,total,payMethod:pay,date});
   openM('m-receipt');
 };
 
 window.printReceipt = function(){
-  const area=document.getElementById('print-receipt-area');
+  const area=document.getElementById('print-zone');
   area.innerHTML=document.getElementById('receipt-content').innerHTML;
   area.style.display='block';
   setTimeout(()=>{window.print();area.style.display='none';},200);
 };
 
-window.printR = function(id,client,product,qty,total,pay,date){
-  const area=document.getElementById('print-receipt-area');
-  area.innerHTML=buildReceipt(id,client,product,qty,total,pay,date);
+window.printR = function(orderOrId){
+  const o = typeof orderOrId==='string' ? (DB_ORDERS.find(x=>x.id===orderOrId)||{id:orderOrId}) : orderOrId;
+  const area=document.getElementById('print-zone');
+  area.innerHTML=buildReceipt(o);
   area.style.display='block';
   setTimeout(()=>{window.print();area.style.display='none';},200);
+};
+
+window.printLabel = function(orderOrId){
+  const o = typeof orderOrId==='string' ? (DB_ORDERS.find(x=>x.id===orderOrId)||{id:orderOrId}) : orderOrId;
+  const orderId=o.id||'—';
+  const client=o.client||o.customerName||'—';
+  const wa=o.phone||o.wa||o.customerWhatsApp||'—';
+  const addr=o.deliveryLocation||o.address||o.customerAddress||'—';
+  const total=o.total?'J$'+parseFloat(o.total).toLocaleString():'—';
+  const date=o.date||new Date().toLocaleDateString();
+  let itemsHtml='';
+  if(Array.isArray(o.items)&&o.items.length){
+    const prods=window.PRODUCTS||[];
+    itemsHtml=o.items.map(i=>{const prod=prods.find(p=>p.id===i.productId);const sku=prod&&prod.sku?` [${prod.sku}]`:'';return `${i.name}${sku} · ${i.size||'—'} × ${i.qty}`;}).join('<br>');
+  } else {
+    itemsHtml=o.product||o.products||'—';
+  }
+  const area=document.getElementById('print-zone');
+  const qrId='lqr-'+Date.now();
+  area.innerHTML=`<div class="nc-label" style="max-width:700px;margin:0 auto;page-break-inside:avoid;">
+    <div class="nc-label-hdr">
+      <div>
+        <div style="font-family:serif;font-size:2.5rem;font-weight:700;line-height:1;margin-bottom:0.3rem;">Nc</div>
+        <div style="font-size:0.8rem;font-weight:700;margin-bottom:0.15rem;">Najah Chemist</div>
+        <div style="font-size:0.65rem;color:#555;">FROM: Najah Chemist · Kingston, Jamaica<br>start@najahchemistja.com · +1876-885-1099</div>
+      </div>
+      <div id="${qrId}" style="width:80px;height:80px;flex-shrink:0;"></div>
+    </div>
+    <div style="margin-bottom:0.75rem;">
+      <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#777;margin-bottom:0.2rem;">SHIP TO</div>
+      <div class="nc-label-to">${client}</div>
+      <div class="nc-label-to-sub">${addr}${wa!=='—'?'<br>WhatsApp: '+wa:''}</div>
+    </div>
+    <div class="nc-label-mid">
+      <div style="display:flex;justify-content:space-between;margin-bottom:0.25rem;"><span><strong>Order:</strong> ${orderId}</span><span><strong>Date:</strong> ${date}</span></div>
+      <div><strong>Items:</strong><br>${itemsHtml}</div>
+      <div style="margin-top:0.25rem;"><strong>Total:</strong> ${total}</div>
+    </div>
+    <div class="nc-label-footer">
+      <div>najahchemistja.com</div>
+      <div style="font-weight:700;">FRAGILE — HANDLE WITH CARE</div>
+    </div>
+  </div>`;
+  area.style.display='block';
+  setTimeout(()=>{
+    const qrEl=document.getElementById(qrId);
+    if(qrEl&&window.QRCode) new QRCode(qrEl,{text:'https://najahchemistja.com',width:70,height:70,colorDark:'#0F0E0D',colorLight:'#ffffff'});
+    setTimeout(()=>{window.print();area.style.display='none';},150);
+  },100);
 };
 
 // ═══ FORMS ═══
@@ -2992,8 +3207,11 @@ function sfSizeLabel(k) {
 function sfGetPrice(p) {
   const keys = Object.keys(p.pricing);
   if (!keys.length) return {price:'Contact us',moq:''};
-  const entry = p.pricing[keys[0]];
-  return {price:'J$'+(entry.price||0).toLocaleString(), moq:'Min: '+sfSizeLabel(keys[0])};
+  const k=keys[0];
+  const entry = p.pricing[k];
+  const isUnit=['kit','unit','design'].includes(k);
+  const moqLabel = isUnit&&p.unitDesc ? 'Per Unit · '+p.unitDesc : sfSizeLabel(k);
+  return {price:'From J$'+(entry.price||0).toLocaleString(), moq:moqLabel};
 }
 const SF_IMG_CLASS = {yoni:'img-wash',skin:'img-cream',soap:'img-soap',hair:'img-serum',pl:'img-label'};
 const SF_CAT_LABEL = {yoni:'Yoni Care',skin:'Skin Care',soap:'Bar Soap',hair:'Hair Care',pl:'Private Label'};
@@ -3082,7 +3300,11 @@ function sfOpenProduct(id) {
   const sizesWrap = document.getElementById('sf-modal-sizes-wrap');
   if (sizesWrap) {
     sizesWrap.style.display = keys.length > 1 ? 'block' : 'none';
-    setHTML('sf-modal-sizes', keys.map((k,i)=>`<button class="sf-modal-sz${i===0?' on':''}" onclick="sfSelectSize('${p.id}','${k}',this)">${sfSizeLabel(k)}</button>`).join(''));
+    setHTML('sf-modal-sizes', keys.map((k,i)=>{
+      const isUnit=['kit','unit','design'].includes(k);
+      const lbl=isUnit&&p.unitDesc?p.unitDesc:sfSizeLabel(k);
+      return `<button class="sf-modal-sz${i===0?' on':''}" onclick="sfSelectSize('${p.id}','${k}',this)">${lbl}</button>`;
+    }).join(''));
   }
 
   // Price
@@ -3155,7 +3377,8 @@ window.sfSelectSize = function(prodId, sizeKey, btn) {
   const mq = document.getElementById('sf-m-moq');
   const sub = document.getElementById('sf-modal-subtotal');
   if (el) el.textContent = 'J$'+p.pricing[sizeKey].price.toLocaleString();
-  if (mq) mq.textContent = sfSizeLabel(sizeKey);
+  const _isUnit=['kit','unit','design'].includes(sizeKey);
+  if (mq) mq.textContent = _isUnit&&p.unitDesc?p.unitDesc:sfSizeLabel(sizeKey);
   if (sub) sub.textContent = 'J$'+(p.pricing[sizeKey].price * sfCurrentModalQty).toLocaleString();
 };
 
@@ -3483,7 +3706,7 @@ window.sfCheckoutWA = function() {
     // Save to Firestore so order appears in admin panel
     if (typeof window.saveOrderSilent === 'function') {
       const totalQty = cartSnapshot.reduce(function(s,i){return s+i.qty;},0);
-      await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',status:'Pending',date:date,total:total,payMethod:'Pending'});
+      await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Unpaid',status:'Pending',date:date,total:total,payMethod:'Bank/Lynk',phone:phone||'—',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee});
     }
     if (custEmail) {
       try { await saveSubscriber(name, custEmail, 'checkout'); } catch(e) {}
@@ -3573,7 +3796,7 @@ window.sfCheckoutFygaro = function() {
     } catch(e) { console.error('Order save failed:', e); }
     if (typeof window.saveOrderSilent === 'function') {
       const totalQty = cartSnapshot.reduce(function(s,i){return s+i.qty;},0);
-      await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',status:'Awaiting Payment',date:date,total:cardTotal,payMethod:'Fygaro Card'});
+      await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Awaiting Payment',status:'Pending',date:date,total:cardTotal,payMethod:'Fygaro Card',phone:phone||'—',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee});
     }
     if (custEmail) {
       try { await saveSubscriber(name, custEmail, 'checkout'); } catch(e) {}

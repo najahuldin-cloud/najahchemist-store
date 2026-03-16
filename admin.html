@@ -75,6 +75,8 @@ tr:hover td{background:var(--off);}
 .b-cancelled{background:#FEE2E2;color:#991B1B;}
 .b-paid{background:#D1FAE5;color:#065F46;}
 .b-unpaid{background:#FEF3C7;color:#92400E;}
+.b-await{background:#FEF3C7;color:#92400E;}
+.b-refund{background:#EDE9FE;color:#5B21B6;}
 .b-visible{background:#D1FAE5;color:#065F46;}
 .b-hidden{background:#F3F4F6;color:#6B7280;}
 
@@ -122,8 +124,8 @@ select.finp{cursor:pointer;}
 /* ── SHIPPING LABEL PRINT ── */
 @media print{
   body *{visibility:hidden;}
-  #label-print-area,#label-print-area *{visibility:visible;}
-  #label-print-area{position:fixed;inset:0;padding:1.5cm;background:white;}
+  #print-zone,#print-zone *{visibility:visible!important;}
+  #print-zone{position:fixed;top:0;left:0;width:100%;background:white;padding:2cm;}
 }
 .label-box{border:2px solid var(--black);border-radius:4px;padding:1.2rem;max-width:420px;font-size:0.78rem;font-family:'Outfit',sans-serif;}
 .label-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1.5px solid var(--black);padding-bottom:0.7rem;margin-bottom:0.7rem;}
@@ -287,7 +289,7 @@ select.finp{cursor:pointer;}
       </div>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>Order ID</th><th>Client</th><th>Products</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Order ID</th><th>Client</th><th>Products</th><th>Total</th><th>Pay Status</th><th>Order Status</th><th>Date</th><th>Actions</th></tr></thead>
           <tbody id="orders-tbody"><tr><td colspan="8" class="empty-state">Loading orders…</td></tr></tbody>
         </table>
       </div>
@@ -316,6 +318,16 @@ select.finp{cursor:pointer;}
     <div class="view" id="v-products">
       <div class="section-title">Products
         <button class="btn btn-gold" onclick="resetProductForm();openM('m-edit-product')">+ Add Product</button>
+      </div>
+      <div class="card" style="margin-bottom:1rem;">
+        <div class="card-title">Best Sellers Manager
+          <button class="btn btn-sm btn-dk" onclick="saveBestSellers()">Save (3 required)</button>
+        </div>
+        <p class="text-sm" style="margin-bottom:0.8rem;">Select exactly 3 products to feature in the Best Sellers section on the homepage.</p>
+        <div id="a-bs-manager" style="display:flex;flex-direction:column;gap:0.4rem;max-height:200px;overflow-y:auto;">
+          <div class="text-sm">Loading products…</div>
+        </div>
+        <div id="a-bs-msg" style="display:none;margin-top:0.5rem;font-size:0.78rem;color:#059669;font-weight:600;"></div>
       </div>
       <div class="filter-bar">
         <button class="filter-btn on" onclick="filterProducts('all',this)">All</button>
@@ -382,6 +394,7 @@ select.finp{cursor:pointer;}
 
 <!-- ══════════ TOAST ══════════ -->
 <div id="a-toast"></div>
+<div id="print-zone" style="display:none;"></div>
 
 <!-- ══════════ MODALS ══════════ -->
 
@@ -504,6 +517,15 @@ select.finp{cursor:pointer;}
         <input class="finp" id="ep-tag" placeholder="Best Seller">
       </div>
     </div>
+    <div class="frow" id="ep-pricing-type-row">
+      <label>Pricing Format</label>
+      <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+        <button type="button" id="ep-pt-liquid" class="btn btn-sm btn-ol" onclick="setEpPricingType('liquid')">By Volume</button>
+        <button type="button" id="ep-pt-weight" class="btn btn-sm btn-ol" onclick="setEpPricingType('weight')">By Weight</button>
+        <button type="button" id="ep-pt-soap" class="btn btn-sm btn-ol" onclick="setEpPricingType('soap')">Per Bar</button>
+        <button type="button" id="ep-pt-unit" class="btn btn-sm btn-ol" onclick="setEpPricingType('unit')">Per Unit</button>
+      </div>
+    </div>
     <!-- Pricing sections -->
     <div id="ep-pricing-liquid">
       <div class="frow-3">
@@ -524,6 +546,16 @@ select.finp{cursor:pointer;}
     </div>
     <div id="ep-pricing-weight" style="display:none;">
       <div class="frow-3">
+        <div class="frow"><label>½ lb Price (J$)</label><input class="finp" id="ep-p-hlb" type="number" placeholder="e.g. 2500"></div>
+        <div class="frow"><label>½ lb MOQ</label><input class="finp" id="ep-m-hlb" type="number" placeholder="1"></div>
+        <div></div>
+      </div>
+      <div class="frow-3">
+        <div class="frow"><label>1 lb Price (J$)</label><input class="finp" id="ep-p-1lb" type="number" placeholder="e.g. 4500"></div>
+        <div class="frow"><label>1 lb MOQ</label><input class="finp" id="ep-m-1lb" type="number" placeholder="1"></div>
+        <div></div>
+      </div>
+      <div class="frow-3">
         <div class="frow"><label>2 lbs Price (J$)</label><input class="finp" id="ep-p-lb2" type="number"></div>
         <div class="frow"><label>8 lbs Price (J$)</label><input class="finp" id="ep-p-lb8" type="number"></div>
         <div class="frow"><label>40 lbs Price (J$)</label><input class="finp" id="ep-p-lb40" type="number"></div>
@@ -536,6 +568,7 @@ select.finp{cursor:pointer;}
       </div>
     </div>
     <div id="ep-pricing-unit" style="display:none;">
+      <div class="frow"><label>Unit Description</label><input class="finp" id="ep-unit-desc" placeholder="e.g. 100 Caps, Bundle, Pack"></div>
       <div class="frow-2">
         <div class="frow"><label>Price per Unit (J$)</label><input class="finp" id="ep-p-unit" type="number"></div>
         <div class="frow"><label>Min Qty</label><input class="finp" id="ep-m-unit" type="number" value="1"></div>
@@ -659,6 +692,7 @@ async function initAdmin() {
     renderProductsTable();
     updateDashStats();
     rebuildClientDatalist();
+    renderBestSellersManager();
   });
 
   // Orders (real-time)
@@ -686,6 +720,13 @@ async function initAdmin() {
     updateDashStats();
     rebuildClientDatalist();
   });
+
+  // Load best sellers
+  getDoc(doc(db,'settings','bestSellers')).then(d=>{
+    if(d.exists()) window._bsIds=(d.data().productIds||d.data().ids||[]);
+    else window._bsIds=[];
+    renderBestSellersManager();
+  }).catch(()=>{ window._bsIds=[]; });
 
   // Consultations
   loadConsultations();
@@ -727,8 +768,8 @@ function updateDashStats() {
   document.getElementById('ds-pending').textContent = pending;
   document.getElementById('ds-revenue').textContent = 'J$'+revenue.toLocaleString();
   document.getElementById('ds-clients').textContent = CLIENTS.length;
-  document.getElementById('ds-products').textContent = allProds;
-  document.getElementById('ds-products-sub').textContent = visProds < allProds ? `${visProds} visible, ${allProds-visProds} hidden` : 'In catalogue';
+  document.getElementById('ds-products').textContent = allProds + ' total';
+  document.getElementById('ds-products-sub').textContent = allProds > 0 ? `${visProds} visible · ${allProds-visProds} hidden` : 'In catalogue';
 }
 
 function renderDashRecentOrders() {
@@ -755,17 +796,21 @@ function renderOrdersTable(){
   if(_currentOrderFilter !== 'all') list = list.filter(o => (o.status||'Pending').toLowerCase() === _currentOrderFilter.toLowerCase());
   if(_orderSearch) { const s=_orderSearch.toLowerCase(); list = list.filter(o=>(o.id||'').toLowerCase().includes(s)||(o.client||o.customerName||'').toLowerCase().includes(s)||(o.product||'').toLowerCase().includes(s)); }
   if(!list.length){ tbody.innerHTML='<tr><td colspan="8" class="empty-state">No orders found</td></tr>'; return; }
+  const payStatuses=['Unpaid','Awaiting Payment','Paid','Refunded'];
   tbody.innerHTML = list.map(o=>`<tr>
     <td><strong>${o.id||o.orderId||'—'}</strong></td>
     <td>${o.client||o.customerName||'—'}<br><span class="text-sm">${o.source||'Website'}</span></td>
     <td style="max-width:200px;word-break:break-word;">${(o.product||o.products||'').substring(0,80)}${(o.product||o.products||'').length>80?'…':''}</td>
     <td>${o.total?'J$'+parseFloat(o.total).toLocaleString():'—'}</td>
-    <td><span class="badge ${o.payment==='Paid'||o.paymentStatus==='Paid'?'b-paid':'b-unpaid'}">${o.payment||o.paymentStatus||'Unpaid'}</span></td>
+    <td><select class="status-sel" onchange="updatePaymentStatus('${o._docId}','${o.id||o.orderId}',this.value)">
+      ${payStatuses.map(s=>`<option${(o.paymentStatus||o.payment||'Unpaid')===s?' selected':''}>${s}</option>`).join('')}
+    </select></td>
     <td><select class="status-sel" onchange="updateOrderStatus('${o._docId}','${o.id||o.orderId}',this.value)">
       ${['Pending','Processing','Shipped','Complete','Cancelled'].map(s=>`<option${(o.status||'Pending')===s?' selected':''}>${s}</option>`).join('')}
     </select></td>
     <td>${formatDate(o.date||o.createdAt)}</td>
     <td class="btn-group">
+      <button class="btn btn-sm btn-gr" onclick="printOrderReceipt(${JSON.stringify(o).replace(/"/g,'&quot;')})">🧾</button>
       <button class="btn btn-sm btn-bl" onclick="printLabel(${JSON.stringify(o).replace(/"/g,'&quot;')})">🏷</button>
       <button class="btn btn-sm btn-rd" onclick="deleteOrder('${o._docId}')">🗑</button>
     </td>
@@ -784,6 +829,13 @@ window.updateOrderStatus = async function(docId, orderId, newStatus) {
   try {
     await updateDoc(doc(db,'orders',docId), {status: newStatus});
     toast(`${orderId} → ${newStatus}`);
+  } catch(e) { toast('Update failed: '+e.message); }
+};
+
+window.updatePaymentStatus = async function(docId, orderId, newStatus) {
+  try {
+    await updateDoc(doc(db,'orders',docId), {paymentStatus: newStatus});
+    toast(`${orderId} payment → ${newStatus}`);
   } catch(e) { toast('Update failed: '+e.message); }
 };
 
@@ -1102,16 +1154,24 @@ window.editProduct = function(id){
   updatePricingUI(p.cat);
   const pKeys = Object.keys(p.pricing||{});
   if(pKeys.some(k=>k.startsWith('bars')||k==='bar')){
+    setEpPricingType('soap');
     const bk=pKeys.find(k=>k.startsWith('bars')||k==='bar')||'bars10';
     if(p.pricing[bk]){ document.getElementById('ep-p-bar').value=p.pricing[bk].price; document.getElementById('ep-m-bar').value=p.pricing[bk].moq; }
-  } else if(pKeys.some(k=>k==='lb2'||k==='lb8'||k==='lb40')){
+  } else if(pKeys.some(k=>k==='lb2'||k==='lb8'||k==='lb40'||k==='halfLb'||k==='lb1')){
+    setEpPricingType('weight');
+    if(p.pricing.halfLb){ document.getElementById('ep-p-hlb').value=p.pricing.halfLb.price; document.getElementById('ep-m-hlb').value=p.pricing.halfLb.moq||1; }
+    if(p.pricing.lb1){ document.getElementById('ep-p-1lb').value=p.pricing.lb1.price; document.getElementById('ep-m-1lb').value=p.pricing.lb1.moq||1; }
     if(p.pricing.lb2) document.getElementById('ep-p-lb2').value=p.pricing.lb2.price;
     if(p.pricing.lb8) document.getElementById('ep-p-lb8').value=p.pricing.lb8.price;
     if(p.pricing.lb40) document.getElementById('ep-p-lb40').value=p.pricing.lb40.price;
   } else if(pKeys.some(k=>k==='kit'||k==='unit'||k==='design')){
+    setEpPricingType('unit');
     const uk=pKeys.find(k=>k==='kit'||k==='unit'||k==='design')||'kit';
-    if(p.pricing[uk]){ document.getElementById('ep-p-unit').value=p.pricing[uk].price; document.getElementById('ep-m-unit').value=p.pricing[uk].moq; }
+    if(p.pricing[uk]){ document.getElementById('ep-p-unit').value=p.pricing[uk].price; document.getElementById('ep-m-unit').value=p.pricing[uk].moq||1; }
+    const descSrc=p.unitDesc||p.pricing[uk]?.desc||p.pricing[uk]?.unitDesc||'';
+    const udEl=document.getElementById('ep-unit-desc'); if(udEl) udEl.value=descSrc;
   } else {
+    setEpPricingType('liquid');
     if(p.pricing?.litre){ document.getElementById('ep-p-l').value=p.pricing.litre.price; document.getElementById('ep-m-l').value=p.pricing.litre.moq; }
     if(p.pricing?.gallon){ document.getElementById('ep-p-g').value=p.pricing.gallon.price; document.getElementById('ep-m-g').value=p.pricing.gallon.moq; }
     if(p.pricing?.['5gal']){ document.getElementById('ep-p-5g').value=p.pricing['5gal'].price; document.getElementById('ep-m-5g').value=p.pricing['5gal'].moq; }
@@ -1123,17 +1183,27 @@ window.updatePricingUI = function(catOverride){
   const cat = catOverride || document.getElementById('ep-cat').value;
   const isSoap = cat==='soap';
   const isBundle = cat==='bundle'||cat==='label';
-  const isWeight = cat==='cream'||cat==='hair'; // weight pricing option
-  document.getElementById('ep-pricing-liquid').style.display = (!isSoap&&!isBundle) ? 'block' : 'none';
-  document.getElementById('ep-pricing-soap').style.display = isSoap ? 'block' : 'none';
-  document.getElementById('ep-pricing-unit').style.display = isBundle ? 'block' : 'none';
-  document.getElementById('ep-pricing-weight').style.display = 'none'; // weight shown within liquid section via admin choice
+  let type = isSoap ? 'soap' : isBundle ? 'unit' : 'liquid';
+  setEpPricingType(type);
+};
+
+window.setEpPricingType = function(type){
+  document.getElementById('ep-pricing-liquid').style.display = type==='liquid' ? 'block' : 'none';
+  document.getElementById('ep-pricing-weight').style.display = type==='weight' ? 'block' : 'none';
+  document.getElementById('ep-pricing-soap').style.display = type==='soap' ? 'block' : 'none';
+  document.getElementById('ep-pricing-unit').style.display = type==='unit' ? 'block' : 'none';
+  ['liquid','weight','soap','unit'].forEach(t=>{
+    const btn=document.getElementById('ep-pt-'+t);
+    if(btn) btn.classList.toggle('btn-dk',t===type);
+    if(btn) btn.classList.toggle('btn-ol',t!==type);
+  });
+  window._epPricingType = type;
 };
 
 window.resetProductForm = function(){
   document.getElementById('prod-modal-title').textContent='Add Product';
   document.getElementById('ep-id').value='';
-  ['ep-sku','ep-name','ep-tl','ep-tag','ep-ing','ep-ben','ep-use','ep-p-l','ep-m-l','ep-p-g','ep-m-g','ep-p-5g','ep-m-5g','ep-p-bar','ep-m-bar','ep-p-lb2','ep-p-lb8','ep-p-lb40','ep-p-unit','ep-m-unit'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['ep-sku','ep-name','ep-tl','ep-tag','ep-ing','ep-ben','ep-use','ep-p-l','ep-m-l','ep-p-g','ep-m-g','ep-p-5g','ep-m-5g','ep-p-bar','ep-m-bar','ep-p-lb2','ep-p-lb8','ep-p-lb40','ep-p-unit','ep-m-unit','ep-unit-desc','ep-p-hlb','ep-m-hlb','ep-p-1lb','ep-m-1lb'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('ep-cat').value='cream';
   document.getElementById('ep-hidden').value='false';
   document.getElementById('ep-img-preview').style.display='none';
@@ -1147,20 +1217,27 @@ window.saveProduct = async function(){
   const editId = document.getElementById('ep-id').value;
   // Build pricing
   let pricing = {};
-  const soapVis = document.getElementById('ep-pricing-soap').style.display!=='none';
-  const bundleVis = document.getElementById('ep-pricing-unit').style.display!=='none';
+  const _pType = window._epPricingType || 'liquid';
+  const soapVis = _pType==='soap';
+  const bundleVis = _pType==='unit';
+  const weightVis = _pType==='weight';
   if(soapVis){
     const p=document.getElementById('ep-p-bar').value; if(p) pricing.bars10={price:parseFloat(p),moq:parseInt(document.getElementById('ep-m-bar').value)||10};
   } else if(bundleVis){
-    const p=document.getElementById('ep-p-unit').value; const uk=cat==='label'?'design':'kit';
-    if(p) pricing[uk]={price:parseFloat(p),moq:parseInt(document.getElementById('ep-m-unit').value)||1};
+    const pUnit=document.getElementById('ep-p-unit').value; const uk=cat==='label'?'design':cat==='bundle'?'kit':'unit';
+    const unitDesc=(document.getElementById('ep-unit-desc')?.value||'').trim();
+    if(pUnit) pricing[uk]={price:parseFloat(pUnit),moq:parseInt(document.getElementById('ep-m-unit').value)||1,...(unitDesc?{unitDesc}:{})};
+  } else if(weightVis){
+    const phlb=document.getElementById('ep-p-hlb').value; if(phlb) pricing.halfLb={price:parseFloat(phlb),moq:parseInt(document.getElementById('ep-m-hlb').value)||1};
+    const p1lb=document.getElementById('ep-p-1lb').value; if(p1lb) pricing.lb1={price:parseFloat(p1lb),moq:parseInt(document.getElementById('ep-m-1lb').value)||1};
+    const pl2=document.getElementById('ep-p-lb2').value; if(pl2) pricing.lb2={price:parseFloat(pl2),moq:1};
+    const pl8=document.getElementById('ep-p-lb8').value; if(pl8) pricing.lb8={price:parseFloat(pl8),moq:1};
+    const pl40=document.getElementById('ep-p-lb40').value; if(pl40) pricing.lb40={price:parseFloat(pl40),moq:1};
+    if(!Object.keys(pricing).length) pricing.lb2={price:0,moq:1};
   } else {
     const pl=document.getElementById('ep-p-l').value; if(pl) pricing.litre={price:parseFloat(pl),moq:parseInt(document.getElementById('ep-m-l').value)||1};
     const pg=document.getElementById('ep-p-g').value; if(pg) pricing.gallon={price:parseFloat(pg),moq:parseInt(document.getElementById('ep-m-g').value)||1};
     const p5=document.getElementById('ep-p-5g').value; if(p5) pricing['5gal']={price:parseFloat(p5),moq:parseInt(document.getElementById('ep-m-5g').value)||1};
-    const pl2=document.getElementById('ep-p-lb2').value; if(pl2) pricing.lb2={price:parseFloat(pl2),moq:1};
-    const pl8=document.getElementById('ep-p-lb8').value; if(pl8) pricing.lb8={price:parseFloat(pl8),moq:1};
-    const pl40=document.getElementById('ep-p-lb40').value; if(pl40) pricing.lb40={price:parseFloat(pl40),moq:1};
   }
   if(!Object.keys(pricing).length) pricing.litre={price:0,moq:1};
   const imgPrev = document.getElementById('ep-img-preview');
@@ -1171,6 +1248,7 @@ window.saveProduct = async function(){
     name, tagline: document.getElementById('ep-tl').value,
     cat, tag: document.getElementById('ep-tag').value,
     emoji: '🧴', pricing,
+    unitDesc: (document.getElementById('ep-unit-desc')?.value||'').trim()||null,
     ingredients: document.getElementById('ep-ing').value,
     benefits: document.getElementById('ep-ben').value.split(',').map(s=>s.trim()).filter(Boolean),
     usage: document.getElementById('ep-use').value,
@@ -1246,44 +1324,58 @@ window.printLabel = function(order){
   const orderId = o.id||o.orderId||'—';
   const client = o.client||o.customerName||'—';
   const address = o.customerAddress||o.deliveryLocation||'—';
+  const wa = o.customerWhatsApp||o.phone||'—';
   const products = o.product||o.products||'—';
   const total = o.total?'J$'+parseFloat(o.total).toLocaleString():'—';
   const date = formatDate(o.date||o.createdAt);
-  const labelHtml = `
-    <div class="label-box" id="label-print-area" style="margin:1rem auto;">
-      <div class="label-header">
-        <div>
-          <div style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;">Nc — Najah Chemist</div>
-          <div class="label-from">FROM: Najah Chemist · Kingston, Jamaica<br>start@najahchemistja.com · +1876-885-1099</div>
-        </div>
-        <div id="label-qr-${orderId}" style="flex-shrink:0;"></div>
-      </div>
+  // Build items with SKU
+  let itemsHtml = '';
+  if(Array.isArray(o.items)&&o.items.length){
+    const itemLines = o.items.map(i=>{
+      const prod = PRODUCTS.find(p=>(p.id||p._docId)===i.productId);
+      const sku = prod&&prod.sku?`[${prod.sku}] `:'';
+      return `${sku}${i.name} · ${i.size||'—'} × ${i.qty}`;
+    });
+    itemsHtml = itemLines.join('<br>');
+  } else {
+    itemsHtml = products;
+  }
+  const labelHtml = `<div style="border:2px solid #0F0E0D;border-radius:4px;padding:1.5rem;max-width:100%;font-family:'Outfit',sans-serif;font-size:0.82rem;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #0F0E0D;padding-bottom:0.75rem;margin-bottom:0.75rem;">
       <div>
-        <div style="font-size:0.68rem;color:var(--mid);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.2rem;">SHIP TO</div>
-        <div class="label-to">${client}</div>
-        <div class="label-to-sub">${address}</div>
+        <div style="font-family:serif;font-size:2rem;font-weight:700;line-height:1;margin-bottom:0.3rem;">Nc</div>
+        <div style="font-size:0.75rem;font-weight:700;">Najah Chemist</div>
+        <div style="font-size:0.65rem;color:#555;">FROM: Najah Chemist · Kingston, Jamaica<br>start@najahchemistja.com · +1876-885-1099</div>
       </div>
-      <div class="label-mid">
-        <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;">
-          <div><strong>Order:</strong> ${orderId}</div>
-          <div><strong>Date:</strong> ${date}</div>
-        </div>
-        <div><strong>Items:</strong> ${products}</div>
-        <div style="margin-top:0.3rem;"><strong>Total:</strong> ${total}</div>
+      <div id="a-label-qr-${orderId}" style="width:70px;height:70px;flex-shrink:0;"></div>
+    </div>
+    <div style="margin-bottom:0.75rem;">
+      <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#777;margin-bottom:0.2rem;">SHIP TO</div>
+      <div style="font-size:1rem;font-weight:700;">${client}</div>
+      <div style="font-size:0.78rem;color:#333;">${address}${wa!=='—'?'<br>WhatsApp: '+wa:''}</div>
+    </div>
+    <div style="border-top:1px dashed #ccc;padding-top:0.6rem;margin-top:0.6rem;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;">
+        <span><strong>Order:</strong> ${orderId}</span>
+        <span><strong>Date:</strong> ${date}</span>
       </div>
-      <div class="label-footer">
-        <div style="font-size:0.65rem;color:var(--mid);">najahchemistja.com</div>
-        <div style="font-size:0.65rem;font-weight:700;">FRAGILE — HANDLE WITH CARE</div>
-      </div>
-    </div>`;
-  document.getElementById('label-modal-body').innerHTML = labelHtml;
-  openM('m-label');
-  // Generate QR code
+      <div><strong>Items:</strong><br>${itemsHtml}</div>
+      <div style="margin-top:0.3rem;"><strong>Total:</strong> ${total}</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;border-top:1px solid #0F0E0D;padding-top:0.5rem;margin-top:0.6rem;font-size:0.65rem;">
+      <div>najahchemistja.com</div>
+      <div style="font-weight:700;">FRAGILE — HANDLE WITH CARE</div>
+    </div>
+  </div>`;
+  const zone = document.getElementById('print-zone');
+  zone.innerHTML = labelHtml;
+  zone.style.display = 'block';
   setTimeout(()=>{
-    const qrEl = document.getElementById(`label-qr-${orderId}`);
+    const qrEl = document.getElementById(`a-label-qr-${orderId}`);
     if(qrEl && window.QRCode){
       new QRCode(qrEl,{text:'https://najahchemistja.com',width:60,height:60,colorDark:'#0F0E0D',colorLight:'#ffffff'});
     }
+    setTimeout(()=>{window.print();zone.style.display='none';},150);
   },100);
 };
 
@@ -1388,9 +1480,87 @@ function formatDate(val){
 }
 
 function sizeLabel(k){
-  const m={litre:'1 Litre',gallon:'1 Gallon','5gal':'5 Gallon',lb2:'2 lbs',lb8:'8 lbs',lb40:'40 lbs',bars10:'10 Bars',bars100:'100 Bars',kit:'Per Unit',unit:'Per Unit',design:'Per Design'};
+  const m={litre:'1 Litre',gallon:'1 Gallon','5gal':'5 Gallon',lb2:'2 lbs',lb8:'8 lbs',lb40:'40 lbs',halfLb:'½ lb',lb1:'1 lb',bars10:'10 Bars',bars100:'100 Bars',kit:'Per Unit',unit:'Per Unit',design:'Per Design',bar:'Per Bar'};
   return m[k]||k;
 }
+
+// ── RECEIPT PRINT ──
+function buildOrderReceipt(o){
+  const id=o.id||o.orderId||'—', client=o.client||o.customerName||'—';
+  const wa=o.customerWhatsApp||o.phone||'—', addr=o.customerAddress||o.deliveryLocation||'—';
+  const total=parseFloat(o.total||0), pay=o.payMethod||o.payment||'—', ps=o.paymentStatus||o.payment||'—';
+  const date=formatDate(o.date||o.createdAt);
+  let itemsHtml='';
+  if(Array.isArray(o.items)&&o.items.length){
+    itemsHtml=o.items.map(i=>{
+      const prod=PRODUCTS.find(p=>(p.id||p._docId)===i.productId);
+      const sku=prod&&prod.sku?` [${prod.sku}]`:'';
+      return `<div style="display:flex;justify-content:space-between;padding:0.25rem 0;border-bottom:1px solid #E8E4DE;font-size:0.8rem;"><span>${i.name}${sku} · ${i.size||'—'}</span><span>× ${i.qty} · J$${((i.price||0)*i.qty).toLocaleString()}</span></div>`;
+    }).join('');
+  } else {
+    itemsHtml=`<div style="padding:0.25rem 0;font-size:0.8rem;">${o.product||'—'}</div>`;
+  }
+  return `<div style="max-width:520px;margin:0 auto;font-family:'Outfit',sans-serif;font-size:0.84rem;background:white;padding:2rem;">
+    <div style="text-align:center;margin-bottom:1rem;padding-bottom:1rem;border-bottom:2px dashed #E8E4DE;">
+      <div style="display:flex;align-items:center;justify-content:center;gap:0.55rem;margin-bottom:0.35rem;">
+        <div style="width:32px;height:32px;background:#0F0E0D;display:flex;align-items:center;justify-content:center;"><span style="color:white;font-weight:700;font-size:0.78rem;">Nc</span></div>
+        <div style="font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:700;">Najah Chemist</div>
+      </div>
+      <div style="font-size:0.7rem;color:#888;">Jamaica's Skincare Manufacturer · najahchemistja.com</div>
+    </div>
+    <div style="margin-bottom:1rem;">
+      <div style="display:flex;justify-content:space-between;padding:0.28rem 0;border-bottom:1px solid #E8E4DE;"><span style="color:#888;">Order ID</span><strong>${id}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:0.28rem 0;border-bottom:1px solid #E8E4DE;"><span style="color:#888;">Date</span><span>${date}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:0.28rem 0;border-bottom:1px solid #E8E4DE;"><span style="color:#888;">Client</span><span>${client}</span></div>
+      ${wa!=='—'?`<div style="display:flex;justify-content:space-between;padding:0.28rem 0;border-bottom:1px solid #E8E4DE;"><span style="color:#888;">WhatsApp</span><span>${wa}</span></div>`:''}
+      ${addr!=='—'?`<div style="display:flex;justify-content:space-between;padding:0.28rem 0;border-bottom:1px solid #E8E4DE;"><span style="color:#888;">Delivery</span><span>${addr}</span></div>`:''}
+      <div style="display:flex;justify-content:space-between;padding:0.28rem 0;border-bottom:1px solid #E8E4DE;"><span style="color:#888;">Payment Method</span><span>${pay}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:0.28rem 0;border-bottom:1px solid #E8E4DE;"><span style="color:#888;">Payment Status</span><span>${ps}</span></div>
+    </div>
+    <div style="font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#888;margin-bottom:0.5rem;">Order Details</div>
+    ${itemsHtml}
+    <div style="display:flex;justify-content:space-between;padding:0.45rem 0;font-weight:700;font-size:0.98rem;border-top:1.5px solid #E8E4DE;margin-top:0.4rem;"><span>Total</span><span>J$${Math.round(total).toLocaleString()}</span></div>
+    <div style="text-align:center;margin-top:0.85rem;padding-top:0.75rem;border-top:2px dashed #E8E4DE;font-size:0.73rem;color:#888;">Thank you for choosing Najah Chemist! · najahchemistja.com</div>
+  </div>`;
+}
+
+window.printOrderReceipt = function(order){
+  const o = typeof order==='string'?JSON.parse(order):order;
+  const zone = document.getElementById('print-zone');
+  zone.innerHTML = buildOrderReceipt(o);
+  zone.style.display = 'block';
+  setTimeout(()=>{ window.print(); zone.style.display='none'; },200);
+};
+
+// ── BEST SELLERS MANAGER ──
+function renderBestSellersManager(){
+  const container = document.getElementById('a-bs-manager');
+  if(!container) return;
+  if(!PRODUCTS.length){ container.innerHTML='<div class="text-sm">No products loaded yet.</div>'; return; }
+  try {
+    const snap = window._bsIds || [];
+    container.innerHTML = PRODUCTS.map(p=>{
+      const checked = snap.includes(p.id||p._docId) ? 'checked' : '';
+      return `<label style="display:flex;align-items:center;gap:0.6rem;font-size:0.8rem;cursor:pointer;padding:0.2rem 0;">
+        <input type="checkbox" class="a-bs-check" value="${p.id||p._docId}" ${checked} style="width:14px;height:14px;accent-color:#0F0E0D;flex-shrink:0;">
+        <span>${p.name||'—'}${p.sku?' ('+p.sku+')':''}</span>
+      </label>`;
+    }).join('');
+  } catch(e){}
+}
+
+window.saveBestSellers = async function(){
+  const checks = document.querySelectorAll('.a-bs-check:checked');
+  if(checks.length !== 3){ toast('Select exactly 3 products'); return; }
+  const ids = Array.from(checks).map(c=>c.value);
+  window._bsIds = ids;
+  try {
+    await setDoc(doc(db,'settings','bestSellers'),{productIds:ids,ids});
+    const msg = document.getElementById('a-bs-msg');
+    if(msg){ msg.textContent='✓ Best Sellers saved!'; msg.style.display='block'; setTimeout(()=>msg.style.display='none',3000); }
+    toast('Best Sellers saved ✓');
+  } catch(e){ toast('Save failed: '+e.message); }
+};
 
 // Init order form with one item row on modal open
 document.getElementById('m-new-order').addEventListener('click', function(e){
