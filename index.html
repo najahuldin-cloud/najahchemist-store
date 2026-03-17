@@ -3112,29 +3112,15 @@ window.batchPrintLabels = function(){
       <div style="font-size:5.5pt;">najahchemistja.com &nbsp;&nbsp;&nbsp; ★ HANDLE WITH CARE</div>
     </div>`;
   }).join('');
-  const zone = document.getElementById('bulk-print-zone');
-  zone.innerHTML = labelsHtml;
-  zone.style.display = 'block';
-  zone.style.width = '80mm';
-  // inject label page size (overrides the default @page in the media block)
-  const ps = document.createElement('style');
-  ps.id = 'bulk-print-page-style';
-  ps.textContent = '@media print{@page{size:80mm 100mm;margin:0;}body.bulk-printing{width:80mm !important;}}';
-  document.head.appendChild(ps);
-  document.body.classList.add('bulk-printing');
-  // QRCode is already loaded on the page
-  for(let i=0;i<orders.length;i++){
-    const el=document.getElementById('qr-'+i);
-    if(el) new QRCode(el,{text:'https://najahchemistja.com',width:45,height:45,correctLevel:QRCode.CorrectLevel.L});
-  }
-  function cleanupLabels(){
-    document.body.classList.remove('bulk-printing');
-    zone.innerHTML=''; zone.style.display='none';
-    const p=document.getElementById('bulk-print-page-style'); if(p) p.remove();
-    window.removeEventListener('afterprint',cleanupLabels);
-  }
-  window.addEventListener('afterprint',cleanupLabels);
-  setTimeout(function(){ window.print(); },600);
+  const qrInits = orders.map((_,i)=>`new QRCode(document.getElementById('qr-${i}'),{text:'https://najahchemistja.com',width:45,height:45,correctLevel:QRCode.CorrectLevel.L});`).join('');
+  const win = window.open('','_blank','width=440,height=620');
+  if(!win){ alert('Please allow popups for this site to use bulk printing.'); return; }
+  win.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:monospace;background:white;}@media print{@page{size:80mm 100mm;margin:0;}body{width:80mm;}}</style></head><body>'
+    + labelsHtml
+    + '<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" onload="'
+    + qrInits.replace(/"/g,"'")
+    + 'setTimeout(function(){window.print();window.close();},600);"><\/script></body></html>');
+  win.document.close();
   markBatchPrinted(Array.from(checks).map(cb=>cb.getAttribute('data-id')),'labelPrinted');
 };
 window.batchPrintReceipts = function(){
@@ -3154,7 +3140,7 @@ window.batchPrintReceipts = function(){
     const wa = order.customerWhatsApp||order.phone||order.whatsapp||order.wa||'—';
     const addr = order.shippingDetail||order.deliveryLocation||order.customerAddress||order.address||'—';
     const pb = i<orders.length-1?'page-break-after:always;':'';
-    return `<div style="${pb}padding:12px;">
+    return `<div style="${pb}padding:12px;font-family:Arial,sans-serif;font-size:11pt;color:#000;">
       <h2 style="text-align:center;font-size:14pt;margin:0 0 2px;">Najah Chemist</h2>
       <div style="text-align:center;font-size:9pt;color:#555;margin-bottom:10px;">Jamaica's Skincare Manufacturer<br>najahchemistja.com · @najahchemist</div>
       <hr style="border:none;border-top:1px dashed #000;margin:8px 0;">
@@ -3179,24 +3165,12 @@ window.batchPrintReceipts = function(){
       <div style="text-align:center;font-size:8pt;color:#888;margin-top:14px;">Thank you for choosing Najah Chemist! · najahchemistja.com</div>
     </div>`;
   }).join('');
-  const zone = document.getElementById('bulk-print-zone');
-  zone.innerHTML = `<div style="font-family:Arial,sans-serif;font-size:11pt;color:#000;">${receiptsHtml}</div>`;
-  zone.style.display = 'block';
-  zone.style.width = 'auto';
-  // inject receipt page size
-  const ps = document.createElement('style');
-  ps.id = 'bulk-print-page-style';
-  ps.textContent = '@media print{@page{size:A5;margin:10mm;}body.bulk-printing{width:auto !important;height:auto !important;}}';
-  document.head.appendChild(ps);
-  document.body.classList.add('bulk-printing');
-  function cleanupReceipts(){
-    document.body.classList.remove('bulk-printing');
-    zone.innerHTML=''; zone.style.display='none';
-    const p=document.getElementById('bulk-print-page-style'); if(p) p.remove();
-    window.removeEventListener('afterprint',cleanupReceipts);
-  }
-  window.addEventListener('afterprint',cleanupReceipts);
-  setTimeout(function(){ window.print(); },400);
+  const win = window.open('','_blank','width=640,height=820');
+  if(!win){ alert('Please allow popups for this site to use bulk printing.'); return; }
+  win.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{box-sizing:border-box;}body{margin:0;background:white;}table{border-collapse:collapse;width:100%;}@media print{@page{size:A5;margin:10mm;}}</style></head><body>'
+    + receiptsHtml
+    + '<script>setTimeout(function(){window.print();window.close();},400);<\/script></body></html>');
+  win.document.close();
   markBatchPrinted(Array.from(checks).map(cb=>cb.getAttribute('data-id')),'receiptPrinted');
 };
 async function markBatchPrinted(ids, field){
