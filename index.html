@@ -217,7 +217,7 @@ tr:hover td{background:var(--warm);}
 .info-row:last-child{border-bottom:none;}
 .benefit-tag{display:inline-block;background:var(--warm);border-radius:20px;padding:0.2rem 0.65rem;font-size:0.7rem;margin:0.18rem 0.12rem;}
 .no-print{}
-@media print{body *{visibility:hidden!important;}#print-zone,#print-zone *{visibility:visible!important;}#print-zone{position:fixed;left:0;top:0;}.no-print{display:none!important;}}
+.no-print{display:none!important;}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:var(--light);border-radius:2px;}
 @media(max-width:900px){.g2,.g3,.g4{grid-template-columns:1fr 1fr;}}
 @media(max-width:600px){.g2,.g3,.g4{grid-template-columns:1fr;}.view{padding:1rem;}.brand-n,.nb span:not(.badge){display:none;}nav{padding:0 0.75rem;}}
@@ -1882,8 +1882,6 @@ Add anything else you want the chatbot to know..."></textarea>
   </div>
 </div>
 
-<div id="print-zone" style="display:none;"></div>
-
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="module">
 // ════════════════════════════════════════════════════
 // NAJAH CHEMIST — Single clean script. No duplicates.
@@ -2902,38 +2900,45 @@ window.showReceipt = function(id,client,product,qty,total,pay,date){
   openM('m-receipt');
 };
 
-function _injectReceiptPrintStyle(){
-  const ts=document.createElement('style');
-  ts.id='_receipt_ps';
-  ts.textContent='@media print{@page{size:A5;margin:10mm;}body *{visibility:hidden!important;}#print-zone,#print-zone *{visibility:visible!important;}#print-zone{position:fixed;left:0;top:0;width:100%;}}';
-  document.head.appendChild(ts);
-}
-function _cleanReceiptPrint(area){
-  window.addEventListener('afterprint',function _rpc(){
-    document.getElementById('_receipt_ps')?.remove();
-    area.style.display='none';
-    window.removeEventListener('afterprint',_rpc);
-  });
-}
 window.printReceipt = function(){
-  const area=document.getElementById('print-zone');
-  area.innerHTML='';
-  area.innerHTML=document.getElementById('receipt-content').innerHTML;
-  area.style.display='block';
-  _injectReceiptPrintStyle();
-  _cleanReceiptPrint(area);
-  setTimeout(()=>window.print(),200);
+  const html = document.getElementById('receipt-content').innerHTML;
+  const w = window.open('','_print','width=600,height=700');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+    @page{size:A5;margin:10mm;}
+    *{box-sizing:border-box;}body{margin:0;font-family:'Outfit',Arial,sans-serif;font-size:0.84rem;}
+    .receipt{background:#fff;border:1px solid #E8E4DE;border-radius:10px;padding:1.75rem;font-size:0.84rem;}
+    .rcpt-hdr{text-align:center;margin-bottom:1.1rem;padding-bottom:1rem;border-bottom:2px dashed #E8E4DE;}
+    .rcpt-logo{display:flex;align-items:center;justify-content:center;gap:0.55rem;margin-bottom:0.35rem;}
+    .rcpt-nc{width:32px;height:32px;background:#0F0E0D;display:flex;align-items:center;justify-content:center;}
+    .rcpt-nc span{color:#fff;font-weight:700;font-size:0.78rem;}
+    .rcpt-row{display:flex;justify-content:space-between;padding:0.28rem 0;border-bottom:1px solid #E8E4DE;}
+    .rcpt-total{font-weight:700;font-size:0.98rem;padding-top:0.45rem;}
+    .rcpt-footer{text-align:center;margin-top:0.85rem;padding-top:0.75rem;border-top:2px dashed #E8E4DE;font-size:0.73rem;color:#6B7280;}
+  </style></head><body>${html}</body></html>`);
+  w.document.close();
+  w.onafterprint = () => w.close();
+  setTimeout(() => w.print(), 200);
 };
 
 window.printR = function(orderOrId){
   const o = typeof orderOrId==='string' ? (DB_ORDERS.find(x=>x.id===orderOrId)||{id:orderOrId}) : orderOrId;
-  const area=document.getElementById('print-zone');
-  area.innerHTML='';
-  area.innerHTML=buildReceipt(o);
-  area.style.display='block';
-  _injectReceiptPrintStyle();
-  _cleanReceiptPrint(area);
-  setTimeout(()=>window.print(),200);
+  const html = buildReceipt(o);
+  const w = window.open('','_print','width=600,height=700');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+    @page{size:A5;margin:10mm;}
+    *{box-sizing:border-box;}body{margin:0;font-family:'Outfit',Arial,sans-serif;font-size:0.84rem;}
+    .receipt{background:#fff;border:1px solid #E8E4DE;border-radius:10px;padding:1.75rem;font-size:0.84rem;}
+    .rcpt-hdr{text-align:center;margin-bottom:1.1rem;padding-bottom:1rem;border-bottom:2px dashed #E8E4DE;}
+    .rcpt-logo{display:flex;align-items:center;justify-content:center;gap:0.55rem;margin-bottom:0.35rem;}
+    .rcpt-nc{width:32px;height:32px;background:#0F0E0D;display:flex;align-items:center;justify-content:center;}
+    .rcpt-nc span{color:#fff;font-weight:700;font-size:0.78rem;}
+    .rcpt-row{display:flex;justify-content:space-between;padding:0.28rem 0;border-bottom:1px solid #E8E4DE;}
+    .rcpt-total{font-weight:700;font-size:0.98rem;padding-top:0.45rem;}
+    .rcpt-footer{text-align:center;margin-top:0.85rem;padding-top:0.75rem;border-top:2px dashed #E8E4DE;font-size:0.73rem;color:#6B7280;}
+  </style></head><body>${html}</body></html>`);
+  w.document.close();
+  w.onafterprint = () => w.close();
+  setTimeout(() => w.print(), 200);
 };
 
 window.printLabel = function(orderOrId){
@@ -2955,10 +2960,14 @@ window.printLabel = function(orderOrId){
   } else {
     itemsHtml=`<div>${o.product||o.products||'—'}</div>`;
   }
-  const area=document.getElementById('print-zone');
-  area.innerHTML='';
-  const qrId='lqr-'+Date.now();
-  area.innerHTML=`<div style="width:74mm;height:94mm;overflow:hidden;font-family:Arial,sans-serif;font-size:7pt;line-height:1.3;box-sizing:border-box;padding:1mm;">
+  const qrUrl='https://api.qrserver.com/v1/create-qr-code/?size=55x55&data=https%3A%2F%2Fnajahchemistja.com';
+  const w = window.open('','_print','width=400,height=500');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+    @page{size:80mm 100mm;margin:2mm;}
+    html,body{margin:0;padding:0;width:80mm;height:100mm;overflow:hidden;}
+    body{font-family:Arial,sans-serif;font-size:7pt;line-height:1.3;}
+  </style></head><body>
+  <div style="width:74mm;height:94mm;overflow:hidden;box-sizing:border-box;padding:1mm;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:0.5pt solid #000;padding-bottom:1mm;margin-bottom:1.5mm;">
       <div>
         <div style="font-size:14pt;font-weight:700;font-family:serif;line-height:1;">Nc</div>
@@ -2966,7 +2975,7 @@ window.printLabel = function(orderOrId){
         <div style="font-size:7pt;color:#444;">Kingston, Jamaica</div>
         <div style="font-size:6.5pt;color:#444;">start@najahchemistja.com</div>
       </div>
-      <div id="${qrId}" style="width:55px;height:55px;flex-shrink:0;"></div>
+      <img src="${qrUrl}" width="55" height="55" style="flex-shrink:0;">
     </div>
     <div style="margin-bottom:1.5mm;">
       <div style="font-size:6pt;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:0.5mm;">SHIP TO:</div>
@@ -2982,24 +2991,17 @@ window.printLabel = function(orderOrId){
     <div style="border-top:0.5pt solid #000;padding-top:1mm;display:flex;justify-content:space-between;font-size:6pt;">
       <span>najahchemistja.com</span><span style="font-weight:700;">FRAGILE — HANDLE WITH CARE</span>
     </div>
-  </div>`;
-  area.style.display='block';
-  setTimeout(()=>{
-    const qrEl=document.getElementById(qrId);
-    if(qrEl&&window.QRCode) new QRCode(qrEl,{text:'https://najahchemistja.com',width:55,height:55,colorDark:'#000000',colorLight:'#ffffff'});
-    setTimeout(()=>{
-      const ts=document.createElement('style');
-      ts.id='_thermal_ps';
-      ts.textContent='@media print{@page{size:80mm 100mm;margin:2mm;}html,body{width:80mm;height:100mm;overflow:hidden;}body *{visibility:hidden!important;}#print-zone,#print-zone *{visibility:visible!important;}#print-zone{position:fixed;left:0;top:0;width:80mm;height:100mm;overflow:hidden;}}';
-      document.head.appendChild(ts);
-      window.addEventListener('afterprint',function _apc(){
-        document.getElementById('_thermal_ps')?.remove();
-        area.style.display='none';
-        window.removeEventListener('afterprint',_apc);
-      });
-      window.print();
-    },300);
-  },100);
+  </div>
+  </body></html>`);
+  w.document.close();
+  w.onafterprint = () => w.close();
+  const img = w.document.querySelector('img');
+  if(img && !img.complete){
+    img.onload = () => w.print();
+    img.onerror = () => w.print();
+  } else {
+    setTimeout(() => w.print(), 300);
+  }
 };
 
 // ═══ FORMS ═══
