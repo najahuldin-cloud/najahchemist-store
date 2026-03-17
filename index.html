@@ -274,6 +274,8 @@ tr:hover td{background:var(--warm);}
 .sf-btn-wa:hover { background:#1ebe5a; transform:translateY(-2px); box-shadow:0 8px 20px rgba(37,211,102,0.3); }
 .sf-btn-ol { padding:0.8rem 1.6rem; background:transparent; color:white; border:1.5px solid rgba(255,255,255,0.25); border-radius:8px; font-family:'Outfit',sans-serif; font-size:0.88rem; font-weight:600; cursor:pointer; transition:all 0.2s; }
 .sf-btn-ol:hover { border-color:white; background:rgba(255,255,255,0.08); }
+.sf-btn-gold { padding:0.8rem 1.6rem; background:#B45309; color:white; border:none; border-radius:8px; font-family:'Outfit',sans-serif; font-size:0.88rem; font-weight:700; cursor:pointer; transition:all 0.2s; text-decoration:none; display:inline-flex; align-items:center; }
+.sf-btn-gold:hover { background:#92400E; transform:translateY(-2px); box-shadow:0 8px 20px rgba(180,83,9,0.35); }
 .sf-hero-right { display:flex; flex-direction:column; gap:1rem; }
 .sf-hero-card { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:14px; padding:1.1rem 1.3rem; backdrop-filter:blur(8px); transition:all 0.2s; cursor:pointer; }
 .sf-hero-card:hover { background:rgba(255,255,255,0.09); border-color:rgba(255,255,255,0.2); transform:translateX(4px); }
@@ -376,7 +378,7 @@ tr:hover td{background:var(--warm);}
   .sf-hero-h1{font-size:2.2rem;}
   .sf-hero-p{font-size:0.86rem;margin-bottom:1.5rem;}
   .sf-hero-btns{flex-direction:column;gap:0.6rem;}
-  .sf-btn-wa,.sf-btn-ol{width:100%;justify-content:center;text-align:center;padding:0.85rem 1rem;}
+  .sf-btn-wa,.sf-btn-ol,.sf-btn-gold{width:100%;justify-content:center;text-align:center;padding:0.85rem 1rem;}
   .sf-hero-right{display:none;}
   .sf-section{padding:2.5rem 1.2rem;}
   .sf-section-h2{font-size:1.5rem;}
@@ -564,11 +566,13 @@ tr:hover td{background:var(--warm);}
         <div class="sf-hero-eyebrow">🇯🇲 Made in Jamaica · Professional-Grade Skincare</div>
         <h1 class="sf-hero-h1">Start Your Own <em>Skincare Brand</em><br>in Jamaica</h1>
         <p class="sf-hero-p">Luxury Skincare, Men's Care &amp; Yoni Care — Wholesale &amp; Private Label Available. Professional-grade formulas manufactured in Jamaica.</p>
+        <p style="font-size:0.82rem;color:#9CA3AF;margin-bottom:1.5rem;margin-top:-1rem;">Want to start your own brand instead? We'll guide you step-by-step.</p>
         <div class="sf-hero-btns">
           <button class="sf-btn-wa" onclick="sfScroll('sf-products')">
             🛒 Shop Now
           </button>
           <button class="sf-btn-ol" onclick="sfScroll('sf-products')">View All Products</button>
+          <a class="sf-btn-gold" href="/start">Start Your Brand</a>
         </div>
       </div>
       <div class="sf-hero-right" id="sf-hero-cards"></div>
