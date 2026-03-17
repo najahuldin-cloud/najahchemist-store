@@ -219,6 +219,7 @@ select.finp{cursor:pointer;}
     <button class="nb" onclick="nav('labels',this)"><span class="nb-icon">🏷</span>Shipping Labels</button>
     <button class="nb" onclick="nav('consultations',this)"><span class="nb-icon">📋</span>Consultations</button>
     <button class="nb" onclick="nav('knowledge',this)"><span class="nb-icon">🤖</span>Chatbot KB</button>
+    <button class="nb" onclick="nav('sitecontent',this)"><span class="nb-icon">🌐</span>Site Content</button>
   </nav>
   <div class="sb-footer">
     <div class="sb-user" id="sb-user-email"></div>
@@ -399,6 +400,82 @@ select.finp{cursor:pointer;}
           <button class="btn btn-ol btn-sm" onclick="loadDefaultKnowledge()">Reset to Default</button>
           <span class="text-sm" id="kb-status"></span>
         </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ SITE CONTENT ══════════════ -->
+    <div class="view" id="v-sitecontent">
+      <div class="section-title">Start Page — Image Manager</div>
+      <div style="display:flex;flex-direction:column;gap:1.2rem;">
+
+        <!-- Hero Image -->
+        <div class="card">
+          <div class="card-title">Hero Image (main banner photo)</div>
+          <div style="display:flex;align-items:flex-start;gap:1.2rem;flex-wrap:wrap;">
+            <div style="flex:0 0 auto;">
+              <img id="sp-preview-heroImage" style="display:none;width:180px;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">
+              <div id="sp-placeholder-heroImage" style="width:180px;height:120px;border-radius:8px;background:var(--warm);border:1.5px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:0.72rem;color:var(--mid);">No image</div>
+            </div>
+            <div>
+              <p class="text-sm" style="margin-bottom:0.7rem;">Displayed in the hero section right panel on /start.</p>
+              <input type="file" accept="image/*" id="sp-file-heroImage" style="display:none;" onchange="spUpload('heroImage',this)">
+              <button class="btn btn-ol btn-sm" onclick="document.getElementById('sp-file-heroImage').click()">📷 Upload Hero Image</button>
+              <span id="sp-status-heroImage" class="text-sm" style="margin-left:0.6rem;"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Skincare Card Image -->
+        <div class="card">
+          <div class="card-title">Skincare Brand Card Image</div>
+          <div style="display:flex;align-items:flex-start;gap:1.2rem;flex-wrap:wrap;">
+            <div style="flex:0 0 auto;">
+              <img id="sp-preview-skincareCardImage" style="display:none;width:180px;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">
+              <div id="sp-placeholder-skincareCardImage" style="width:180px;height:120px;border-radius:8px;background:var(--warm);border:1.5px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:0.72rem;color:var(--mid);">No image</div>
+            </div>
+            <div>
+              <p class="text-sm" style="margin-bottom:0.7rem;">Shown in the HydraGlow Skincare brand card on /start.</p>
+              <input type="file" accept="image/*" id="sp-file-skincareCardImage" style="display:none;" onchange="spUpload('skincareCardImage',this)">
+              <button class="btn btn-ol btn-sm" onclick="document.getElementById('sp-file-skincareCardImage').click()">📷 Upload Skincare Image</button>
+              <span id="sp-status-skincareCardImage" class="text-sm" style="margin-left:0.6rem;"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feminine Care Card Image -->
+        <div class="card">
+          <div class="card-title">Feminine Care Brand Card Image</div>
+          <div style="display:flex;align-items:flex-start;gap:1.2rem;flex-wrap:wrap;">
+            <div style="flex:0 0 auto;">
+              <img id="sp-preview-feminineCardImage" style="display:none;width:180px;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">
+              <div id="sp-placeholder-feminineCardImage" style="width:180px;height:120px;border-radius:8px;background:var(--warm);border:1.5px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:0.72rem;color:var(--mid);">No image</div>
+            </div>
+            <div>
+              <p class="text-sm" style="margin-bottom:0.7rem;">Shown in the Feminine Care brand card on /start.</p>
+              <input type="file" accept="image/*" id="sp-file-feminineCardImage" style="display:none;" onchange="spUpload('feminineCardImage',this)">
+              <button class="btn btn-ol btn-sm" onclick="document.getElementById('sp-file-feminineCardImage').click()">📷 Upload Feminine Care Image</button>
+              <span id="sp-status-feminineCardImage" class="text-sm" style="margin-left:0.6rem;"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Men's Grooming Card Image -->
+        <div class="card">
+          <div class="card-title">Men's Grooming Brand Card Image</div>
+          <div style="display:flex;align-items:flex-start;gap:1.2rem;flex-wrap:wrap;">
+            <div style="flex:0 0 auto;">
+              <img id="sp-preview-mensCardImage" style="display:none;width:180px;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">
+              <div id="sp-placeholder-mensCardImage" style="width:180px;height:120px;border-radius:8px;background:var(--warm);border:1.5px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:0.72rem;color:var(--mid);">No image</div>
+            </div>
+            <div>
+              <p class="text-sm" style="margin-bottom:0.7rem;">Shown in the Men's Grooming brand card on /start.</p>
+              <input type="file" accept="image/*" id="sp-file-mensCardImage" style="display:none;" onchange="spUpload('mensCardImage',this)">
+              <button class="btn btn-ol btn-sm" onclick="document.getElementById('sp-file-mensCardImage').click()">📷 Upload Men's Image</button>
+              <span id="sp-status-mensCardImage" class="text-sm" style="margin-left:0.6rem;"></span>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -667,6 +744,7 @@ select.finp{cursor:pointer;}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, getDocs, getDoc, onSnapshot, query, orderBy, where, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDYdt_0wJNcfGl2WbIKPiESdVcmc-cqZgM",
@@ -680,6 +758,7 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 const auth = getAuth(firebaseApp);
+const storage = getStorage(firebaseApp);
 
 // ── STATE ──
 let PRODUCTS = [];
@@ -782,6 +861,8 @@ async function initAdmin() {
   loadConsultations();
   // Knowledge base
   loadKnowledge();
+  // Site Content images
+  loadStartPageImages();
 }
 
 // ── NAVIGATION ──
@@ -790,7 +871,7 @@ window.nav = function(id, btn) {
   document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
   document.getElementById('v-'+id).classList.add('on');
   if(btn) btn.classList.add('on');
-  const titles = {dashboard:'Dashboard',orders:'Orders',clients:'Clients',products:'Products',labels:'Shipping Labels',consultations:'Consultations',knowledge:'Chatbot Knowledge Base'};
+  const titles = {dashboard:'Dashboard',orders:'Orders',clients:'Clients',products:'Products',labels:'Shipping Labels',consultations:'Consultations',knowledge:'Chatbot Knowledge Base',sitecontent:'Site Content'};
   document.getElementById('topbar-title').textContent = titles[id]||id;
   closeSidebar();
   // Reset client profile view when going to clients
@@ -2016,6 +2097,46 @@ document.getElementById('m-new-order').addEventListener('click', function(e){
 ['m-new-client','m-edit-product','m-consult-detail','m-label'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){ if(e.target===this) closeM(id); });
 });
+
+// ── SITE CONTENT (Start Page Image Manager) ──
+const SP_FIELDS = ['heroImage','skincareCardImage','feminineCardImage','mensCardImage'];
+
+async function loadStartPageImages() {
+  try {
+    const snap = await getDoc(doc(db,'settings','startPage'));
+    if(!snap.exists()) return;
+    const data = snap.data();
+    SP_FIELDS.forEach(field => {
+      if(data[field]) spSetPreview(field, data[field]);
+    });
+  } catch(e) { console.warn('[SiteContent] load error:', e.message); }
+}
+
+function spSetPreview(field, url) {
+  const img = document.getElementById('sp-preview-'+field);
+  const ph  = document.getElementById('sp-placeholder-'+field);
+  if(img){ img.src=url; img.style.display='block'; }
+  if(ph)  ph.style.display='none';
+}
+
+window.spUpload = async function(field, input) {
+  const file = input.files[0]; if(!file) return;
+  const status = document.getElementById('sp-status-'+field);
+  if(status) status.textContent = 'Uploading…';
+  try {
+    const sRef = storageRef(storage, `startPage/${field}`);
+    await uploadBytes(sRef, file);
+    const url = await getDownloadURL(sRef);
+    await setDoc(doc(db,'settings','startPage'), {[field]: url}, {merge:true});
+    spSetPreview(field, url);
+    if(status) status.textContent = '';
+    toast(field.replace(/([A-Z])/g,' $1').trim() + ' saved ✓');
+  } catch(e) {
+    if(status) status.textContent = 'Error: '+e.message;
+    toast('Upload failed: '+e.message);
+  }
+  input.value = '';
+};
 
 // Add initial row when modal opens
 const newOrderModal = document.getElementById('m-new-order');
