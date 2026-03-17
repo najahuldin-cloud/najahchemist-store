@@ -3077,6 +3077,10 @@ window.batchPrintLabels = function(){
   if(!checks.length){ alert('No orders selected'); return; }
   const orders = Array.from(checks).map(cb=>window.ordersMap&&window.ordersMap[cb.getAttribute('data-id')]).filter(Boolean);
   if(!orders.length){ alert('Order data not found'); return; }
+  // Clear any stale content from previous print sessions
+  const _zone = document.getElementById('bulk-print-zone');
+  if(_zone){ _zone.innerHTML = ''; _zone.style.display = 'none'; }
+  document.body.classList.remove('bulk-printing');
   const labelsHtml = orders.map((o,idx)=>{
     const arr = Array.isArray(o.items)?o.items:[];
     const itemsHtml = arr.length>0
@@ -3128,6 +3132,10 @@ window.batchPrintReceipts = function(){
   if(!checks.length){ alert('No orders selected'); return; }
   const orders = Array.from(checks).map(cb=>window.ordersMap&&window.ordersMap[cb.getAttribute('data-id')]).filter(Boolean);
   if(!orders.length){ alert('Order data not found'); return; }
+  // Clear any stale content from previous print sessions
+  const _zone = document.getElementById('bulk-print-zone');
+  if(_zone){ _zone.innerHTML = ''; _zone.style.display = 'none'; }
+  document.body.classList.remove('bulk-printing');
   const receiptsHtml = orders.map((order,i)=>{
     const arr = Array.isArray(order.items)?order.items:[];
     const itemsHtml = arr.length>0
