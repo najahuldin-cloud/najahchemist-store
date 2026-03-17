@@ -99,7 +99,7 @@ exports.handler = async (event) => {
       },
       body: JSON.stringify({
         from: 'Najah Chemist <orders@najahchemistja.com>',
-        to: ['start@najahchemistja.com'],
+        to: ['start@najahchemist.com'],
         subject,
         html
       })
