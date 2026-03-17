@@ -137,6 +137,7 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
 .capture-wa-box p{font-size:0.9rem;color:rgba(255,255,255,0.8);line-height:1.6;}
 .wa-icon{width:52px;height:52px;background:rgba(255,255,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;}
 
+
 /* ── Footer ── */
 #nc-footer{background:var(--black);color:white;padding:2.5rem 0;}
 .footer-inner{display:flex;flex-direction:column;align-items:center;text-align:center;gap:0.75rem;}
@@ -219,11 +220,11 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
           <li>Sell online with your brand</li>
         </ul>
         <div class="hero-ctas">
-          <a href="#brand-type" class="btn btn-green">Start My Brand</a>
+          <a href="#how-it-works" class="btn btn-green">Start My Brand</a>
         </div>
       </div>
       <div class="hero-right">
-        <!-- REPLACE THIS WITH YOUR HERO IMAGE -->
+        <!-- Hero image — replaced by Firestore if heroImage is set -->
         <div class="hero-img-placeholder" id="hero-img-wrap">
           <div class="hero-img-inner" id="hero-img-placeholder-inner">
             <p>Your Brand Starts Here</p>
@@ -323,7 +324,7 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
               <div class="brand-card-sub">For entrepreneurs targeting the skin-brightening market</div>
             </div>
           </div>
-          <!-- REPLACE THIS WITH YOUR SKINCARE PRODUCT IMAGE -->
+          <!-- Skincare card image — replaced by Firestore if skincareCardImage is set -->
           <div id="skincare-card-img" style="background:rgba(255,255,255,0.5);border-radius:10px;padding:1rem;text-align:center;font-size:0.72rem;color:var(--mid);margin-bottom:0.85rem;">[ Product image ]</div>
           <div class="brand-card-products"><strong>Products:</strong> Serums, creams, dark spot removers, toners</div>
           <a href="#whatsapp-capture" class="btn btn-green" style="width:100%;justify-content:center;">View Starter Kit</a>
@@ -337,7 +338,7 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
               <div class="brand-card-sub">For entrepreneurs targeting women's intimate wellness</div>
             </div>
           </div>
-          <!-- REPLACE THIS WITH YOUR FEMININE CARE PRODUCT IMAGE -->
+          <!-- Feminine care card image — replaced by Firestore if feminineCardImage is set -->
           <div id="feminine-card-img" style="background:rgba(255,255,255,0.5);border-radius:10px;padding:1rem;text-align:center;font-size:0.72rem;color:var(--mid);margin-bottom:0.85rem;">[ Product image ]</div>
           <div class="brand-card-products"><strong>Products:</strong> Yoni wash, yoni oil, boric acid capsules, scrubs</div>
           <a href="#whatsapp-capture" class="btn btn-green" style="width:100%;justify-content:center;">View Starter Kit</a>
@@ -351,7 +352,7 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
               <div class="brand-card-sub">For entrepreneurs targeting the men's care market</div>
             </div>
           </div>
-          <!-- REPLACE THIS WITH YOUR MEN'S GROOMING PRODUCT IMAGE -->
+          <!-- Men's grooming card image — replaced by Firestore if mensCardImage is set -->
           <div id="mens-card-img" style="background:rgba(255,255,255,0.5);border-radius:10px;padding:1rem;text-align:center;font-size:0.72rem;color:var(--mid);margin-bottom:0.85rem;">[ Product image ]</div>
           <div class="brand-card-products"><strong>Products:</strong> Beard oil, body wash 3-in-1, beard balm, supplements</div>
           <a href="#whatsapp-capture" class="btn btn-green" style="width:100%;justify-content:center;background:var(--black);">View Starter Kit</a>
@@ -522,14 +523,9 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
       <button onclick="ncToggleChat()" style="background:rgba(255,255,255,0.15);border:none;color:white;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;">×</button>
     </div>
     <div class="nc-ch-msgs" id="nc-ch-msgs"></div>
-    <div class="nc-ch-qr" id="nc-ch-qr">
-      <button class="nc-ch-qr-btn" onclick="ncChatQ('I want to start a skincare brand')">Skincare brand</button>
-      <button class="nc-ch-qr-btn" onclick="ncChatQ('I want to start a feminine care brand')">Feminine care</button>
-      <button class="nc-ch-qr-btn" onclick="ncChatQ('I want to start a men\'s grooming brand')">Men's grooming</button>
-      <button class="nc-ch-qr-btn" onclick="ncChatQ('I\'m not sure what type of brand to start')">Not sure yet</button>
-    </div>
-    <div class="nc-ch-inp">
-      <input id="nc-ch-in" placeholder="Ask a question..." onkeydown="if(event.key==='Enter')ncChatSend()">
+    <div class="nc-ch-qr" id="nc-ch-qr" style="display:none;"></div>
+    <div class="nc-ch-inp" id="nc-ch-inp-wrap" style="display:none;">
+      <input id="nc-ch-in" placeholder="Type here..." onkeydown="if(event.key==='Enter')ncChatSend()">
       <button class="nc-ch-send" onclick="ncChatSend()">
         <svg width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
       </button>
@@ -546,7 +542,7 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
 <!-- ═══ FIREBASE (Firestore only — no auth needed) ═══ -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-import { getFirestore, collection, doc, addDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { getFirestore, collection, doc, addDoc, getDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDYdt_0wJNcfGl2WbIKPiESdVcmc-cqZgM",
@@ -610,18 +606,48 @@ const db = getFirestore(app);
   }
 })();
 
+// ── Save lead to Firestore, then send internal notification ──
+// Called from the regular script via window._ncSaveLead
 window._ncSaveLead = async function(data) {
+  // Build payload — strip undefined/null so Firestore doesn't reject the write
+  const payload = { page: 'start', createdAt: serverTimestamp() };
+  const allowed = ['name', 'whatsapp', 'email', 'branch', 'brandType', 'targetCustomer', 'journey', 'budget', 'answers', 'hearAboutUs'];
+  allowed.forEach(function(k) {
+    if (data[k] != null) payload[k] = data[k];
+  });
+  console.log('[StartPage] saving lead:', JSON.stringify({ ...payload, createdAt: '(serverTimestamp)' }));
+
+  let ref;
   try {
-    await addDoc(collection(db, 'leads'), {
-      ...data,
-      page: 'start',
-      createdAt: new Date().toISOString()
-    });
-    return true;
+    ref = await addDoc(collection(db, 'leads'), payload);
+    console.log('[StartPage] lead saved, doc id:', ref.id);
   } catch(e) {
-    console.error('Lead save error:', e);
+    console.error('[StartPage] lead save FAILED:', e.code, e.message);
     return false;
   }
+
+  // Internal email notification — fire-and-forget, don't block
+  const displayBrand = payload.brandType || (Array.isArray(payload.answers) && payload.answers[0]) || '—';
+  fetch('/.netlify/functions/notify-lead', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name:        payload.name,
+      whatsapp:    payload.whatsapp,
+      email:       payload.email,
+      branch:      payload.branch,
+      brandType:   displayBrand,
+      budget:      payload.budget,
+      hearAboutUs: payload.hearAboutUs,
+      answers:     payload.answers
+    })
+  }).then(function(r) {
+    console.log('[StartPage] notify-lead status:', r.status);
+  }).catch(function(e) {
+    console.warn('[StartPage] notify-lead fetch error:', e.message);
+  });
+
+  return true;
 };
 </script>
 
@@ -630,9 +656,9 @@ window._ncSaveLead = async function(data) {
 
 // ── FAQ Accordion ──
 function toggleFaq(btn) {
-  const item = btn.closest('.faq-item');
+  const item   = btn.closest('.faq-item');
   const isOpen = item.classList.contains('open');
-  document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
+  document.querySelectorAll('.faq-item.open').forEach(function(el) { el.classList.remove('open'); });
   if (!isOpen) item.classList.add('open');
 }
 
@@ -642,107 +668,335 @@ function ncToast(msg) {
   t.textContent = msg;
   t.style.opacity = '1';
   t.style.transform = 'translateX(-50%) translateY(0)';
-  setTimeout(() => {
+  setTimeout(function() {
     t.style.opacity = '0';
     t.style.transform = 'translateX(-50%) translateY(10px)';
   }, 2400);
 }
 
-// ── Lead Form ──
+// ── Bottom lead form (full detail, after gate) ──
 window.submitLeadForm = async function(e) {
   e.preventDefault();
-  const name = document.getElementById('lf-name').value.trim();
-  const wa   = document.getElementById('lf-wa').value.trim();
+  const name      = document.getElementById('lf-name').value.trim();
+  const wa        = document.getElementById('lf-wa').value.trim();
   const brandType = document.getElementById('lf-brand').value || 'Not specified';
-  const source    = document.getElementById('lf-src').value || 'Not specified';
+  const source    = document.getElementById('lf-src').value   || 'Not specified';
 
   if (!name) { ncToast('Please enter your name'); return; }
   if (!wa)   { ncToast('Please enter your WhatsApp number'); return; }
 
-  // 1. Save to Firestore
   if (typeof window._ncSaveLead === 'function') {
-    window._ncSaveLead({ name, whatsapp: wa, brandType, hearAboutUs: source });
+    window._ncSaveLead({ name: name, whatsapp: wa, brandType: brandType, hearAboutUs: source });
   }
 
-  // 2. Open WhatsApp with pre-filled message
-  const msg = `Hi! My name is ${name}. I'm interested in starting a ${brandType} brand with Najah Chemist. I heard about you via ${source}. Please send me the starter kit guide. My WhatsApp: ${wa}`;
+  const msg = 'Hi! My name is ' + name + '. I\'m interested in starting a ' + brandType + ' brand with Najah Chemist. I heard about you via ' + source + '. Please send me the starter kit guide. My WhatsApp: ' + wa;
   window.open('https://wa.me/18768851099?text=' + encodeURIComponent(msg), '_blank');
 
-  // 3. Show success
   document.getElementById('nc-lead-form').style.display = 'none';
-  const success = document.getElementById('nc-form-success');
   document.getElementById('nc-success-name').textContent = name + '!';
-  success.style.display = 'block';
+  document.getElementById('nc-form-success').style.display = 'block';
 };
 
-// ── Chat Widget ──
-let ncChatOpen = false;
-let ncChatHistory = [];
-let ncQuickRepliesShown = true;
-
-window.ncToggleChat = function() {
-  ncChatOpen = !ncChatOpen;
-  const box = document.getElementById('nc-chat-box');
-  const fab = document.getElementById('nc-chat-fab');
-  box.classList.toggle('open', ncChatOpen);
-  fab.style.display = ncChatOpen ? 'none' : 'flex';
-  if (ncChatOpen && ncChatHistory.length === 0) {
-    ncAddMsg('👋 Hi! Ready to start your own brand? I can help you find the right products.', false);
-  }
+// ── Chat state ──
+var nc = {
+  open:        false,
+  branch:      null,   // 'starting' | 'existing'
+  step:        -1,     // -1 = not opened yet; 0+ = which branch step we're on
+  answers:     [],     // collected quick-reply answers
+  collectStep: null,   // null | 'name' | 'whatsapp' | 'email' | 'done'
+  lead:        {},     // { name, whatsapp, email }
+  history:     []      // for AI context
 };
 
-window.ncChatQ = function(q) {
-  document.getElementById('nc-ch-qr').style.display = 'none';
-  ncQuickRepliesShown = false;
-  document.getElementById('nc-ch-in').value = q;
-  ncChatSend();
+var NC_PDF_URL = '/guide/24-hour-brand-launch-blueprint.pdf';
+
+// ── Hardcoded qualifying steps ──
+var NC_STEPS = {
+  starting: [
+    { q: 'What type of products do you want to create?',
+      opts: ['Skincare', 'Body care', 'Hair care', 'Feminine care', "Men's grooming"] },
+    { q: 'Who is your ideal customer?',
+      opts: ['Women', 'Men', 'Both'] },
+    { q: 'Where are you right now in your journey?',
+      opts: ['Just exploring', 'I want samples', "I'm ready to start selling"] },
+    { q: 'What budget range are you working with?',
+      opts: ['Under $200 USD', '$200–$500 USD', '$500–$1,000 USD', '$1,000+ USD'] }
+  ],
+  existing: [
+    { q: 'What are you looking for right now?',
+      opts: ['Better pricing (bulk)', 'New products', 'Private labeling', 'Faster production'] },
+    { q: 'What type of products are you currently selling?',
+      opts: ['Skincare', 'Body care', 'Hair care', 'Feminine care', "Men's grooming"] },
+    { q: "What's your current order level?",
+      opts: ['Small batches', 'Consistent orders', 'Ready for bulk production'] }
+  ]
 };
 
-window.ncChatSend = async function() {
-  const inp = document.getElementById('nc-ch-in');
-  const msg = (inp ? inp.value : '').trim();
-  if (!msg) return;
-  if (inp) inp.value = '';
-  if (ncQuickRepliesShown) {
-    document.getElementById('nc-ch-qr').style.display = 'none';
-    ncQuickRepliesShown = false;
-  }
-  ncAddMsg(msg, true);
-  const typing = ncAddMsg('...', false, true);
+var NC_SYSTEM = 'You are a conversion-focused assistant for Najah Chemist, a manufacturing company that helps people start and scale their own skincare and personal care brands. Your goal is to guide the user step-by-step, qualify them, and collect their WhatsApp number so the team can close the sale. Keep responses short and clear. Always guide the user with button options. Focus on momentum toward collecting WhatsApp. Ask ONE question at a time. Never skip steps. If the user hesitates say: No worries — we\'ll guide you step by step. You don\'t need experience to start.';
 
-  // Build a brand-builder context prompt for the AI
-  const systemNote = 'The user is on the Najah Chemist brand-builder page (najahchemistja.com/start). They want to start their own beauty brand. Give 3 specific product recommendations for their chosen brand type and encourage them to get started. End with: "Want to get started? Drop your WhatsApp in the form below and we\'ll send you a quote!"';
+// ── DOM helpers ──
+function ncBotMsg(text, delay) {
+  setTimeout(function() {
+    var msgs = document.getElementById('nc-ch-msgs');
+    if (!msgs) return;
+    var div = document.createElement('div');
+    div.className = 'nc-ch-msg nc-ch-bot';
+    div.textContent = text;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+    nc.history.push({ role: 'assistant', content: text });
+  }, delay || 0);
+}
 
-  try {
-    const res = await fetch('/.netlify/functions/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: msg,
-        history: ncChatHistory.slice(-6),
-        context: systemNote
-      })
-    });
-    const data = await res.json();
-    if (typing) typing.remove();
-    ncAddMsg(data.reply || 'Sorry, I could not get a response. Please try again.', false);
-  } catch(e) {
-    if (typing) typing.remove();
-    ncAddMsg('Sorry, something went wrong. Please WhatsApp us at +1 876-885-1099.', false);
-  }
-};
-
-function ncAddMsg(text, isUser, isTyping) {
-  const msgs = document.getElementById('nc-ch-msgs');
-  if (!msgs) return null;
-  const div = document.createElement('div');
-  div.className = 'nc-ch-msg ' + (isUser ? 'nc-ch-user' : 'nc-ch-bot');
+function ncUserMsg(text) {
+  var msgs = document.getElementById('nc-ch-msgs');
+  if (!msgs) return;
+  var div = document.createElement('div');
+  div.className = 'nc-ch-msg nc-ch-user';
   div.textContent = text;
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
-  if (!isTyping) ncChatHistory.push({ role: isUser ? 'user' : 'assistant', content: text });
-  return div;
+  nc.history.push({ role: 'user', content: text });
 }
+
+function ncSetQR(opts) {
+  var qr = document.getElementById('nc-ch-qr');
+  if (!qr) return;
+  qr.innerHTML = '';
+  opts.forEach(function(label) {
+    var btn = document.createElement('button');
+    btn.className = 'nc-ch-qr-btn';
+    btn.textContent = label;
+    btn.onclick = function() { ncPickOption(label); };
+    qr.appendChild(btn);
+  });
+  qr.style.display = 'flex';
+}
+
+function ncClearQR() {
+  var qr = document.getElementById('nc-ch-qr');
+  if (qr) { qr.innerHTML = ''; qr.style.display = 'none'; }
+}
+
+function ncShowInput(placeholder) {
+  var wrap = document.getElementById('nc-ch-inp-wrap');
+  var inp  = document.getElementById('nc-ch-in');
+  if (inp)  inp.placeholder = placeholder || 'Type here...';
+  if (wrap) { wrap.style.display = 'flex'; if (inp) inp.focus(); }
+}
+
+function ncHideInput() {
+  var wrap = document.getElementById('nc-ch-inp-wrap');
+  if (wrap) wrap.style.display = 'none';
+}
+
+// ── Open / close ──
+window.ncToggleChat = function() {
+  nc.open = !nc.open;
+  var box = document.getElementById('nc-chat-box');
+  var fab = document.getElementById('nc-chat-fab');
+  box.classList.toggle('open', nc.open);
+  fab.style.display = nc.open ? 'none' : 'flex';
+  if (nc.open && nc.step === -1) {
+    nc.step = 0;
+    ncHideInput();
+    ncBotMsg('We help you launch and scale your own skincare or personal care brand — even if you\'re starting from scratch. Let\'s get you started — which best describes you right now?', 300);
+    setTimeout(function() {
+      ncSetQR(["I'm starting a brand", "I already sell products"]);
+    }, 600);
+  }
+};
+
+// ── Quick-reply handler (branch + all steps) ──
+function ncPickOption(label) {
+  ncClearQR();
+  ncUserMsg(label);
+
+  // Branch selection
+  if (!nc.branch) {
+    nc.branch = (label === "I'm starting a brand") ? 'starting' : 'existing';
+    nc.step   = 0;
+    nc.answers = [];
+    var first = NC_STEPS[nc.branch][0];
+    ncBotMsg(first.q, 500);
+    setTimeout(function() { ncSetQR(first.opts); }, 700);
+    return;
+  }
+
+  // Branch step
+  nc.answers.push(label);
+  nc.step++;
+  var steps = NC_STEPS[nc.branch];
+
+  if (nc.step < steps.length) {
+    // Next question
+    var next = steps[nc.step];
+    ncBotMsg(next.q, 500);
+    setTimeout(function() { ncSetQR(next.opts); }, 700);
+  } else {
+    // All button steps done — begin free-text collection
+    nc.collectStep = 'name';
+    ncBotMsg("Great! Just a few more details. What's your name?", 500);
+    setTimeout(function() { ncShowInput('Your name...'); }, 700);
+  }
+}
+
+// ── Detect WhatsApp number in free text ──
+function ncLooksLikeWA(text) {
+  return /^[\+\d][\d\s\-\(\)]{5,}$/.test(text.trim());
+}
+
+function ncValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+// ── Free-text send: name → WhatsApp → email → save + guide + notify ──
+window.ncChatSend = async function() {
+  var inp = document.getElementById('nc-ch-in');
+  var msg = inp ? inp.value.trim() : '';
+  if (!msg) return;
+  inp.value = '';
+  ncClearQR();
+  ncUserMsg(msg);
+
+  // ── Step 1: Name ──
+  if (nc.collectStep === 'name') {
+    nc.lead.name = msg;
+    nc.collectStep = 'whatsapp';
+    ncBotMsg("What's your WhatsApp number?", 500);
+    setTimeout(function() { ncShowInput('e.g. +18761234567'); }, 700);
+    return;
+  }
+
+  // ── Step 2: WhatsApp ──
+  if (nc.collectStep === 'whatsapp') {
+    if (!ncLooksLikeWA(msg)) {
+      ncBotMsg('Please enter a valid WhatsApp number (e.g. +18761234567).', 300);
+      setTimeout(function() { ncShowInput('e.g. +18761234567'); }, 500);
+      return;
+    }
+    nc.lead.whatsapp = msg;
+    nc.collectStep = 'email';
+    ncBotMsg("What email should we send your free Brand Launch Guide to?", 500);
+    setTimeout(function() { ncShowInput('your@email.com'); }, 700);
+    return;
+  }
+
+  // ── Step 3: Email → save + send guide + notify ──
+  if (nc.collectStep === 'email') {
+    if (!ncValidEmail(msg)) {
+      ncBotMsg('Please enter a valid email address (e.g. you@gmail.com).', 300);
+      setTimeout(function() { ncShowInput('your@email.com'); }, 500);
+      return;
+    }
+    nc.lead.email = msg;
+    nc.collectStep = 'done';
+    ncHideInput();
+
+    // Derive structured fields
+    var brandType, targetCustomer, journey, budget;
+    if (nc.branch === 'starting') {
+      brandType      = nc.answers[0] || '—';
+      targetCustomer = nc.answers[1] || '—';
+      journey        = nc.answers[2] || '—';
+      budget         = nc.answers[3] || '—';
+    } else {
+      journey        = nc.answers[0] || '—';
+      brandType      = nc.answers[1] || nc.answers[0] || '—';
+      targetCustomer = '—';
+      budget         = '—';
+    }
+
+    // 1. Save to Firestore
+    var saved = false;
+    if (typeof window._ncSaveLead === 'function') {
+      saved = await window._ncSaveLead({
+        name:           nc.lead.name,
+        whatsapp:       nc.lead.whatsapp,
+        email:          nc.lead.email,
+        branch:         nc.branch,
+        brandType:      brandType,
+        targetCustomer: targetCustomer,
+        journey:        journey,
+        budget:         budget,
+        answers:        nc.answers
+      });
+    }
+    if (!saved) {
+      ncBotMsg('Something went wrong. Please WhatsApp us at +1 876-885-1099.', 300);
+      return;
+    }
+
+    // 2. Send guide email
+    var guideSent = false;
+    var pdfUrl = NC_PDF_URL;
+    try {
+      var gr = await fetch('/.netlify/functions/send-guide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:           nc.lead.name,
+          email:          nc.lead.email,
+          whatsapp:       nc.lead.whatsapp,
+          branch:         nc.branch,
+          brandType:      brandType,
+          targetCustomer: targetCustomer,
+          journey:        journey,
+          budget:         budget
+        })
+      });
+      var gd = await gr.json();
+      guideSent = gr.ok && gd.success;
+      if (gd.pdfUrl) pdfUrl = gd.pdfUrl;
+      console.log('[Chat] send-guide:', gr.status, gd);
+    } catch(e) {
+      console.warn('[Chat] send-guide error:', e.message);
+    }
+
+    // 3. Confirmation message
+    var confirmMsg = guideSent
+      ? '\u2705 Guide sent to ' + nc.lead.email + '! Check your inbox. \ud83d\udce5 You can also download it here: ' + pdfUrl + '. Our team will be in touch on WhatsApp shortly \ud83c\udf3f'
+      : '\u2705 You\'re all set! Download your free guide here: ' + pdfUrl + '. Our team will be in touch on WhatsApp shortly \ud83c\udf3f';
+    ncBotMsg(confirmMsg, 300);
+
+    // 4. WhatsApp notification to owner
+    var waMsg = 'New lead \u2014 Name: ' + (nc.lead.name || '\u2014') +
+      ' | WhatsApp: ' + (nc.lead.whatsapp || '\u2014') +
+      ' | Email: ' + (nc.lead.email || '\u2014') +
+      ' | Brand: ' + brandType +
+      ' | Budget: ' + budget +
+      ' | Guide sent automatically';
+    window.open('https://wa.me/18768851099?text=' + encodeURIComponent(waMsg), '_blank');
+    return;
+  }
+
+  // ── AI fallback (after collection is done, or unexpected input) ──
+  var msgs = document.getElementById('nc-ch-msgs');
+  var typing = document.createElement('div');
+  typing.className = 'nc-ch-msg nc-ch-bot';
+  typing.textContent = '...';
+  if (msgs) { msgs.appendChild(typing); msgs.scrollTop = msgs.scrollHeight; }
+
+  var context = NC_SYSTEM;
+  if (nc.branch) {
+    context += ' User path: ' + nc.branch + '.';
+    if (nc.answers.length) context += ' Answers: ' + nc.answers.join(', ') + '.';
+  }
+
+  try {
+    var res = await fetch('/.netlify/functions/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg, history: nc.history.slice(-8), context: context })
+    });
+    var data = await res.json();
+    typing.remove();
+    ncBotMsg(data.reply || 'Sorry, I could not get a response. Please try again.');
+  } catch(err) {
+    typing.remove();
+    ncBotMsg('Sorry, something went wrong. Please WhatsApp us at +1 876-885-1099.');
+  }
+};
 
 </script>
 </body>
