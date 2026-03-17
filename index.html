@@ -225,8 +225,8 @@ tr:hover td{background:var(--warm);}
   body:not(.bulk-printing) #print-zone { display: block !important; position: fixed !important; left: 0 !important; top: 0 !important; width: 80mm !important; background: white !important; }
   /* bulk print */
   body.bulk-printing { overflow: visible !important; height: auto !important; margin: 0; padding: 0; }
-  body.bulk-printing * { visibility: hidden; }
-  body.bulk-printing #bulk-print-zone { display: block !important; visibility: visible !important; position: absolute !important; left: 0 !important; top: 0 !important; background: white !important; }
+  body.bulk-printing > *:not(#bulk-print-zone) { display: none !important; }
+  body.bulk-printing #bulk-print-zone { display: block !important; visibility: visible !important; position: static !important; background: white !important; }
   body.bulk-printing #bulk-print-zone * { visibility: visible !important; }
 }
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:var(--light);border-radius:2px;}
