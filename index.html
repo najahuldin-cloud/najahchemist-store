@@ -1876,7 +1876,7 @@ Add anything else you want the chatbot to know..."></textarea>
     <button class="mcl no-print" onclick="closeM('m-receipt')">×</button>
     <div id="receipt-content"></div>
     <div style="display:flex;gap:0.6rem;margin-top:1rem;" class="no-print">
-      <button class="btn btn-pr" style="flex:1;" onclick="printReceipt()">🖨 Print Receipt</button>
+      <button class="btn btn-pr" style="flex:1;" onclick="printReceipt(window.currentReceiptOrder)">🖨 Print Receipt</button>
       <button class="btn btn-ol" onclick="closeM('m-receipt')">Close</button>
     </div>
   </div>
@@ -1946,6 +1946,7 @@ function showStorefront() {
 // Flag: set to true before login so onAuthStateChanged knows to navigate to admin
 let pendingAdminNav = false;
 let _ordersUnsub = null; // real-time orders listener unsubscribe handle
+let _lastOrdersSig = '';
 
 // ═══ AUTH STATE — this is the single source of truth ═══
 onAuthStateChanged(auth, async (user) => {
@@ -1962,12 +1963,16 @@ onAuthStateChanged(auth, async (user) => {
       _ordersUnsub = onSnapshot(
         query(collection(db,'orders'), orderBy('createdAt','desc')),
         (snap) => {
+          const _sig = snap.docs.map(d => d.id+'|'+(d.data().status||'')+'|'+(d.data().paymentStatus||'')).join(',');
+          const _changed = _sig !== _lastOrdersSig;
+          _lastOrdersSig = _sig;
           const dbO = snap.docs.map(d => ({...d.data(), dbId: d.id}));
           // Replace DB_ORDERS with Firestore data, keep local-only rows at the end
           DB_ORDERS = [...dbO, ...DB_ORDERS.filter(o => !dbO.find(d => d.id === o.id))];
           window.ordersMap = {}; DB_ORDERS.forEach(o => { window.ordersMap[o.id||''] = o; });
           console.log(`[Najah] Orders snapshot: ${dbO.length} orders`);
-          renderOrdersTable(); updateBadges();
+          if (_changed) { renderOrdersTable(); }
+          updateBadges();
         },
         (err) => { console.log('[Najah] Orders listener error:', err.message); }
       );
@@ -2928,17 +2933,26 @@ function buildReceipt(o){
 }
 
 window.showReceipt = function(id,client,product,qty,total,pay,date){
-  document.getElementById('receipt-content').innerHTML=buildReceipt({id,client,product,qty,total,payMethod:pay,date});
+  const order = window.ordersMap&&window.ordersMap[id] ? window.ordersMap[id] : {id,client,product,qty,total,payMethod:pay,date};
+  window.currentReceiptOrder = order;
+  document.getElementById('receipt-content').innerHTML=buildReceipt(order);
   openM('m-receipt');
 };
+
+function parseOrderDate(d){
+  if(!d) return '—';
+  if(d.seconds) return new Date(d.seconds*1000).toLocaleString('en-JM');
+  if(d.toDate) return d.toDate().toLocaleString('en-JM');
+  if(typeof d==='string'||typeof d==='number') return new Date(d).toLocaleString('en-JM');
+  return '—';
+}
 
 window.printReceipt = function(order){
   if(!order){ alert('Order not found'); return; }
   const items = (order.items||[]).map(i=>
     `<tr><td>${i.name||''} ${i.size||''}</td><td align="right">x${i.qty||1}</td></tr>`
   ).join('');
-  const dateVal = order.date||order.createdAt;
-  const dateStr = dateVal ? new Date(dateVal.seconds ? dateVal.seconds*1000 : dateVal).toLocaleString('en-JM') : '';
+  const dateStr = parseOrderDate(order.date||order.createdAt);
   const win = window.open('','_blank','width=420,height=600');
   win.document.write(`<!DOCTYPE html><html><head><title>Receipt ${order.id||''}</title>
   <style>
