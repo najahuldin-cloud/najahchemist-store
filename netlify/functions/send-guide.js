@@ -93,11 +93,12 @@ exports.handler = async (event) => {
     });
 
     const resendData = await resendRes.json();
+    console.error('send-guide: Resend status', resendRes.status, '| body:', JSON.stringify(resendData));
     if (!resendRes.ok) {
       throw new Error(resendData.message || JSON.stringify(resendData));
     }
 
-    console.log('send-guide: sent to', email, 'id:', resendData.id);
+    console.log('send-guide: accepted by Resend, id:', resendData.id, '| to:', email, '| from: orders@najahchemistja.com');
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
