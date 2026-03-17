@@ -1355,7 +1355,7 @@ function renderLabelsTable(){
     <td>${(o.product||'').substring(0,50)}</td>
     <td>${o.total?'J$'+parseFloat(o.total).toLocaleString():'—'}</td>
     <td>${formatDate(o.date||o.createdAt)}</td>
-    <td><button class="btn btn-sm btn-dk" onclick="printLabel(${JSON.stringify(o).replace(/"/g,'&quot;')})">🏷 Print</button></td>
+    <td><button class="btn btn-sm btn-dk" onclick="printLabel(window.ordersMap['${o.id||o.orderId||''}'])">🏷 Print</button></td>
   </tr>`).join('');
 }
 
@@ -1437,6 +1437,7 @@ window.saveAdminTracking = async function(){
 };
 
 window.printLabel = function(order){
+  if(!order){ alert('Order not found'); return; }
   const o = typeof order==='string'?JSON.parse(order):order;
   const items = (o.items||[]).slice(0,4).map(i=>
     `<div style="font-size:6pt;">${i.qty||1}x ${i.name||''} ${i.size||''}</div>`
@@ -1638,7 +1639,10 @@ function parseOrderDate(date, format) {
   if (date && date.seconds) d = new Date(date.seconds * 1000);
   else if (date && date.toDate) d = date.toDate();
   else d = new Date(date);
-  if (isNaN(d.getTime())) return '—';
+  if (isNaN(d.getTime())) {
+    if (typeof date === 'string' && date && !date.startsWith('[object')) return date;
+    return '—';
+  }
   if (format === 'short') return d.toLocaleDateString('en-JM');
   return d.toLocaleString('en-JM');
 }

@@ -2958,16 +2958,21 @@ function parseOrderDate(date, format) {
   if (date && date.seconds) d = new Date(date.seconds * 1000);
   else if (date && date.toDate) d = date.toDate();
   else d = new Date(date);
-  if (isNaN(d.getTime())) return '—';
+  if (isNaN(d.getTime())) {
+    if (typeof date === 'string' && date && !date.startsWith('[object')) return date;
+    return '—';
+  }
   if (format === 'short') return d.toLocaleDateString('en-JM');
   return d.toLocaleString('en-JM');
 }
 
 window.printReceipt = function(order){
   if(!order){ alert('Order not found'); return; }
-  const items = (order.items||[]).map(i=>
-    `<tr><td>${i.name||''} ${i.size||''}</td><td align="right">x${i.qty||1}</td></tr>`
-  ).join('');
+  const items = (order.items||[]).map(i=>{
+    const prod = window.PRODUCTS&&window.PRODUCTS.find(p=>p.id===i.productId);
+    const name = prod ? prod.name : (i.name||'—');
+    return `<tr><td>${name} ${i.size||''}</td><td align="right">x${i.qty||1}</td></tr>`;
+  }).join('');
   const dateStr = parseOrderDate(order.date||order.createdAt);
   const win = window.open('','_blank','width=420,height=600');
   win.document.write(`<!DOCTYPE html><html><head><title>Receipt ${order.id||''}</title>
