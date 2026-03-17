@@ -2612,10 +2612,14 @@ window.saveTracking = async function() {
   showToast('Tracking saved and client notified on WhatsApp ✓');
   // Send WhatsApp message to client
   if (waNum) {
-    const estDate = estimatedDelivery ? new Date(estimatedDelivery).toLocaleDateString('en-JM',{weekday:'short',month:'short',day:'numeric'}) : 'TBD';
-    let msg = `Hi ${client}, your Najah Chemist order ${orderId} has been shipped! 🎉\n\nCourier: ${courier}\nTracking #: ${trackingNumber||'N/A'}\nEst. Delivery: ${estDate}`;
-    if (notes) msg += `\n\n${notes}`;
-    msg += `\n\nTrack your order at: najahchemistja.com/track\nQuestions? WhatsApp us: +1876-885-1099`;
+    let msg;
+    if (/zipmail/i.test(courier)) {
+      msg = 'Good day, your package 📦 was shipped 🚢 track your package here https://jamaicapost.gov.jm/track-and-trace/';
+    } else if (/knutsford/i.test(courier)) {
+      msg = 'Good day, your package 📦 was shipped 🚢 track your package here https://www.knutsfordexpress.com/courier/track-your-packages/';
+    } else {
+      msg = `Good day, your package 📦 was shipped 🚢 Courier: ${courier}${trackingNumber&&trackingNumber!=='N/A'?' · Tracking #: '+trackingNumber:''}`;
+    }
     window.open('https://wa.me/'+waNum+'?text='+encodeURIComponent(msg),'_blank');
   }
 };
