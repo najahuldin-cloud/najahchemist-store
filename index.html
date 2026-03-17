@@ -1370,7 +1370,7 @@ tr:hover td{background:var(--warm);}
         </div>
       </div>
       <div class="card"><div class="clbl">We Accept</div>
-        <div style="font-size:0.81rem;color:var(--mid);line-height:2.2;">🌐 Online card payments (Fygaro)<br>🏦 Bank Transfer (NCB, Scotiabank, JN)<br>📱 Lynk mobile wallet<br>💵 Cash — Kingston only</div>
+        <div style="font-size:0.81rem;color:var(--mid);line-height:2.2;">🌐 Online card payments (Fygaro)<br>🏦 Bank Transfer (NCB, Scotiabank, JN)<br>📱 Lynk mobile wallet<br>🚫 No COD — full payment required before processing</div>
       </div>
     </div>
   </div>
@@ -1928,10 +1928,7 @@ let DB_ORDERS = [
   {id:'NC-0038',client:'Regal Skin Co.',product:'Yoni Foaming Wash',size:'Gallon',qty:10,source:'Website',payment:'Paid',status:'Complete',date:'Feb 20',total:525,payMethod:'Fygaro'}
 ];
 
-let DB_MESSAGES = [
-  {from:'Kezia McKenzie',subject:'Private Label Question',email:'kezia@example.com',preview:'I want to start my own soap brand...',date:'Feb 26',status:'New'},
-  {from:'Tanya Forbes',subject:'Order Issue',email:'tanya@example.com',preview:"My order hasn't arrived yet...",date:'Feb 25',status:'New'}
-];
+let DB_MESSAGES = [];
 
 const IMG_CLASS = {soap:'img-soap',cream:'img-cream',serum:'img-serum',wash:'img-wash',hair:'img-cream',label:'img-label'};
 
