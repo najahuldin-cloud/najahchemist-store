@@ -217,7 +217,7 @@ tr:hover td{background:var(--warm);}
 .info-row:last-child{border-bottom:none;}
 .benefit-tag{display:inline-block;background:var(--warm);border-radius:20px;padding:0.2rem 0.65rem;font-size:0.7rem;margin:0.18rem 0.12rem;}
 .no-print{}
-@media print{body *{visibility:hidden!important;}#print-zone,#print-zone *{visibility:visible!important;}#print-zone{position:fixed;top:0;left:0;width:100%;padding:2rem;background:white;}.no-print{display:none!important;}}
+@media print{body *{visibility:hidden!important;}#print-zone,#print-zone *{visibility:visible!important;}#print-zone{position:absolute;left:0;top:0;}.no-print{display:none!important;}}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:var(--light);border-radius:2px;}
 @media(max-width:900px){.g2,.g3,.g4{grid-template-columns:1fr 1fr;}}
 @media(max-width:600px){.g2,.g3,.g4{grid-template-columns:1fr;}.view{padding:1rem;}.brand-n,.nb span:not(.badge){display:none;}nav{padding:0 0.75rem;}}
@@ -2246,7 +2246,7 @@ function rebuildOrderProductSelect(){
     const isSoap=p.cat==='soap';
     const isByWeight=Object.keys(p.pricing||{}).some(k=>k.startsWith('lb')||k==='halfLb'||k==='lb1');
     const sizes=isSoap?'none':isByWeight?'weight':'liquid';
-    return `<option value="${p.id}" data-sizes="${sizes}">${p.name}</option>`;
+    return `<option value="${p.id}" data-sizes="${sizes}">${p.sku?'['+p.sku+'] ':''}${p.name}</option>`;
   }).join('');
   if(cur) sel.value=cur;
 }
@@ -2847,32 +2847,37 @@ window.printLabel = function(orderOrId){
   let itemsHtml='';
   if(Array.isArray(o.items)&&o.items.length){
     const prods=window.PRODUCTS||[];
-    itemsHtml=o.items.map(i=>{const prod=prods.find(p=>p.id===i.productId);const sku=prod&&prod.sku?` [${prod.sku}]`:'';return `${i.name}${sku} · ${i.size||'—'} × ${i.qty}`;}).join('<br>');
+    itemsHtml=o.items.map(i=>{
+      const prod=prods.find(p=>p.id===i.productId);
+      const sku=prod&&prod.sku?`[${prod.sku}] `:'';
+      return `<div style="font-size:8pt;">${sku}${i.name} · ${i.size||'—'} × ${i.qty}</div>`;
+    }).join('');
   } else {
-    itemsHtml=o.product||o.products||'—';
+    itemsHtml=`<div style="font-size:8pt;">${o.product||o.products||'—'}</div>`;
   }
   const area=document.getElementById('print-zone');
   const qrId='lqr-'+Date.now();
-  area.innerHTML=`<div class="nc-label" style="max-width:700px;margin:0 auto;page-break-inside:avoid;">
-    <div class="nc-label-hdr">
+  area.innerHTML=`<div style="width:80mm;font-family:Arial,sans-serif;font-size:10pt;line-height:1.35;padding:3mm;box-sizing:border-box;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #000;padding-bottom:2mm;margin-bottom:2mm;">
       <div>
-        <div style="font-family:serif;font-size:2.5rem;font-weight:700;line-height:1;margin-bottom:0.3rem;">Nc</div>
-        <div style="font-size:0.8rem;font-weight:700;margin-bottom:0.15rem;">Najah Chemist</div>
-        <div style="font-size:0.65rem;color:#555;">FROM: Najah Chemist · Kingston, Jamaica<br>start@najahchemistja.com · +1876-885-1099</div>
+        <div style="font-size:20pt;font-weight:700;font-family:serif;line-height:1;margin-bottom:1mm;">Nc</div>
+        <div style="font-size:9pt;font-weight:700;">Najah Chemist · Kingston, Jamaica</div>
+        <div style="font-size:8pt;color:#444;">start@najahchemistja.com · +1876-885-1099</div>
       </div>
-      <div id="${qrId}" style="width:80px;height:80px;flex-shrink:0;"></div>
+      <div id="${qrId}" style="width:75px;height:75px;flex-shrink:0;"></div>
     </div>
-    <div style="margin-bottom:0.75rem;">
-      <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#777;margin-bottom:0.2rem;">SHIP TO</div>
-      <div class="nc-label-to">${client}</div>
-      <div class="nc-label-to-sub">${addr}${wa!=='—'?'<br>WhatsApp: '+wa:''}</div>
+    <div style="margin-bottom:2mm;">
+      <div style="font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#555;margin-bottom:1mm;">SHIP TO:</div>
+      <div style="font-size:12pt;font-weight:700;">${client}</div>
+      <div style="font-size:9pt;">${addr}</div>
+      ${wa!=='—'?`<div style="font-size:9pt;">${wa}</div>`:''}
     </div>
-    <div class="nc-label-mid">
-      <div style="display:flex;justify-content:space-between;margin-bottom:0.25rem;"><span><strong>Order:</strong> ${orderId}</span><span><strong>Date:</strong> ${date}</span></div>
-      <div><strong>Items:</strong><br>${itemsHtml}</div>
-      <div style="margin-top:0.25rem;"><strong>Total:</strong> ${total}</div>
+    <div style="border-top:1px dashed #aaa;padding-top:1.5mm;margin-bottom:1.5mm;">
+      <div style="font-size:8pt;display:flex;justify-content:space-between;"><span>Order: ${orderId}</span><span>${date}</span></div>
     </div>
-    <div class="nc-label-footer">
+    ${itemsHtml}
+    <div style="font-size:11pt;font-weight:700;margin-top:1.5mm;margin-bottom:2mm;">Total: ${total}</div>
+    <div style="border-top:1px solid #000;padding-top:1.5mm;display:flex;justify-content:space-between;font-size:7pt;">
       <div>najahchemistja.com</div>
       <div style="font-weight:700;">FRAGILE — HANDLE WITH CARE</div>
     </div>
@@ -2880,8 +2885,19 @@ window.printLabel = function(orderOrId){
   area.style.display='block';
   setTimeout(()=>{
     const qrEl=document.getElementById(qrId);
-    if(qrEl&&window.QRCode) new QRCode(qrEl,{text:'https://najahchemistja.com',width:70,height:70,colorDark:'#0F0E0D',colorLight:'#ffffff'});
-    setTimeout(()=>{window.print();area.style.display='none';},150);
+    if(qrEl&&window.QRCode) new QRCode(qrEl,{text:'https://najahchemistja.com',width:75,height:75,colorDark:'#000000',colorLight:'#ffffff'});
+    setTimeout(()=>{
+      const ts=document.createElement('style');
+      ts.id='_thermal_ps';
+      ts.textContent='@media print{@page{size:80mm 100mm;margin:0;}#print-zone{width:80mm!important;}}';
+      document.head.appendChild(ts);
+      window.addEventListener('afterprint',function _apc(){
+        document.getElementById('_thermal_ps')?.remove();
+        area.style.display='none';
+        window.removeEventListener('afterprint',_apc);
+      });
+      window.print();
+    },300);
   },100);
 };
 
