@@ -907,10 +907,9 @@ window.ncChatSend = async function() {
       budget         = '—';
     }
 
-    // 1. Save to Firestore
-    var saved = false;
+    // 1. Save to Firestore (non-blocking — don't gate guide send on this)
     if (typeof window._ncSaveLead === 'function') {
-      saved = await window._ncSaveLead({
+      window._ncSaveLead({
         name:           nc.lead.name,
         whatsapp:       nc.lead.whatsapp,
         email:          nc.lead.email,
@@ -920,16 +919,19 @@ window.ncChatSend = async function() {
         journey:        journey,
         budget:         budget,
         answers:        nc.answers
+      }).then(function(ok) {
+        console.log('[Chat] Firestore save:', ok ? 'success' : 'FAILED');
+      }).catch(function(e) {
+        console.warn('[Chat] Firestore save error:', e.message);
       });
-    }
-    if (!saved) {
-      ncBotMsg('Something went wrong. Please WhatsApp us at +1 876-885-1099.', 300);
-      return;
+    } else {
+      console.warn('[Chat] _ncSaveLead not available');
     }
 
     // 2. Send guide email
     var guideSent = false;
     var pdfUrl = NC_PDF_URL;
+    console.log('[Chat] calling send-guide for', nc.lead.email);
     try {
       var gr = await fetch('/.netlify/functions/send-guide', {
         method: 'POST',
