@@ -1415,6 +1415,16 @@ window.saveAdminTracking = async function(){
   const estimatedDelivery = document.getElementById('atrk-date').value;
   const notes = document.getElementById('atrk-notes').value.trim();
   const tracking = { courier, trackingNumber: trackingNumber||'N/A', estimatedDelivery, notes, addedAt: new Date().toISOString() };
+
+  // Build WhatsApp URL and open popup BEFORE any await (must be synchronous with user gesture)
+  let num = (o.customerWhatsApp||o.whatsapp||o.phone||'').replace(/\D/g,'');
+  if(num.length===7) num='1876'+num;
+  if(num.length===10) num='1'+num;
+  if(num.length===11&&!num.startsWith('1')) num='1'+num;
+  const client = o.clientName||o.client||o.customerName||'Customer';
+  const waMsg = `Hi ${client}, your Najah Chemist order ${orderId} has been shipped via ${courier}. Tracking: ${trackingNumber||'N/A'}. Track at: najahchemistja.com/track`;
+  const waOpened = num.length>=11 ? !!window.open('https://wa.me/'+num+'?text='+encodeURIComponent(waMsg),'_blank') : false;
+
   try {
     if(docId) await updateDoc(doc(db,'orders',docId),{tracking, status:'Shipped'});
     const idx = ORDERS.findIndex(x=>(x.id||x.orderId)===orderId);
@@ -1423,16 +1433,11 @@ window.saveAdminTracking = async function(){
     renderOrdersTable();
   } catch(e){ toast('Save failed: '+e.message); return; }
   window.closeAdminTracking();
-  toast('Tracking saved ✓ — notifying client on WhatsApp');
-  const waRaw = o.customerWhatsApp||o.phone||'';
-  const waNum = waRaw.replace(/\D/g,'');
-  if(waNum){
-    const client = o.client||o.customerName||'Customer';
-    const estDate = estimatedDelivery ? new Date(estimatedDelivery).toLocaleDateString('en-JM',{weekday:'short',month:'short',day:'numeric'}) : 'TBD';
-    let msg = `Hi ${client}, your Najah Chemist order ${orderId} has been shipped! 🎉\n\nCourier: ${courier}\nTracking #: ${trackingNumber||'N/A'}\nEst. Delivery: ${estDate}`;
-    if(notes) msg += `\n\n${notes}`;
-    msg += `\n\nTrack your order at: najahchemistja.com/track\nQuestions? WhatsApp us: +1876-885-1099`;
-    window.open('https://wa.me/'+waNum+'?text='+encodeURIComponent(msg),'_blank');
+  if(waOpened){
+    toast('Tracking saved ✓ — WhatsApp opened');
+  } else {
+    toast('Tracking saved ✓');
+    alert('Tracking saved. No WhatsApp number found for this client — notify them manually.');
   }
 };
 
@@ -1443,36 +1448,47 @@ window.printLabel = function(order){
     `<div style="font-size:6pt;">${i.qty||1}x ${i.name||''} ${i.size||''}</div>`
   ).join('');
   const dateStr = parseOrderDate(o.date||o.createdAt, 'short');
-  document.getElementById('print-zone').innerHTML = `
-    <div id="thermal-label" style="width:76mm;min-height:96mm;max-height:96mm;overflow:hidden;font-family:monospace;padding:2mm;box-sizing:border-box;">
-      <table width="100%"><tr>
-        <td style="font-size:14pt;font-weight:bold;">Nc</td>
-        <td align="right"><div id="qr-thermal"></div></td>
-      </tr></table>
-      <div style="text-align:center;font-size:8pt;font-weight:bold;">NAJAH CHEMIST</div>
-      <div style="text-align:center;font-size:6pt;">Kingston, Jamaica · start@najahchemistja.com</div>
-      <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
-      <div style="font-size:7pt;font-weight:bold;">SHIP TO:</div>
-      <div style="font-size:9pt;font-weight:bold;">${o.clientName||o.client||o.customerName||''}</div>
-      <div style="font-size:7pt;">${o.address||o.deliveryAddress||o.customerAddress||o.deliveryLocation||'—'}</div>
-      <div style="font-size:7pt;">${o.whatsapp||o.phone||o.customerWhatsApp||'—'}</div>
-      <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
-      <div style="font-size:6pt;">Order: ${o.id||o.orderId||''} · ${dateStr}</div>
-      ${items}
-      <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
-      <div style="font-size:8pt;font-weight:bold;text-align:right;">TOTAL: J$${(parseFloat(o.total)||0).toLocaleString()}</div>
-      <div style="font-size:5.5pt;">najahchemistja.com &nbsp;&nbsp;&nbsp; ★ HANDLE WITH CARE</div>
-    </div>
-  `;
-  if(typeof QRCode !== 'undefined'){
-    new QRCode(document.getElementById('qr-thermal'),{
-      text:'https://najahchemistja.com',
-      width:45,height:45,
-      correctLevel:QRCode.CorrectLevel.L
-    });
-  }
-  setTimeout(()=>{ window.print(); },500);
-  window.addEventListener('afterprint', ()=>{ document.getElementById('print-zone').innerHTML=''; },{ once: true });
+  const win = window.open('','_blank','width=320,height=420');
+  win.document.write(`<!DOCTYPE html><html><head><title>Label ${o.id||''}</title>
+  <style>
+    @page { size: 80mm 100mm; margin: 2mm; }
+    body { margin:0; padding:2mm; font-family:monospace; font-size:7pt; width:76mm; }
+    .bold { font-weight:bold; }
+    .center { text-align:center; }
+    .right { text-align:right; }
+    .divider { border-top:1px dashed #000; margin:1.5mm 0; }
+    .large { font-size:12pt; }
+    .small { font-size:5.5pt; }
+  </style></head><body>
+  <table width="100%"><tr>
+    <td class="large bold">Nc</td>
+    <td align="right"><div id="qr"></div></td>
+  </tr></table>
+  <div class="center bold" style="font-size:8pt;">NAJAH CHEMIST</div>
+  <div class="center small">Kingston, Jamaica · start@najahchemistja.com</div>
+  <div class="divider"></div>
+  <div class="bold">SHIP TO:</div>
+  <div class="bold" style="font-size:9pt;">${o.clientName||o.client||o.customerName||''}</div>
+  <div>${o.address||o.deliveryAddress||o.customerAddress||o.deliveryLocation||'—'}</div>
+  <div>${o.whatsapp||o.phone||o.customerWhatsApp||'—'}</div>
+  <div class="divider"></div>
+  <div class="small">Order: ${o.id||o.orderId||''} · ${dateStr}</div>
+  ${items}
+  <div class="divider"></div>
+  <div class="bold right" style="font-size:8pt;">TOTAL: J$${(parseFloat(o.total)||0).toLocaleString()}</div>
+  <div class="small">najahchemistja.com &nbsp;&nbsp; ★ HANDLE WITH CARE</div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
+  <script>
+    window.onload = function() {
+      new QRCode(document.getElementById("qr"), {
+        text: "https://najahchemistja.com", width:45, height:45,
+        correctLevel: QRCode.CorrectLevel.L
+      });
+      setTimeout(function(){ window.print(); }, 600);
+    };
+  <\/script>
+  </body></html>`);
+  win.document.close();
 };
 
 // ── CONSULTATIONS ──
