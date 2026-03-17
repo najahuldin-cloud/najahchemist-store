@@ -53,7 +53,7 @@
   },
   "priceRange": "$$",
   "currenciesAccepted": "JMD, USD",
-  "paymentAccepted": "Bank Transfer, Lynk, Cash on Delivery",
+  "paymentAccepted": "Bank Transfer, Lynk",
   "openingHours": "Mo-Fr 09:00-17:00",
   "sameAs": [
     "https://www.instagram.com/najahchemist"
@@ -218,11 +218,16 @@ tr:hover td{background:var(--warm);}
 .info-row:last-child{border-bottom:none;}
 .benefit-tag{display:inline-block;background:var(--warm);border-radius:20px;padding:0.2rem 0.65rem;font-size:0.7rem;margin:0.18rem 0.12rem;}
 @media print {
-  @page { size: 80mm 100mm; margin: 0; }
-  html, body { width: 80mm; height: 100mm; overflow: hidden; margin: 0; padding: 0; }
-  body * { visibility: hidden; }
-  #print-zone, #print-zone * { visibility: visible; }
-  #print-zone { display: block !important; position: fixed !important; left: 0 !important; top: 0 !important; width: 80mm !important; background: white !important; }
+  /* individual label print */
+  body:not(.bulk-printing) { width: 80mm; height: 100mm; overflow: hidden; margin: 0; padding: 0; }
+  body:not(.bulk-printing) * { visibility: hidden; }
+  body:not(.bulk-printing) #print-zone, body:not(.bulk-printing) #print-zone * { visibility: visible; }
+  body:not(.bulk-printing) #print-zone { display: block !important; position: fixed !important; left: 0 !important; top: 0 !important; width: 80mm !important; background: white !important; }
+  /* bulk print */
+  body.bulk-printing { overflow: visible !important; height: auto !important; margin: 0; padding: 0; }
+  body.bulk-printing * { visibility: hidden; }
+  body.bulk-printing #bulk-print-zone { display: block !important; visibility: visible !important; position: absolute !important; left: 0 !important; top: 0 !important; background: white !important; }
+  body.bulk-printing #bulk-print-zone * { visibility: visible !important; }
 }
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:var(--light);border-radius:2px;}
 @media(max-width:900px){.g2,.g3,.g4{grid-template-columns:1fr 1fr;}}
@@ -721,7 +726,7 @@ tr:hover td{background:var(--warm);}
         <p style="margin:0.5rem 0 1rem;">Najah Chemist ships within Jamaica only. We do not currently offer international shipping.</p>
 
         <strong style="color:#0F0E0D;">3.2 Shipping Partners & Fees</strong>
-        <p style="margin:0.5rem 0 1rem;"><strong>Knutsford Express</strong> — J$500 bearer fee. Cash on Delivery available.<br>
+        <p style="margin:0.5rem 0 1rem;"><strong>Knutsford Express</strong> — J$500 bearer fee. Full payment required upfront.<br>
         <strong>Zipmail</strong> — approximately J$1,000 for packages under 9 lbs. Full payment required upfront.<br>
         <strong>Kingston & St. Andrew Delivery</strong> — from J$1,000.</p>
 
@@ -1937,6 +1942,7 @@ Add anything else you want the chatbot to know..."></textarea>
 </div>
 
 <div id="print-zone" style="display:none;"></div>
+<div id="bulk-print-zone" style="display:none;position:absolute;top:0;left:0;background:white;"></div>
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="module">
 // ════════════════════════════════════════════════════
 // NAJAH CHEMIST — Single clean script. No duplicates.
@@ -3101,14 +3107,29 @@ window.batchPrintLabels = function(){
       <div style="font-size:5.5pt;">najahchemistja.com &nbsp;&nbsp;&nbsp; ★ HANDLE WITH CARE</div>
     </div>`;
   }).join('');
-  const win = window.open('','_blank','width=302,height=378');
-  win.document.write(`<!DOCTYPE html><html><head><title>Batch Labels (${orders.length})</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
-  <style>@page{size:80mm 100mm;margin:0;}html,body{width:80mm;overflow:hidden;margin:0;padding:0;}<\/style>
-  </head><body>${labelsHtml}
-  <script>window.onload=function(){for(var i=0;i<${orders.length};i++){new QRCode(document.getElementById("qr-"+i),{text:"https://najahchemistja.com",width:45,height:45,correctLevel:QRCode.CorrectLevel.L});}setTimeout(function(){window.print();},800);};<\/script>
-  </body></html>`);
-  win.document.close();
+  const zone = document.getElementById('bulk-print-zone');
+  zone.innerHTML = labelsHtml;
+  zone.style.display = 'block';
+  zone.style.width = '80mm';
+  // inject label page size (overrides the default @page in the media block)
+  const ps = document.createElement('style');
+  ps.id = 'bulk-print-page-style';
+  ps.textContent = '@media print{@page{size:80mm 100mm;margin:0;}body.bulk-printing{width:80mm !important;}}';
+  document.head.appendChild(ps);
+  document.body.classList.add('bulk-printing');
+  // QRCode is already loaded on the page
+  for(let i=0;i<orders.length;i++){
+    const el=document.getElementById('qr-'+i);
+    if(el) new QRCode(el,{text:'https://najahchemistja.com',width:45,height:45,correctLevel:QRCode.CorrectLevel.L});
+  }
+  function cleanupLabels(){
+    document.body.classList.remove('bulk-printing');
+    zone.innerHTML=''; zone.style.display='none';
+    const p=document.getElementById('bulk-print-page-style'); if(p) p.remove();
+    window.removeEventListener('afterprint',cleanupLabels);
+  }
+  window.addEventListener('afterprint',cleanupLabels);
+  setTimeout(function(){ window.print(); },600);
   markBatchPrinted(Array.from(checks).map(cb=>cb.getAttribute('data-id')),'labelPrinted');
 };
 window.batchPrintReceipts = function(){
@@ -3153,13 +3174,24 @@ window.batchPrintReceipts = function(){
       <div style="text-align:center;font-size:8pt;color:#888;margin-top:14px;">Thank you for choosing Najah Chemist! · najahchemistja.com</div>
     </div>`;
   }).join('');
-  const win = window.open('','_blank','width=420,height=600');
-  win.document.write(`<!DOCTYPE html><html><head><title>Batch Receipts (${orders.length})</title>
-  <style>@page{size:A5;margin:10mm;}body{font-family:Arial,sans-serif;font-size:11pt;color:#000;margin:0;}<\/style>
-  </head><body>${receiptsHtml}
-  <script>setTimeout(function(){window.print();},400);<\/script>
-  </body></html>`);
-  win.document.close();
+  const zone = document.getElementById('bulk-print-zone');
+  zone.innerHTML = `<div style="font-family:Arial,sans-serif;font-size:11pt;color:#000;">${receiptsHtml}</div>`;
+  zone.style.display = 'block';
+  zone.style.width = 'auto';
+  // inject receipt page size
+  const ps = document.createElement('style');
+  ps.id = 'bulk-print-page-style';
+  ps.textContent = '@media print{@page{size:A5;margin:10mm;}body.bulk-printing{width:auto !important;height:auto !important;}}';
+  document.head.appendChild(ps);
+  document.body.classList.add('bulk-printing');
+  function cleanupReceipts(){
+    document.body.classList.remove('bulk-printing');
+    zone.innerHTML=''; zone.style.display='none';
+    const p=document.getElementById('bulk-print-page-style'); if(p) p.remove();
+    window.removeEventListener('afterprint',cleanupReceipts);
+  }
+  window.addEventListener('afterprint',cleanupReceipts);
+  setTimeout(function(){ window.print(); },400);
   markBatchPrinted(Array.from(checks).map(cb=>cb.getAttribute('data-id')),'receiptPrinted');
 };
 async function markBatchPrinted(ids, field){
