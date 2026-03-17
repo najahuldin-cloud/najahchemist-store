@@ -73,6 +73,7 @@
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAgqVirZbsbV-sa7oVMLtRSOXGgtRAetaA&libraries=places&callback=sfMapsReady" async defer></script>
 <style>
 :root{--black:#0F0E0D;--off:#FAFAF8;--warm:#F5F2ED;--warmer:#EDE8DF;--mid:#8A8480;--light:#DDD9D3;--border:#E8E4DE;--white:#FFFFFF;--green:#2D6A4F;--red:#DC2626;--blue:#1D4ED8;--gold:#B45309;--text:#1C1A18;}
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -1098,7 +1099,27 @@ tr:hover td{background:var(--warm);}
             <div class="sf-ship-opt-name">📦 Knutsford Express</div>
             <div class="sf-ship-opt-desc">Island-wide · You collect &amp; pay Knutsford fee at branch · We charge bearer fee only</div>
             <div class="sf-ship-extra" id="sf-knutsford-extra">
-              <input class="sf-fi" id="sf-knutsford-branch" placeholder="Which Knutsford branch? (e.g. Half Way Tree)" style="margin-top:0.4rem;margin-bottom:0;">
+              <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-top:0.5rem;margin-bottom:0.25rem;">Which Knutsford branch?</div>
+              <select class="sf-fi" id="sf-knutsford-branch" onchange="sfKnutsfordBranchChange()" style="margin-bottom:0;">
+                <option value="">— Select branch —</option>
+                <option>Half Way Tree</option>
+                <option>Cross Roads</option>
+                <option>Liguanea</option>
+                <option>Portmore</option>
+                <option>Spanish Town</option>
+                <option>Mandeville</option>
+                <option>Montego Bay</option>
+                <option>Ocho Rios</option>
+                <option>May Pen</option>
+                <option>Savanna-la-Mar</option>
+                <option>Old Harbour</option>
+                <option>Linstead</option>
+                <option>Constant Spring</option>
+                <option>New Kingston</option>
+                <option>Gutters</option>
+                <option value="Other">Other</option>
+              </select>
+              <input class="sf-fi" id="sf-knutsford-branch-other" placeholder="Enter your branch name" style="margin-top:0.35rem;margin-bottom:0;display:none;">
             </div>
           </div>
           <div class="sf-ship-opt-fee" style="color:#065F46;">J$500<br><span style="font-size:0.62rem;font-weight:400;color:#8A8480;">bearer fee</span></div>
@@ -1110,7 +1131,22 @@ tr:hover td{background:var(--warm);}
             <div class="sf-ship-opt-name">📮 Zipmail</div>
             <div class="sf-ship-opt-desc">Island-wide · Under 10lbs · Bearer J$500 + shipping J$500</div>
             <div class="sf-ship-extra" id="sf-zipmail-extra">
-              <input class="sf-fi" id="sf-zipmail-branch" placeholder="Which Zipmail location? (e.g. Cross Roads)" style="margin-top:0.4rem;margin-bottom:0;">
+              <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-top:0.5rem;margin-bottom:0.25rem;">Which Zipmail location?</div>
+              <select class="sf-fi" id="sf-zipmail-location" onchange="sfZipmailLocationChange()" style="margin-bottom:0;">
+                <option value="">— Select location —</option>
+                <option>Kingston (Downtown)</option>
+                <option>New Kingston</option>
+                <option>Half Way Tree</option>
+                <option>Portmore</option>
+                <option>Spanish Town</option>
+                <option>Mandeville</option>
+                <option>Montego Bay</option>
+                <option>Ocho Rios</option>
+                <option>May Pen</option>
+                <option>Old Harbour</option>
+                <option value="Other">Other</option>
+              </select>
+              <input class="sf-fi" id="sf-zipmail-location-other" placeholder="Enter your Zipmail location" style="margin-top:0.35rem;margin-bottom:0;display:none;">
             </div>
           </div>
           <div class="sf-ship-opt-fee">~J$1,000</div>
@@ -1122,7 +1158,8 @@ tr:hover td{background:var(--warm);}
             <div class="sf-ship-opt-name">🏠 Kingston / St. Andrew Delivery</div>
             <div class="sf-ship-opt-desc">Hand delivery · Kingston &amp; St. Andrew only · Starts at J$1,000</div>
             <div class="sf-ship-extra" id="sf-kingston-extra">
-              <input class="sf-fi" id="sf-delivery-address" placeholder="Delivery address (street, community, parish)" style="margin-top:0.4rem;margin-bottom:0;">
+              <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-top:0.5rem;margin-bottom:0.25rem;">Delivery Address</div>
+              <input class="sf-fi" id="sf-delivery-address" placeholder="Start typing your address..." autocomplete="off" style="margin-bottom:0;">
             </div>
           </div>
           <div class="sf-ship-opt-fee">From<br>J$1,000</div>
@@ -3162,14 +3199,16 @@ window.printLabel = function(order){
     return prod ? `<div style="font-size:7pt;">${prod}</div>` : '';
   })();
   const dateStr = parseOrderDate(o.date||o.createdAt, 'short');
-  // Build shipping line; for admin Knutsford/Zipmail orders fold customerAddress
-  // in as branch/location so it doesn't get lost on a separate line.
+  // Build shipping line; prefer shippingDetail (new orders), fall back to
+  // deliveryLocation parsing (old orders) or shipMethod (admin orders).
   let addrInShipLine = false;
   const shipLine = (() => {
+    const sd = (o.shippingDetail||'').trim();
+    if(sd) return sd;
     const dl = (o.deliveryLocation||'').trim();
     const sm = (o.shipMethod||'').trim();
     if(dl){
-      // website orders: "Knutsford Express - Gutters" → "Knutsford Express — Gutters"
+      // old website orders: "Knutsford Express - Gutters" → "Knutsford Express — Gutters"
       let s = dl.replace(/\s*-\s*/, ' — ');
       return s.replace('Kingston/St. Andrew —', 'Kingston/St. Andrew Delivery —');
     }
@@ -3845,8 +3884,68 @@ window.sfSelectShip = function(type, el) {
   if (radio) radio.checked = true;
   const extra = document.getElementById('sf-'+type+'-extra');
   if (extra) extra.classList.add('show');
+  if (type === 'kingston' && window._sfMapsLoaded) sfInitKingstonAutocomplete();
   sfRenderCartFooter();
 };
+
+// ── Google Maps Places autocomplete for Kingston delivery ──────────────
+window.sfMapsReady = function() {
+  window._sfMapsLoaded = true;
+  if (sfSelectedShip === 'kingston') sfInitKingstonAutocomplete();
+};
+function sfInitKingstonAutocomplete() {
+  if (!window.google || !window.google.maps || !window.google.maps.places) return;
+  const input = document.getElementById('sf-delivery-address');
+  if (!input || input._sfAc) return;
+  try {
+    const ac = new google.maps.places.Autocomplete(input, {
+      componentRestrictions: { country: 'jm' },
+      fields: ['formatted_address']
+    });
+    ac.addListener('place_changed', function() {
+      const place = ac.getPlace();
+      if (place && place.formatted_address) input.value = place.formatted_address;
+    });
+    input._sfAc = ac;
+  } catch(e) { /* fallback: plain text input still works */ }
+}
+
+window.sfKnutsfordBranchChange = function() {
+  const sel = document.getElementById('sf-knutsford-branch');
+  const other = document.getElementById('sf-knutsford-branch-other');
+  if (sel && other) other.style.display = sel.value === 'Other' ? 'block' : 'none';
+};
+
+window.sfZipmailLocationChange = function() {
+  const sel = document.getElementById('sf-zipmail-location');
+  const other = document.getElementById('sf-zipmail-location-other');
+  if (sel && other) other.style.display = sel.value === 'Other' ? 'block' : 'none';
+};
+
+function sfGetShippingInfo() {
+  let knutsfordBranch = '', zipmailLocation = '', deliveryAddress = '', shippingDetail = '', deliveryLocation = '', deliveryFee = 0;
+  if (sfSelectedShip === 'knutsford') {
+    const sel = (document.getElementById('sf-knutsford-branch')?.value||'').trim();
+    const other = (document.getElementById('sf-knutsford-branch-other')?.value||'').trim();
+    knutsfordBranch = sel === 'Other' ? other : sel;
+    shippingDetail = 'Knutsford Express' + (knutsfordBranch ? ' — ' + knutsfordBranch : '');
+    deliveryLocation = 'Knutsford Express' + (knutsfordBranch ? ' - ' + knutsfordBranch : '');
+    deliveryFee = 500;
+  } else if (sfSelectedShip === 'zipmail') {
+    const sel = (document.getElementById('sf-zipmail-location')?.value||'').trim();
+    const other = (document.getElementById('sf-zipmail-location-other')?.value||'').trim();
+    zipmailLocation = sel === 'Other' ? other : sel;
+    shippingDetail = 'Zipmail' + (zipmailLocation ? ' — ' + zipmailLocation : '');
+    deliveryLocation = 'Zipmail' + (zipmailLocation ? ' - ' + zipmailLocation : '');
+    deliveryFee = 1000;
+  } else if (sfSelectedShip === 'kingston') {
+    deliveryAddress = (document.getElementById('sf-delivery-address')?.value||'').trim();
+    shippingDetail = 'Kingston/St. Andrew Delivery' + (deliveryAddress ? ' — ' + deliveryAddress : '');
+    deliveryLocation = 'Kingston/St. Andrew' + (deliveryAddress ? ' - ' + deliveryAddress : '');
+    deliveryFee = 1000;
+  }
+  return { knutsfordBranch, zipmailLocation, deliveryAddress, shippingDetail, deliveryLocation, deliveryFee };
+}
 
 function sfRenderCart() {
   const el = document.getElementById('sf-cart-items');
@@ -4008,23 +4107,21 @@ window.sfCheckoutWA = function() {
   const termsCheck = document.getElementById('sf-terms-check');
   if (termsCheck && !termsCheck.checked) { sfShowToast('Please agree to the Terms & Conditions to continue'); return; }
 
-  let shipDetail = '', deliveryLocation = '', deliveryFee = 0;
+  // Validate specific branch / location / address
   if (sfSelectedShip === 'knutsford') {
-    const branch = (document.getElementById('sf-knutsford-branch')?.value||'').trim();
-    shipDetail = 'Knutsford Express'+(branch?' - '+branch+' branch':'')+' (bearer fee J$500)';
-    deliveryLocation = 'Knutsford Express'+(branch?' - '+branch:'');
-    deliveryFee = 500;
+    const sel = (document.getElementById('sf-knutsford-branch')?.value||'').trim();
+    const other = (document.getElementById('sf-knutsford-branch-other')?.value||'').trim();
+    if (!sel || (sel === 'Other' && !other)) { sfShowToast('Please select your Knutsford branch'); return; }
   } else if (sfSelectedShip === 'zipmail') {
-    const loc = (document.getElementById('sf-zipmail-branch')?.value||'').trim();
-    shipDetail = 'Zipmail'+(loc?' - '+loc:'')+' (~J$1,000 under 10lbs)';
-    deliveryLocation = 'Zipmail'+(loc?' - '+loc:'');
-    deliveryFee = 1000;
-  } else {
+    const sel = (document.getElementById('sf-zipmail-location')?.value||'').trim();
+    const other = (document.getElementById('sf-zipmail-location-other')?.value||'').trim();
+    if (!sel || (sel === 'Other' && !other)) { sfShowToast('Please select your Zipmail location'); return; }
+  } else if (sfSelectedShip === 'kingston') {
     const addr = (document.getElementById('sf-delivery-address')?.value||'').trim();
-    shipDetail = 'Kingston/St. Andrew Delivery'+(addr?' - Address: '+addr:'')+' (from J$1,000)';
-    deliveryLocation = 'Kingston/St. Andrew'+(addr?' - '+addr:'');
-    deliveryFee = 1000;
+    if (!addr) { sfShowToast('Please enter your delivery address'); return; }
   }
+  const { knutsfordBranch, zipmailLocation, deliveryAddress, shippingDetail, deliveryLocation, deliveryFee } = sfGetShippingInfo();
+  const shipDetail = shippingDetail;
 
   const sub = sfCart.reduce((s,i)=>s+i.price*i.qty,0);
   const total = sub + deliveryFee;
@@ -4067,7 +4164,7 @@ window.sfCheckoutWA = function() {
     // Save to Firestore so order appears in admin panel
     if (typeof window.saveOrderSilent === 'function') {
       const totalQty = cartSnapshot.reduce(function(s,i){return s+i.qty;},0);
-      await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Unpaid',status:'Pending',date:date,total:total,payMethod:'Bank/Lynk',phone:phone||'—',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee});
+      await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Unpaid',status:'Pending',date:date,total:total,payMethod:'Bank/Lynk',phone:phone||'—',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee,knutsfordBranch:knutsfordBranch,zipmailLocation:zipmailLocation,deliveryAddress:deliveryAddress,shippingDetail:shippingDetail});
     }
     if (custEmail) {
       try { await saveSubscriber(name, custEmail, 'checkout'); } catch(e) {}
@@ -4099,23 +4196,21 @@ window.sfCheckoutFygaro = function() {
   const termsCheck = document.getElementById('sf-terms-check');
   if (termsCheck && !termsCheck.checked) { sfShowToast('Please agree to the Terms & Conditions to continue'); return; }
 
-  let shipDetail = '', deliveryLocation = '', deliveryFee = 0;
+  // Validate specific branch / location / address
   if (sfSelectedShip === 'knutsford') {
-    const branch = (document.getElementById('sf-knutsford-branch')?.value||'').trim();
-    shipDetail = 'Knutsford Express'+(branch?' - '+branch+' branch':'')+' (bearer fee J$500)';
-    deliveryLocation = 'Knutsford Express'+(branch?' - '+branch:'');
-    deliveryFee = 500;
+    const sel = (document.getElementById('sf-knutsford-branch')?.value||'').trim();
+    const other = (document.getElementById('sf-knutsford-branch-other')?.value||'').trim();
+    if (!sel || (sel === 'Other' && !other)) { sfShowToast('Please select your Knutsford branch'); return; }
   } else if (sfSelectedShip === 'zipmail') {
-    const loc = (document.getElementById('sf-zipmail-branch')?.value||'').trim();
-    shipDetail = 'Zipmail'+(loc?' - '+loc:'')+' (~J$1,000 under 10lbs)';
-    deliveryLocation = 'Zipmail'+(loc?' - '+loc:'');
-    deliveryFee = 1000;
-  } else {
+    const sel = (document.getElementById('sf-zipmail-location')?.value||'').trim();
+    const other = (document.getElementById('sf-zipmail-location-other')?.value||'').trim();
+    if (!sel || (sel === 'Other' && !other)) { sfShowToast('Please select your Zipmail location'); return; }
+  } else if (sfSelectedShip === 'kingston') {
     const addr = (document.getElementById('sf-delivery-address')?.value||'').trim();
-    shipDetail = 'Kingston/St. Andrew Delivery'+(addr?' - Address: '+addr:'')+' (from J$1,000)';
-    deliveryLocation = 'Kingston/St. Andrew'+(addr?' - '+addr:'');
-    deliveryFee = 1000;
+    if (!addr) { sfShowToast('Please enter your delivery address'); return; }
   }
+  const { knutsfordBranch, zipmailLocation, deliveryAddress, shippingDetail, deliveryLocation, deliveryFee } = sfGetShippingInfo();
+  const shipDetail = shippingDetail;
 
   const sub = sfCart.reduce((s,i)=>s+i.price*i.qty,0);
   const grandTotal = sub + deliveryFee;
@@ -4157,7 +4252,7 @@ window.sfCheckoutFygaro = function() {
     } catch(e) { console.error('Order save failed:', e); }
     if (typeof window.saveOrderSilent === 'function') {
       const totalQty = cartSnapshot.reduce(function(s,i){return s+i.qty;},0);
-      await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Awaiting Payment',status:'Pending',date:date,total:cardTotal,payMethod:'Fygaro Card',phone:phone||'—',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee});
+      await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Awaiting Payment',status:'Pending',date:date,total:cardTotal,payMethod:'Fygaro Card',phone:phone||'—',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee,knutsfordBranch:knutsfordBranch,zipmailLocation:zipmailLocation,deliveryAddress:deliveryAddress,shippingDetail:shippingDetail});
     }
     if (custEmail) {
       try { await saveSubscriber(name, custEmail, 'checkout'); } catch(e) {}
