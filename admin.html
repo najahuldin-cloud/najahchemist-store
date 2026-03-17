@@ -730,6 +730,7 @@ async function initAdmin() {
     query(collection(db,'orders'), orderBy('createdAt','desc')),
     snap => {
       ORDERS = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+      window.ordersMap = {}; ORDERS.forEach(o => { window.ordersMap[o.id||o.orderId||''] = o; });
       renderOrdersTable();
       renderDashRecentOrders();
       renderLabelsTable();
@@ -841,10 +842,11 @@ function renderOrdersTable(){
     <td>${formatDate(o.date||o.createdAt)}</td>
     <td style="font-size:0.72rem;color:${o.tracking?'#16a34a':'#9CA3AF'};">${o.tracking?'📦 '+o.tracking.courier:'—'}</td>
     <td class="btn-group">
-      <button class="btn btn-sm btn-gr" onclick="printOrderReceipt(${JSON.stringify(o).replace(/"/g,'&quot;')})">🧾</button>
-      <button class="btn btn-sm" style="background:#1D4ED8;color:white;border:none;padding:0.25rem 0.5rem;border-radius:6px;cursor:pointer;font-size:0.78rem;" onclick="sendAdminReceipt(${JSON.stringify(o).replace(/"/g,'&quot;')})">📧</button>
-      <button class="btn btn-sm btn-bl" onclick="printLabel(${JSON.stringify(o).replace(/"/g,'&quot;')})">🏷</button>
-      <button class="btn btn-sm" style="background:#166534;color:white;border:none;padding:0.25rem 0.5rem;border-radius:6px;cursor:pointer;font-size:0.78rem;" onclick="openAdminTrackingModal(${JSON.stringify(o).replace(/"/g,'&quot;')})">🚚</button>
+      <button class="btn btn-sm btn-gr" onclick="printReceipt(window.ordersMap['${o.id||o.orderId||''}'])">🧾</button>
+      <button class="btn btn-sm" style="background:#1D4ED8;color:white;border:none;padding:0.25rem 0.5rem;border-radius:6px;cursor:pointer;font-size:0.78rem;" onclick="sendAdminReceipt(window.ordersMap['${o.id||o.orderId||''}'])">📧</button>
+      <button class="btn btn-sm btn-bl" onclick="printLabel(window.ordersMap['${o.id||o.orderId||''}'])">🏷</button>
+      <button class="btn btn-sm" style="background:#166534;color:white;border:none;padding:0.25rem 0.5rem;border-radius:6px;cursor:pointer;font-size:0.78rem;" onclick="openAdminTrackingModal(window.ordersMap['${o.id||o.orderId||''}'])">🚚</button>
+      <button class="btn btn-sm btn-ol" onclick="openEditOrder(window.ordersMap['${o.id||o.orderId||''}'])">✏️</button>
       <button class="btn btn-sm btn-rd" onclick="deleteOrder('${o._docId}')">🗑</button>
     </td>
   </tr>`).join('');
@@ -1409,6 +1411,7 @@ window.saveAdminTracking = async function(){
     if(docId) await updateDoc(doc(db,'orders',docId),{tracking, status:'Shipped'});
     const idx = ORDERS.findIndex(x=>(x.id||x.orderId)===orderId);
     if(idx>-1){ ORDERS[idx].tracking=tracking; ORDERS[idx].status='Shipped'; }
+    if(window.ordersMap&&window.ordersMap[orderId]){ window.ordersMap[orderId].tracking=tracking; window.ordersMap[orderId].status='Shipped'; }
     renderOrdersTable();
   } catch(e){ toast('Save failed: '+e.message); return; }
   window.closeAdminTracking();
@@ -1622,6 +1625,81 @@ window.printOrderReceipt = function(order){
   w.document.close();
   w.onafterprint = () => w.close();
   setTimeout(() => w.print(), 200);
+};
+
+window.printReceipt = function(order){
+  if(!order){ alert('Order not found'); return; }
+  const items = (order.items||[]).map(i=>
+    `<tr><td>${i.name||''} ${i.size||''}</td><td align="right">x${i.qty||1}</td></tr>`
+  ).join('');
+  const dateVal = order.date||order.createdAt;
+  const dateStr = dateVal ? new Date(dateVal.seconds ? dateVal.seconds*1000 : dateVal).toLocaleString('en-JM') : '';
+  const win = window.open('','_blank','width=420,height=600');
+  win.document.write(`<!DOCTYPE html><html><head><title>Receipt ${order.id||''}</title>
+  <style>
+    @page { size: A5; margin: 10mm; }
+    body { font-family: Arial, sans-serif; font-size: 11pt; color: #000; margin: 0; padding: 12px; }
+    h2 { text-align:center; font-size:14pt; margin:0 0 2px; }
+    .sub { text-align:center; font-size:9pt; color:#555; margin-bottom:10px; }
+    table { width:100%; border-collapse:collapse; }
+    td { padding:3px 0; font-size:10pt; }
+    hr { border:none; border-top:1px dashed #000; margin:8px 0; }
+    .total { font-size:13pt; font-weight:bold; text-align:right; margin-top:6px; }
+    .footer { text-align:center; font-size:8pt; color:#888; margin-top:14px; }
+  </style></head><body>
+  <h2>Najah Chemist</h2>
+  <div class="sub">Jamaica's Skincare Manufacturer<br>najahchemistja.com · @najahchemist</div>
+  <hr>
+  <table>
+    <tr><td>Order ID</td><td align="right"><b>${order.id||'—'}</b></td></tr>
+    <tr><td>Date</td><td align="right">${dateStr}</td></tr>
+    <tr><td>Client</td><td align="right">${order.clientName||order.client||order.customerName||'—'}</td></tr>
+    <tr><td>Payment Method</td><td align="right">${order.payMethod||order.paymentMethod||'—'}</td></tr>
+    <tr><td>Payment Status</td><td align="right">${order.paymentStatus||order.payStatus||order.payment||'—'}</td></tr>
+  </table>
+  <hr>
+  <b>ORDER DETAILS</b>
+  <table style="margin-top:6px;">${items||`<tr><td>${order.product||'—'}</td></tr>`}</table>
+  <hr>
+  <div class="total">Total: J$${(parseFloat(order.total)||0).toLocaleString()}</div>
+  <div class="footer">Thank you for choosing Najah Chemist! · najahchemistja.com</div>
+  </body></html>`);
+  win.document.close();
+  setTimeout(()=>{ win.print(); },350);
+};
+
+window.openEditOrder = function(order){
+  if(!order){ alert('Order not found'); return; }
+  resetOrderForm();
+  document.getElementById('order-modal-title').textContent = 'Edit Order — '+(order.id||order.orderId||'');
+  document.getElementById('edit-order-id').value = order._docId||'';
+  document.getElementById('no-client').value = order.client||order.customerName||'';
+  document.getElementById('no-phone').value = order.customerWhatsApp||order.phone||'';
+  document.getElementById('no-addr').value = order.customerAddress||order.deliveryLocation||'';
+  document.getElementById('no-notes').value = order.notes||'';
+  const payEl = document.getElementById('no-pay'); if(payEl) payEl.value = order.payMethod||'Bank Transfer';
+  const shipEl = document.getElementById('no-ship'); if(shipEl) shipEl.value = order.shipMethod||'Knutsford Express';
+  const payStEl = document.getElementById('no-payment-status'); if(payStEl) payStEl.value = order.paymentStatus||order.payment||'Unpaid';
+  document.getElementById('order-items-container').innerHTML = '';
+  if(Array.isArray(order.items)&&order.items.length){
+    order.items.forEach(item=>{
+      addOrderItemRow();
+      const rows = document.querySelectorAll('#order-items-container .order-item-row');
+      const row = rows[rows.length-1];
+      const sel = row.querySelector('select');
+      const sizeInp = row.querySelector('[data-role="size"]');
+      const qtyInp = row.querySelector('[data-role="qty"]');
+      const priceInp = row.querySelector('[data-role="price"]');
+      if(sel) sel.value = item.productId||'';
+      if(sizeInp) sizeInp.value = item.size||'';
+      if(qtyInp) qtyInp.value = item.qty||1;
+      if(priceInp) priceInp.value = item.price||0;
+    });
+  } else {
+    addOrderItemRow();
+  }
+  recalcOrderTotal();
+  openM('m-new-order');
 };
 
 // ── BEST SELLERS MANAGER ──

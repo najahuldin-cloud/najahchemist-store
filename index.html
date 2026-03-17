@@ -1683,7 +1683,8 @@ Add anything else you want the chatbot to know..."></textarea>
 <div class="overlay" id="m-new-order">
   <div class="modal">
     <button class="mcl" onclick="closeM('m-new-order')">×</button>
-    <h2>New Order</h2>
+    <h2 id="new-order-title">New Order</h2>
+    <input type="hidden" id="edit-order-id">
     <div class="fg"><label class="fl">Client Name</label><input class="fi" id="no-c" placeholder="Name or brand"></div>
     <div class="fg"><label class="fl">Email</label><input class="fi" id="no-e" type="email" placeholder="client@email.com"></div>
     <div class="fg"><label class="fl">Product</label><select class="fs" id="no-p" onchange="updateSizeOpts()">
@@ -1964,6 +1965,7 @@ onAuthStateChanged(auth, async (user) => {
           const dbO = snap.docs.map(d => ({...d.data(), dbId: d.id}));
           // Replace DB_ORDERS with Firestore data, keep local-only rows at the end
           DB_ORDERS = [...dbO, ...DB_ORDERS.filter(o => !dbO.find(d => d.id === o.id))];
+          window.ordersMap = {}; DB_ORDERS.forEach(o => { window.ordersMap[o.id||''] = o; });
           console.log(`[Najah] Orders snapshot: ${dbO.length} orders`);
           renderOrdersTable(); updateBadges();
         },
@@ -2425,10 +2427,11 @@ function renderOrdersTable(){
     <td><span style="font-size:0.72rem;color:${o.tracking?'#16a34a':'#9CA3AF'};">${o.tracking?'📦 '+o.tracking.courier:'—'}</span></td>
     <td style="white-space:nowrap;">
       <button class="btn-gh btn-xs" onclick="showReceipt('${o.id}','${o.client}','${o.product}',${o.qty},${o.total||0},'${o.payMethod||o.payment}','${o.date}')">View</button>
-      <button class="btn btn-pr btn-xs" onclick="printR('${o.id}')">🖨</button>
-      <button class="btn btn-xs" style="background:#1D4ED8;color:white;border:none;" onclick="printLabel(${JSON.stringify(o).replace(/"/g,'&quot;')})">🏷</button>
+      <button class="btn btn-pr btn-xs" onclick="printReceipt(window.ordersMap['${o.id}'])">🖨</button>
+      <button class="btn btn-xs" style="background:#1D4ED8;color:white;border:none;" onclick="printLabel(window.ordersMap['${o.id}'])">🏷</button>
       <button class="btn btn-ol btn-xs" onclick="sendOrderReceipt('${o.id}')">📧</button>
-      <button class="btn btn-xs" style="background:#166534;color:white;border:none;" onclick="openTrackingModal('${o.id}')">🚚</button>
+      <button class="btn btn-xs" style="background:#166534;color:white;border:none;" onclick="openTrackingModal(window.ordersMap['${o.id}'])">🚚</button>
+      <button class="btn btn-xs" style="background:#B45309;color:white;border:none;" onclick="openEditOrder(window.ordersMap['${o.id}'])">✏️</button>
     </td></tr>`;
   }).join('');
   // Dash recent orders
@@ -2488,19 +2491,14 @@ window.sendOrderReceipt = async function(id) {
   } catch(e) { showToast('Send failed: ' + (e.message||'Network error')); }
 };
 
-window.openTrackingModal = function(orderId) {
+window.openTrackingModal = function(orderOrId) {
+  const o = (typeof orderOrId==='object'&&orderOrId!==null) ? orderOrId : (DB_ORDERS.find(x=>x.id===orderOrId)||{id:orderOrId});
+  const orderId = o.id||orderOrId;
   document.getElementById('trk-order-id').value = orderId;
-  document.getElementById('trk-num').value = '';
-  document.getElementById('trk-notes').value = '';
-  document.getElementById('trk-date').value = '';
-  document.getElementById('trk-courier').value = 'Knutsford Express';
-  const order = DB_ORDERS.find(o=>o.id===orderId);
-  if (order && order.tracking) {
-    document.getElementById('trk-courier').value = order.tracking.courier||'Knutsford Express';
-    document.getElementById('trk-num').value = order.tracking.trackingNumber||'';
-    document.getElementById('trk-date').value = order.tracking.estimatedDelivery||'';
-    document.getElementById('trk-notes').value = order.tracking.notes||'';
-  }
+  document.getElementById('trk-courier').value = o.tracking?.courier||'Knutsford Express';
+  document.getElementById('trk-num').value = o.tracking?.trackingNumber||'';
+  document.getElementById('trk-date').value = o.tracking?.estimatedDelivery||'';
+  document.getElementById('trk-notes').value = o.tracking?.notes||'';
   openM('m-tracking');
 };
 
@@ -2522,6 +2520,7 @@ window.saveTracking = async function() {
     snap.docs.forEach(async d => { if((d.data().id||d.data().orderId)===orderId) await updateDoc(doc(db,'orders',d.id),{tracking, status:'Shipped'}); });
     const idx = DB_ORDERS.findIndex(o=>o.id===orderId);
     if(idx>-1){ DB_ORDERS[idx].tracking=tracking; DB_ORDERS[idx].status='Shipped'; }
+    if(window.ordersMap&&window.ordersMap[orderId]){ window.ordersMap[orderId].tracking=tracking; window.ordersMap[orderId].status='Shipped'; }
   } catch(e) { console.error('Tracking save error:',e); }
   renderOrdersTable();
   closeM('m-tracking');
@@ -2542,14 +2541,49 @@ window.createOrder = async function(){
   const p=document.getElementById('no-p').value;
   const q=parseInt(document.getElementById('no-q').value)||1;
   const sz=document.getElementById('size-fg').style.display!=='none'?document.getElementById('no-sz').value:'—';
+  const pay=document.getElementById('no-pay').value;
+  const nt=document.getElementById('no-nt').value;
+  const src=document.getElementById('no-src').value;
+  const editId=document.getElementById('edit-order-id').value;
+  if(editId){
+    const idx=DB_ORDERS.findIndex(o=>o.id===editId);
+    const updated={...(DB_ORDERS[idx]||{}),client:n,product:p,size:sz,qty:q,source:src,payMethod:pay,notes:nt};
+    if(idx>-1) DB_ORDERS[idx]=updated;
+    if(window.ordersMap) window.ordersMap[editId]=updated;
+    try{
+      const snap=await getDocs(collection(db,'orders'));
+      snap.docs.forEach(async d=>{if((d.data().id||d.data().orderId)===editId) await updateDoc(doc(db,'orders',d.id),{client:n,product:p,size:sz,qty:q,source:src,payMethod:pay,notes:nt});});
+    }catch(e){console.error(e);}
+    renderOrdersTable(); updateBadges();
+    document.getElementById('edit-order-id').value='';
+    document.getElementById('new-order-title').textContent='New Order';
+    closeM('m-new-order'); return;
+  }
   const order={id:'NC-'+Math.floor(Math.random()*9000+1000),client:n,product:p,size:sz,qty:q,
-    source:document.getElementById('no-src').value,payment:'Unpaid',status:'Pending',
+    source:src,payment:'Unpaid',status:'Pending',
     date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}),total:0,
-    payMethod:document.getElementById('no-pay').value,notes:document.getElementById('no-nt').value};
+    payMethod:pay,notes:nt};
   DB_ORDERS.unshift(order);
+  if(window.ordersMap) window.ordersMap[order.id]=order;
   renderOrdersTable(); updateBadges();
   await saveOrderToDB(order);
   closeM('m-new-order');
+};
+
+window.openEditOrder = function(order){
+  if(!order){ alert('Order not found'); return; }
+  document.getElementById('new-order-title').textContent='Edit Order — '+(order.id||'');
+  document.getElementById('edit-order-id').value=order.id||'';
+  document.getElementById('no-c').value=order.client||order.customerName||'';
+  document.getElementById('no-e').value=order.email||'';
+  const pSel=document.getElementById('no-p');
+  for(let opt of pSel.options){if(opt.value===order.product||opt.text.includes(order.product||'')){pSel.value=opt.value;break;}}
+  document.getElementById('no-q').value=order.qty||1;
+  document.getElementById('no-pay').value=order.payMethod||'Bank Transfer';
+  document.getElementById('no-nt').value=order.notes||'';
+  updateSizeOpts();
+  if(order.size&&order.size!=='—'){document.getElementById('no-sz').value=order.size;}
+  openM('m-new-order');
 };
 
 window.createAndPrint = async function(){
@@ -2898,24 +2932,45 @@ window.showReceipt = function(id,client,product,qty,total,pay,date){
   openM('m-receipt');
 };
 
-window.printReceipt = function(){
-  const html = document.getElementById('receipt-content').innerHTML;
-  const w = window.open('','_print','width=600,height=700');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-    @page{size:A5;margin:10mm;}
-    *{box-sizing:border-box;}body{margin:0;font-family:'Outfit',Arial,sans-serif;font-size:0.84rem;}
-    .receipt{background:#fff;border:1px solid #E8E4DE;border-radius:10px;padding:1.75rem;font-size:0.84rem;}
-    .rcpt-hdr{text-align:center;margin-bottom:1.1rem;padding-bottom:1rem;border-bottom:2px dashed #E8E4DE;}
-    .rcpt-logo{display:flex;align-items:center;justify-content:center;gap:0.55rem;margin-bottom:0.35rem;}
-    .rcpt-nc{width:32px;height:32px;background:#0F0E0D;display:flex;align-items:center;justify-content:center;}
-    .rcpt-nc span{color:#fff;font-weight:700;font-size:0.78rem;}
-    .rcpt-row{display:flex;justify-content:space-between;padding:0.28rem 0;border-bottom:1px solid #E8E4DE;}
-    .rcpt-total{font-weight:700;font-size:0.98rem;padding-top:0.45rem;}
-    .rcpt-footer{text-align:center;margin-top:0.85rem;padding-top:0.75rem;border-top:2px dashed #E8E4DE;font-size:0.73rem;color:#6B7280;}
-  </style></head><body>${html}</body></html>`);
-  w.document.close();
-  w.onafterprint = () => w.close();
-  setTimeout(() => w.print(), 200);
+window.printReceipt = function(order){
+  if(!order){ alert('Order not found'); return; }
+  const items = (order.items||[]).map(i=>
+    `<tr><td>${i.name||''} ${i.size||''}</td><td align="right">x${i.qty||1}</td></tr>`
+  ).join('');
+  const dateVal = order.date||order.createdAt;
+  const dateStr = dateVal ? new Date(dateVal.seconds ? dateVal.seconds*1000 : dateVal).toLocaleString('en-JM') : '';
+  const win = window.open('','_blank','width=420,height=600');
+  win.document.write(`<!DOCTYPE html><html><head><title>Receipt ${order.id||''}</title>
+  <style>
+    @page { size: A5; margin: 10mm; }
+    body { font-family: Arial, sans-serif; font-size: 11pt; color: #000; margin: 0; padding: 12px; }
+    h2 { text-align:center; font-size:14pt; margin:0 0 2px; }
+    .sub { text-align:center; font-size:9pt; color:#555; margin-bottom:10px; }
+    table { width:100%; border-collapse:collapse; }
+    td { padding:3px 0; font-size:10pt; }
+    hr { border:none; border-top:1px dashed #000; margin:8px 0; }
+    .total { font-size:13pt; font-weight:bold; text-align:right; margin-top:6px; }
+    .footer { text-align:center; font-size:8pt; color:#888; margin-top:14px; }
+  </style></head><body>
+  <h2>Najah Chemist</h2>
+  <div class="sub">Jamaica's Skincare Manufacturer<br>najahchemistja.com · @najahchemist</div>
+  <hr>
+  <table>
+    <tr><td>Order ID</td><td align="right"><b>${order.id||'—'}</b></td></tr>
+    <tr><td>Date</td><td align="right">${dateStr}</td></tr>
+    <tr><td>Client</td><td align="right">${order.clientName||order.client||'—'}</td></tr>
+    <tr><td>Payment Method</td><td align="right">${order.payMethod||order.paymentMethod||'—'}</td></tr>
+    <tr><td>Payment Status</td><td align="right">${order.paymentStatus||order.payment||'—'}</td></tr>
+  </table>
+  <hr>
+  <b>ORDER DETAILS</b>
+  <table style="margin-top:6px;">${items||`<tr><td>${order.product||'—'}</td></tr>`}</table>
+  <hr>
+  <div class="total">Total: J$${(parseFloat(order.total)||0).toLocaleString()}</div>
+  <div class="footer">Thank you for choosing Najah Chemist! · najahchemistja.com</div>
+  </body></html>`);
+  win.document.close();
+  setTimeout(()=>{ win.print(); },350);
 };
 
 window.printR = function(orderOrId){
