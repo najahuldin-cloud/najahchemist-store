@@ -123,11 +123,11 @@ select.finp{cursor:pointer;}
 
 /* ── SHIPPING LABEL PRINT ── */
 @media print {
-  @page { size: 80mm 100mm; margin: 2mm; }
+  @page { size: 80mm 100mm; margin: 0; }
   body { margin: 0; }
-  body > * { display: none !important; visibility: hidden !important; }
-  #print-zone { display: block !important; visibility: visible !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 80mm !important; z-index: 99999 !important; background: white !important; }
-  #print-zone * { visibility: visible !important; }
+  body * { visibility: hidden; }
+  #print-zone, #print-zone * { visibility: visible; }
+  #print-zone { display: block !important; position: fixed !important; left: 0 !important; top: 0 !important; width: 80mm !important; background: white !important; }
 }
 .label-box{border:2px solid var(--black);border-radius:4px;padding:1.2rem;max-width:420px;font-size:0.78rem;font-family:'Outfit',sans-serif;}
 .label-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1.5px solid var(--black);padding-bottom:0.7rem;margin-bottom:0.7rem;}
@@ -1455,34 +1455,67 @@ window.printLabel = function(order){
     `<div style="font-size:6pt;">${i.qty||1}x ${i.name||''} ${i.size||''}</div>`
   ).join('');
   const dateStr = parseOrderDate(o.date||o.createdAt, 'short');
-  const win = window.open('','_blank','width=320,height=420');
-  win.document.write(`<!DOCTYPE html><html><head><title>Label ${o.id||''}</title>
-  <style>
-    @page { size: 80mm 100mm; margin: 2mm; }
-    body { margin:0; padding:2mm; font-family:monospace; font-size:7pt; width:76mm; }
-    .bold { font-weight:bold; }
-    .center { text-align:center; }
-    .right { text-align:right; }
-    .divider { border-top:1px dashed #000; margin:1.5mm 0; }
-    .large { font-size:12pt; }
-    .small { font-size:5.5pt; }
-  </style></head><body>
-  <div class="center large bold">NAJAH CHEMIST</div>
-  <div class="center small">Kingston, Jamaica · start@najahchemistja.com</div>
-  <div class="divider"></div>
-  <div class="bold">SHIP TO:</div>
-  <div class="bold" style="font-size:9pt;">${o.clientName||o.client||o.customerName||''}</div>
-  <div>${o.address||o.deliveryAddress||o.customerAddress||o.deliveryLocation||'—'}</div>
-  <div>${o.whatsapp||o.phone||o.customerWhatsApp||'—'}</div>
-  <div class="divider"></div>
-  <div class="small">Order: ${o.id||o.orderId||''} · ${dateStr}</div>
-  ${items}
-  <div class="divider"></div>
-  <div class="bold right" style="font-size:8pt;">TOTAL: J$${(parseFloat(o.total)||0).toLocaleString()}</div>
-  <div class="small">najahchemistja.com &nbsp;&nbsp; ★ HANDLE WITH CARE</div>
-  </body></html>`);
-  win.document.close();
-  setTimeout(()=>{ win.print(); }, 600);
+
+  // 1. Populate #print-zone with full label HTML
+  const zone = document.getElementById('print-zone');
+  zone.innerHTML = `
+    <div id="thermal-label" style="width:76mm;min-height:96mm;max-height:96mm;overflow:hidden;font-family:monospace;padding:2mm;box-sizing:border-box;">
+      <table width="100%"><tr>
+        <td style="font-size:14pt;font-weight:bold;">Nc</td>
+        <td align="right"><div id="qr-thermal"></div></td>
+      </tr></table>
+      <div style="text-align:center;font-size:8pt;font-weight:bold;">NAJAH CHEMIST</div>
+      <div style="text-align:center;font-size:6pt;">Kingston, Jamaica · start@najahchemistja.com</div>
+      <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
+      <div style="font-size:7pt;font-weight:bold;">SHIP TO:</div>
+      <div style="font-size:9pt;font-weight:bold;">${o.clientName||o.client||o.customerName||''}</div>
+      <div style="font-size:7pt;">${o.address||o.deliveryAddress||o.customerAddress||o.deliveryLocation||'—'}</div>
+      <div style="font-size:7pt;">${o.whatsapp||o.phone||o.customerWhatsApp||o.wa||'—'}</div>
+      <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
+      <div style="font-size:6pt;">Order: ${o.id||o.orderId||''} · ${dateStr}</div>
+      ${items}
+      <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
+      <div style="font-size:8pt;font-weight:bold;text-align:right;">TOTAL: J$${(parseFloat(o.total)||0).toLocaleString()}</div>
+      <div style="font-size:5.5pt;">najahchemistja.com &nbsp;&nbsp;&nbsp; ★ HANDLE WITH CARE</div>
+    </div>
+  `;
+
+  // 2. Make #print-zone visible but off-screen so QR renders before printing
+  zone.style.cssText = 'display:block;position:fixed;left:-9999px;top:0;visibility:visible;';
+
+  // 7. Cleanup after print
+  function resetZone(){
+    zone.style.cssText = 'display:none;';
+    zone.innerHTML = '';
+  }
+  window.addEventListener('afterprint', resetZone, { once: true });
+
+  function doPrint(){
+    window.print();
+    // Fallback cleanup in case afterprint doesn't fire
+    setTimeout(resetZone, 2000);
+  }
+
+  // 3 & 4. Init QRCode, then 5. wait for canvas before printing
+  const qrEl = document.getElementById('qr-thermal');
+  if(typeof QRCode !== 'undefined' && qrEl){
+    new QRCode(qrEl, { text:'https://najahchemistja.com', width:45, height:45, correctLevel:QRCode.CorrectLevel.L });
+    if(qrEl.querySelector('canvas')){
+      // Canvas already present (sync render)
+      doPrint();
+    } else {
+      // 5. Wait for canvas via MutationObserver
+      const obs = new MutationObserver(()=>{
+        if(qrEl.querySelector('canvas')){ obs.disconnect(); doPrint(); }
+      });
+      obs.observe(qrEl, { childList: true, subtree: true });
+      // 6. Fallback after 1500ms regardless
+      setTimeout(()=>{ obs.disconnect(); doPrint(); }, 1500);
+    }
+  } else {
+    // No QR library — print after short delay
+    setTimeout(doPrint, 300);
+  }
 };
 
 // ── CONSULTATIONS ──
