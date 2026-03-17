@@ -1317,7 +1317,7 @@ tr:hover td{background:var(--warm);}
   <div class="ph-row">
     <div class="ph" style="margin-bottom:0;"><h1>Order <em>Management</em></h1><p>Track, update, and print receipts</p></div>
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;" class="no-print">
-      <button class="btn btn-pr btn-sm" onclick="window.print()">🖨 Print All</button>
+      <button class="btn btn-pr btn-sm" onclick="printAllReceipts()">🖨 Print All</button>
       <button class="btn btn-dk btn-sm" onclick="openM('m-new-order')">+ New Order</button>
     </div>
   </div>
@@ -3172,6 +3172,56 @@ window.batchPrintReceipts = function(){
     + '<script>setTimeout(function(){window.print();window.close();},400);<\/script></body></html>');
   win.document.close();
   markBatchPrinted(Array.from(checks).map(cb=>cb.getAttribute('data-id')),'receiptPrinted');
+};
+window.printAllReceipts = function(){
+  const rows = Array.from(document.querySelectorAll('#orders-body tr')).filter(r=>r.style.display!=='none');
+  if(!rows.length){ alert('No orders to print'); return; }
+  const ids = rows.map(r=>{ const cb=r.querySelector('input.order-cb'); return cb?cb.getAttribute('data-id'):null; }).filter(Boolean);
+  const orders = ids.map(id=>window.ordersMap&&window.ordersMap[id]).filter(Boolean);
+  if(!orders.length){ alert('Order data not found'); return; }
+  const receiptsHtml = orders.map((order,i)=>{
+    const arr = Array.isArray(order.items)?order.items:[];
+    const itemsHtml = arr.length>0
+      ? arr.map(it=>{ const p=it.sku?[it.sku,it.name||'']:[it.name||'']; if(it.size)p.push(it.size); return `<tr><td>${p.join(' · ')}</td><td align="right">x${it.qty||1}</td><td align="right">J$${((it.price||0)*(it.qty||1)).toLocaleString()}</td></tr>`; }).join('')
+      : `<tr><td colspan="3">${order.product||'—'}</td></tr>`;
+    const sub = (parseFloat(order.total)||0)-(parseFloat(order.deliveryFee)||0);
+    const ship = parseFloat(order.deliveryFee)||0;
+    const total = parseFloat(order.total)||0;
+    const dateStr = parseOrderDate(order.date||order.createdAt);
+    const wa = order.customerWhatsApp||order.phone||order.whatsapp||order.wa||'—';
+    const addr = order.shippingDetail||order.deliveryLocation||order.customerAddress||order.address||'—';
+    const pb = i<orders.length-1?'page-break-after:always;':'';
+    return `<div style="${pb}padding:12px;font-family:Arial,sans-serif;font-size:11pt;color:#000;">
+      <h2 style="text-align:center;font-size:14pt;margin:0 0 2px;">Najah Chemist</h2>
+      <div style="text-align:center;font-size:9pt;color:#555;margin-bottom:10px;">Jamaica's Skincare Manufacturer<br>najahchemistja.com · @najahchemist</div>
+      <hr style="border:none;border-top:1px dashed #000;margin:8px 0;">
+      <table width="100%" style="border-collapse:collapse;font-size:10pt;">
+        <tr><td>Order ID</td><td align="right"><b>${order.id||order.orderId||'—'}</b></td></tr>
+        <tr><td>Date</td><td align="right">${dateStr}</td></tr>
+        <tr><td>Client</td><td align="right">${order.clientName||order.client||order.customerName||'—'}</td></tr>
+        <tr><td>WhatsApp</td><td align="right">${wa}</td></tr>
+        <tr><td>Shipping</td><td align="right">${addr}</td></tr>
+        <tr><td>Payment Method</td><td align="right">${order.payMethod||order.paymentMethod||'—'}</td></tr>
+        <tr><td>Payment Status</td><td align="right">${order.paymentStatus||order.payment||'—'}</td></tr>
+      </table>
+      <hr style="border:none;border-top:1px dashed #000;margin:8px 0;">
+      <b>ORDER DETAILS</b>
+      <table width="100%" style="margin-top:6px;border-collapse:collapse;font-size:10pt;">
+        <thead><tr><th align="left">Item</th><th align="right">Qty</th><th align="right">Amount</th></tr></thead>
+        <tbody>${itemsHtml}</tbody>
+      </table>
+      <hr style="border:none;border-top:1px dashed #000;margin:8px 0;">
+      ${ship>0?`<div style="display:flex;justify-content:space-between;font-size:10pt;margin-bottom:3px;"><span>Subtotal</span><span>J$${(sub>0?sub:total).toLocaleString()}</span></div><div style="display:flex;justify-content:space-between;font-size:10pt;margin-bottom:3px;"><span>Shipping</span><span>J$${ship.toLocaleString()}</span></div>`:''}
+      <div style="font-size:13pt;font-weight:bold;text-align:right;margin-top:6px;">Total: J$${total.toLocaleString()}</div>
+      <div style="text-align:center;font-size:8pt;color:#888;margin-top:14px;">Thank you for choosing Najah Chemist! · najahchemistja.com</div>
+    </div>`;
+  }).join('');
+  const win = window.open('','_blank','width=640,height=820');
+  if(!win){ alert('Please allow popups for this site to use bulk printing.'); return; }
+  win.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{box-sizing:border-box;}body{margin:0;background:white;}table{border-collapse:collapse;width:100%;}@media print{@page{size:A5;margin:10mm;}}</style></head><body>'
+    + receiptsHtml
+    + '<script>setTimeout(function(){window.print();window.close();},400);<\/script></body></html>');
+  win.document.close();
 };
 async function markBatchPrinted(ids, field){
   if(!ids||!ids.length) return;
