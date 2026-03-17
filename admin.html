@@ -123,9 +123,9 @@ select.finp{cursor:pointer;}
 
 /* ── SHIPPING LABEL PRINT ── */
 @media print{
-  body *{visibility:hidden;}
+  body *{visibility:hidden!important;}
   #print-zone,#print-zone *{visibility:visible!important;}
-  #print-zone{position:absolute;left:0;top:0;}
+  #print-zone{position:fixed;left:0;top:0;}
 }
 .label-box{border:2px solid var(--black);border-radius:4px;padding:1.2rem;max-width:420px;font-size:0.78rem;font-family:'Outfit',sans-serif;}
 .label-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1.5px solid var(--black);padding-bottom:0.7rem;margin-bottom:0.7rem;}
@@ -289,8 +289,8 @@ select.finp{cursor:pointer;}
       </div>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>Order ID</th><th>Client</th><th>Products</th><th>Total</th><th>Pay Status</th><th>Order Status</th><th>Date</th><th>Actions</th></tr></thead>
-          <tbody id="orders-tbody"><tr><td colspan="8" class="empty-state">Loading orders…</td></tr></tbody>
+          <thead><tr><th>Order ID</th><th>Client</th><th>Products</th><th>Total</th><th>Pay Status</th><th>Order Status</th><th>Date</th><th>Tracking</th><th>Actions</th></tr></thead>
+          <tbody id="orders-tbody"><tr><td colspan="9" class="empty-state">Loading orders…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -395,6 +395,36 @@ select.finp{cursor:pointer;}
 <!-- ══════════ TOAST ══════════ -->
 <div id="a-toast"></div>
 <div id="print-zone" style="display:none;"></div>
+<!-- TRACKING MODAL -->
+<div id="m-admin-tracking" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:800;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:16px;padding:2rem;width:420px;max-width:calc(100vw - 2rem);max-height:90vh;overflow-y:auto;position:relative;">
+    <button onclick="closeAdminTracking()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#6B7280;">×</button>
+    <h3 style="margin-bottom:1.25rem;font-size:1.1rem;">Add Tracking Info</h3>
+    <input type="hidden" id="atrk-order-id">
+    <div style="margin-bottom:0.85rem;">
+      <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:0.35rem;">Courier</label>
+      <select id="atrk-courier" style="width:100%;padding:0.6rem 0.75rem;border:1.5px solid #E8E4DE;border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.88rem;">
+        <option value="Knutsford Express">Knutsford Express</option>
+        <option value="Zipmail">Zipmail</option>
+        <option value="Kingston Delivery">Kingston Delivery</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div style="margin-bottom:0.85rem;">
+      <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:0.35rem;">Tracking Number <span style="color:#9CA3AF;font-weight:400;">(optional)</span></label>
+      <input id="atrk-num" type="text" placeholder="e.g. KE-123456 or leave blank" style="width:100%;padding:0.6rem 0.75rem;border:1.5px solid #E8E4DE;border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.88rem;">
+    </div>
+    <div style="margin-bottom:0.85rem;">
+      <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:0.35rem;">Estimated Delivery Date</label>
+      <input id="atrk-date" type="date" style="width:100%;padding:0.6rem 0.75rem;border:1.5px solid #E8E4DE;border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.88rem;">
+    </div>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:0.35rem;">Notes <span style="color:#9CA3AF;font-weight:400;">(optional)</span></label>
+      <input id="atrk-notes" type="text" placeholder="e.g. Call before delivery" style="width:100%;padding:0.6rem 0.75rem;border:1.5px solid #E8E4DE;border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.88rem;">
+    </div>
+    <button onclick="saveAdminTracking()" style="width:100%;padding:0.8rem;background:#0F0E0D;color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.9rem;font-weight:700;cursor:pointer;">Save &amp; Notify Client on WhatsApp</button>
+  </div>
+</div>
 
 <!-- ══════════ MODALS ══════════ -->
 
@@ -795,7 +825,7 @@ function renderOrdersTable(){
   let list = [...ORDERS];
   if(_currentOrderFilter !== 'all') list = list.filter(o => (o.status||'Pending').toLowerCase() === _currentOrderFilter.toLowerCase());
   if(_orderSearch) { const s=_orderSearch.toLowerCase(); list = list.filter(o=>(o.id||'').toLowerCase().includes(s)||(o.client||o.customerName||'').toLowerCase().includes(s)||(o.product||'').toLowerCase().includes(s)); }
-  if(!list.length){ tbody.innerHTML='<tr><td colspan="8" class="empty-state">No orders found</td></tr>'; return; }
+  if(!list.length){ tbody.innerHTML='<tr><td colspan="9" class="empty-state">No orders found</td></tr>'; return; }
   const payStatuses=['Unpaid','Awaiting Payment','Paid','Refunded'];
   tbody.innerHTML = list.map(o=>`<tr>
     <td><strong>${o.id||o.orderId||'—'}</strong></td>
@@ -809,9 +839,12 @@ function renderOrdersTable(){
       ${['Pending','Processing','Shipped','Complete','Cancelled'].map(s=>`<option${(o.status||'Pending')===s?' selected':''}>${s}</option>`).join('')}
     </select></td>
     <td>${formatDate(o.date||o.createdAt)}</td>
+    <td style="font-size:0.72rem;color:${o.tracking?'#16a34a':'#9CA3AF'};">${o.tracking?'📦 '+o.tracking.courier:'—'}</td>
     <td class="btn-group">
       <button class="btn btn-sm btn-gr" onclick="printOrderReceipt(${JSON.stringify(o).replace(/"/g,'&quot;')})">🧾</button>
+      <button class="btn btn-sm" style="background:#1D4ED8;color:white;border:none;padding:0.25rem 0.5rem;border-radius:6px;cursor:pointer;font-size:0.78rem;" onclick="sendAdminReceipt(${JSON.stringify(o).replace(/"/g,'&quot;')})">📧</button>
       <button class="btn btn-sm btn-bl" onclick="printLabel(${JSON.stringify(o).replace(/"/g,'&quot;')})">🏷</button>
+      <button class="btn btn-sm" style="background:#166534;color:white;border:none;padding:0.25rem 0.5rem;border-radius:6px;cursor:pointer;font-size:0.78rem;" onclick="openAdminTrackingModal(${JSON.stringify(o).replace(/"/g,'&quot;')})">🚚</button>
       <button class="btn btn-sm btn-rd" onclick="deleteOrder('${o._docId}')">🗑</button>
     </td>
   </tr>`).join('');
@@ -1319,6 +1352,79 @@ function renderLabelsTable(){
 let _labelSearch = '';
 window.searchLabels = function(v){ _labelSearch=v.toLowerCase(); renderLabelsTable(); };
 
+// ── Send Email Receipt ──
+window.sendAdminReceipt = async function(order) {
+  const o = typeof order==='string'?JSON.parse(order):order;
+  const defaultEmail = o.email || o.customerEmail || '';
+  const email = prompt('Send receipt to email address:', defaultEmail);
+  if (!email || !email.includes('@')) { if (email !== null) toast('Invalid email'); return; }
+  try {
+    toast('Sending receipt…');
+    const res = await fetch('/.netlify/functions/send-receipt', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        orderId: o.id||o.orderId,
+        customerName: o.client||o.customerName,
+        email,
+        items: Array.isArray(o.items)&&o.items.length ? o.items : [{name:o.product||'—',size:'—',qty:o.qty||1,price:parseFloat(o.total||0)}],
+        subtotal: parseFloat(o.total||0)-parseFloat(o.deliveryFee||0),
+        deliveryFee: parseFloat(o.deliveryFee||0),
+        total: parseFloat(o.total||0),
+        shipDetail: o.payMethod||o.payment||'—'
+      })
+    });
+    if (res.ok) toast('Receipt sent to '+email+' ✓');
+    else { const err=await res.text(); toast('Send failed: '+err); }
+  } catch(e){ toast('Send failed: '+(e.message||'Network error')); }
+};
+
+// ── Tracking Modal ──
+window.openAdminTrackingModal = function(order) {
+  const o = typeof order==='string'?JSON.parse(order):order;
+  window._trackingOrder = o;
+  document.getElementById('atrk-order-id').value = o.id||o.orderId||'';
+  document.getElementById('atrk-num').value = o.tracking?.trackingNumber||'';
+  document.getElementById('atrk-date').value = o.tracking?.estimatedDelivery||'';
+  document.getElementById('atrk-notes').value = o.tracking?.notes||'';
+  document.getElementById('atrk-courier').value = o.tracking?.courier||'Knutsford Express';
+  const modal = document.getElementById('m-admin-tracking');
+  if(modal) modal.style.display='flex';
+};
+
+window.closeAdminTracking = function(){
+  const modal = document.getElementById('m-admin-tracking');
+  if(modal) modal.style.display='none';
+};
+
+window.saveAdminTracking = async function(){
+  const o = window._trackingOrder || {};
+  const docId = o._docId || '';
+  const orderId = o.id||o.orderId||document.getElementById('atrk-order-id').value;
+  const courier = document.getElementById('atrk-courier').value;
+  const trackingNumber = document.getElementById('atrk-num').value.trim();
+  const estimatedDelivery = document.getElementById('atrk-date').value;
+  const notes = document.getElementById('atrk-notes').value.trim();
+  const tracking = { courier, trackingNumber: trackingNumber||'N/A', estimatedDelivery, notes, addedAt: new Date().toISOString() };
+  try {
+    if(docId) await updateDoc(doc(db,'orders',docId),{tracking, status:'Shipped'});
+    const idx = ORDERS.findIndex(x=>(x.id||x.orderId)===orderId);
+    if(idx>-1){ ORDERS[idx].tracking=tracking; ORDERS[idx].status='Shipped'; }
+    renderOrdersTable();
+  } catch(e){ toast('Save failed: '+e.message); return; }
+  window.closeAdminTracking();
+  toast('Tracking saved ✓ — notifying client on WhatsApp');
+  const waRaw = o.customerWhatsApp||o.phone||'';
+  const waNum = waRaw.replace(/\D/g,'');
+  if(waNum){
+    const client = o.client||o.customerName||'Customer';
+    const estDate = estimatedDelivery ? new Date(estimatedDelivery).toLocaleDateString('en-JM',{weekday:'short',month:'short',day:'numeric'}) : 'TBD';
+    let msg = `Hi ${client}, your Najah Chemist order ${orderId} has been shipped! 🎉\n\nCourier: ${courier}\nTracking #: ${trackingNumber||'N/A'}\nEst. Delivery: ${estDate}`;
+    if(notes) msg += `\n\n${notes}`;
+    msg += `\n\nTrack your order at: najahchemistja.com/track\nQuestions? WhatsApp us: +1876-885-1099`;
+    window.open('https://wa.me/'+waNum+'?text='+encodeURIComponent(msg),'_blank');
+  }
+};
+
 window.printLabel = function(order){
   const o = typeof order==='string'?JSON.parse(order):order;
   const orderId = o.id||o.orderId||'—';
@@ -1332,48 +1438,49 @@ window.printLabel = function(order){
     itemsHtml = o.items.map(i=>{
       const prod = PRODUCTS.find(p=>(p.id||p._docId)===i.productId);
       const sku = prod&&prod.sku?`[${prod.sku}] `:'';
-      return `<div style="font-size:8pt;">${sku}${i.name} · ${i.size||'—'} × ${i.qty}</div>`;
+      return `<div>${sku}${i.name} · ${i.size||'—'} ×${i.qty}</div>`;
     }).join('');
   } else {
-    itemsHtml = `<div style="font-size:8pt;">${o.product||o.products||'—'}</div>`;
+    itemsHtml = `<div>${o.product||o.products||'—'}</div>`;
   }
   const qrId = 'alqr-'+Date.now();
   const zone = document.getElementById('print-zone');
-  zone.innerHTML = `<div style="width:80mm;font-family:Arial,sans-serif;font-size:10pt;line-height:1.35;padding:3mm;box-sizing:border-box;">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #000;padding-bottom:2mm;margin-bottom:2mm;">
+  zone.innerHTML = '';
+  zone.innerHTML = `<div style="width:74mm;height:94mm;overflow:hidden;font-family:Arial,sans-serif;font-size:7pt;line-height:1.3;box-sizing:border-box;padding:1mm;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:0.5pt solid #000;padding-bottom:1mm;margin-bottom:1.5mm;">
       <div>
-        <div style="font-size:20pt;font-weight:700;font-family:serif;line-height:1;margin-bottom:1mm;">Nc</div>
-        <div style="font-size:9pt;font-weight:700;">Najah Chemist · Kingston, Jamaica</div>
-        <div style="font-size:8pt;color:#444;">start@najahchemistja.com · +1876-885-1099</div>
+        <div style="font-size:14pt;font-weight:700;font-family:serif;line-height:1;">Nc</div>
+        <div style="font-size:8pt;font-weight:700;">Najah Chemist</div>
+        <div style="font-size:7pt;color:#444;">Kingston, Jamaica</div>
+        <div style="font-size:6.5pt;color:#444;">start@najahchemistja.com</div>
       </div>
-      <div id="${qrId}" style="width:75px;height:75px;flex-shrink:0;"></div>
+      <div id="${qrId}" style="width:55px;height:55px;flex-shrink:0;"></div>
     </div>
-    <div style="margin-bottom:2mm;">
-      <div style="font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#555;margin-bottom:1mm;">SHIP TO:</div>
-      <div style="font-size:12pt;font-weight:700;">${client}</div>
-      <div style="font-size:9pt;">${address}</div>
-      ${wa!=='—'?`<div style="font-size:9pt;">${wa}</div>`:''}
+    <div style="margin-bottom:1.5mm;">
+      <div style="font-size:6pt;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:0.5mm;">SHIP TO:</div>
+      <div style="font-size:9pt;font-weight:700;line-height:1.2;">${client}</div>
+      <div style="font-size:7pt;">${address}</div>
+      ${wa!=='—'?`<div style="font-size:7pt;">${wa}</div>`:''}
     </div>
-    <div style="border-top:1px dashed #aaa;padding-top:1.5mm;margin-bottom:1.5mm;">
-      <div style="font-size:8pt;display:flex;justify-content:space-between;"><span>Order: ${orderId}</span><span>${date}</span></div>
+    <div style="border-top:0.5pt dashed #aaa;padding-top:1mm;margin-bottom:1mm;">
+      <div style="display:flex;justify-content:space-between;"><span>Order: ${orderId}</span><span>${date}</span></div>
     </div>
-    ${itemsHtml}
-    <div style="font-size:11pt;font-weight:700;margin-top:1.5mm;margin-bottom:2mm;">Total: ${total}</div>
-    <div style="border-top:1px solid #000;padding-top:1.5mm;display:flex;justify-content:space-between;font-size:7pt;">
-      <div>najahchemistja.com</div>
-      <div style="font-weight:700;">FRAGILE — HANDLE WITH CARE</div>
+    <div style="font-size:7pt;margin-bottom:1mm;">${itemsHtml}</div>
+    <div style="font-size:8pt;font-weight:700;margin-bottom:1.5mm;">Total: ${total}</div>
+    <div style="border-top:0.5pt solid #000;padding-top:1mm;display:flex;justify-content:space-between;font-size:6pt;">
+      <span>najahchemistja.com</span><span style="font-weight:700;">FRAGILE — HANDLE WITH CARE</span>
     </div>
   </div>`;
   zone.style.display = 'block';
   setTimeout(()=>{
     const qrEl = document.getElementById(qrId);
     if(qrEl && window.QRCode){
-      new QRCode(qrEl,{text:'https://najahchemistja.com',width:75,height:75,colorDark:'#000000',colorLight:'#ffffff'});
+      new QRCode(qrEl,{text:'https://najahchemistja.com',width:55,height:55,colorDark:'#000000',colorLight:'#ffffff'});
     }
     setTimeout(()=>{
       const ts = document.createElement('style');
       ts.id = '_thermal_ps';
-      ts.textContent = '@media print{@page{size:80mm 100mm;margin:0;}#print-zone{width:80mm!important;}}';
+      ts.textContent = '@media print{@page{size:80mm 100mm;margin:2mm;}html,body{width:80mm;height:100mm;overflow:hidden;}body *{visibility:hidden!important;}#print-zone,#print-zone *{visibility:visible!important;}#print-zone{position:fixed;left:0;top:0;width:80mm;height:100mm;overflow:hidden;}}';
       document.head.appendChild(ts);
       window.addEventListener('afterprint',function _apc(){
         document.getElementById('_thermal_ps')?.remove();
@@ -1533,9 +1640,19 @@ function buildOrderReceipt(o){
 window.printOrderReceipt = function(order){
   const o = typeof order==='string'?JSON.parse(order):order;
   const zone = document.getElementById('print-zone');
+  zone.innerHTML = '';
   zone.innerHTML = buildOrderReceipt(o);
   zone.style.display = 'block';
-  setTimeout(()=>{ window.print(); zone.style.display='none'; },200);
+  const ts = document.createElement('style');
+  ts.id = '_receipt_ps';
+  ts.textContent = '@media print{@page{size:A5;margin:10mm;}body *{visibility:hidden!important;}#print-zone,#print-zone *{visibility:visible!important;}#print-zone{position:fixed;left:0;top:0;width:100%;}}';
+  document.head.appendChild(ts);
+  window.addEventListener('afterprint',function _rpc(){
+    document.getElementById('_receipt_ps')?.remove();
+    zone.style.display = 'none';
+    window.removeEventListener('afterprint',_rpc);
+  });
+  setTimeout(()=>window.print(),200);
 };
 
 // ── BEST SELLERS MANAGER ──

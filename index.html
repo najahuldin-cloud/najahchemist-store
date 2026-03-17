@@ -217,7 +217,7 @@ tr:hover td{background:var(--warm);}
 .info-row:last-child{border-bottom:none;}
 .benefit-tag{display:inline-block;background:var(--warm);border-radius:20px;padding:0.2rem 0.65rem;font-size:0.7rem;margin:0.18rem 0.12rem;}
 .no-print{}
-@media print{body *{visibility:hidden!important;}#print-zone,#print-zone *{visibility:visible!important;}#print-zone{position:absolute;left:0;top:0;}.no-print{display:none!important;}}
+@media print{body *{visibility:hidden!important;}#print-zone,#print-zone *{visibility:visible!important;}#print-zone{position:fixed;left:0;top:0;}.no-print{display:none!important;}}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:var(--light);border-radius:2px;}
 @media(max-width:900px){.g2,.g3,.g4{grid-template-columns:1fr 1fr;}}
 @media(max-width:600px){.g2,.g3,.g4{grid-template-columns:1fr;}.view{padding:1rem;}.brand-n,.nb span:not(.badge){display:none;}nav{padding:0 0.75rem;}}
@@ -1271,7 +1271,7 @@ tr:hover td{background:var(--warm);}
   </div>
   <div class="card">
     <table>
-      <thead><tr><th>Order ID</th><th>Client</th><th>Product</th><th>Size</th><th>Qty</th><th>Source</th><th>Pay Status</th><th>Order Status</th><th>Date</th><th class="no-print">Actions</th></tr></thead>
+      <thead><tr><th>Order ID</th><th>Client</th><th>Product</th><th>Size</th><th>Qty</th><th>Source</th><th>Pay Status</th><th>Order Status</th><th>Date</th><th class="no-print">Tracking</th><th class="no-print">Actions</th></tr></thead>
       <tbody id="orders-body"></tbody>
     </table>
   </div>
@@ -1704,6 +1704,27 @@ Add anything else you want the chatbot to know..."></textarea>
   </div>
 </div>
 
+<!-- TRACKING MODAL -->
+<div class="overlay" id="m-tracking">
+  <div class="modal" style="max-width:420px;">
+    <button class="mcl" onclick="closeM('m-tracking')">×</button>
+    <h2>Add Tracking Info</h2>
+    <input type="hidden" id="trk-order-id">
+    <div class="fg"><label class="fl">Courier</label>
+      <select class="fs" id="trk-courier">
+        <option value="Knutsford Express">Knutsford Express</option>
+        <option value="Zipmail">Zipmail</option>
+        <option value="Kingston Delivery">Kingston Delivery</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">Tracking Number <span style="color:#9CA3AF;font-weight:400;">(optional)</span></label><input class="fi" id="trk-num" placeholder="e.g. KE-123456 or leave blank"></div>
+    <div class="fg"><label class="fl">Estimated Delivery Date</label><input class="fi" id="trk-date" type="date"></div>
+    <div class="fg"><label class="fl">Notes <span style="color:#9CA3AF;font-weight:400;">(optional)</span></label><input class="fi" id="trk-notes" placeholder="e.g. Call before delivery"></div>
+    <button class="btn btn-dk" style="width:100%;" onclick="saveTracking()">Save &amp; Notify Client on WhatsApp</button>
+  </div>
+</div>
+
 <!-- ADD/EDIT PRODUCT -->
 <div class="overlay" id="m-add-prod">
   <div class="modal modal-lg">
@@ -1861,7 +1882,7 @@ Add anything else you want the chatbot to know..."></textarea>
   </div>
 </div>
 
-<div id="print-zone" style="display:none;position:fixed;top:0;left:0;width:100%;background:white;padding:2rem;z-index:9999;"></div>
+<div id="print-zone" style="display:none;"></div>
 
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="module">
 // ════════════════════════════════════════════════════
@@ -2406,11 +2427,13 @@ function renderOrdersTable(){
     <td><select onchange="updatePaymentStatus('${o.id}',this.value)" style="border:1px solid var(--border);padding:0.2rem 0.4rem;font-size:0.72rem;font-family:Outfit,sans-serif;border-radius:4px;">${payStatuses.map(s=>`<option${s===ps?' selected':''}>${s}</option>`).join('')}</select></td>
     <td><select onchange="updateOrderStatus('${o.id}',this.value)" style="border:1px solid var(--border);padding:0.2rem 0.4rem;font-size:0.72rem;font-family:Outfit,sans-serif;border-radius:4px;">${['Pending','Processing','Shipped','Complete','Cancelled'].map(s=>`<option${s===o.status?' selected':''}>${s}</option>`).join('')}</select></td>
     <td>${o.date}</td>
+    <td class="no-print"><span style="font-size:0.72rem;color:${o.tracking?'#16a34a':'#9CA3AF'};">${o.tracking?'📦 '+o.tracking.courier:'No tracking'}</span></td>
     <td class="no-print" style="display:flex;gap:0.3rem;flex-wrap:wrap;">
       <button class="btn-gh btn-xs" onclick="showReceipt('${o.id}','${o.client}','${o.product}',${o.qty},${o.total||0},'${o.payMethod||o.payment}','${o.date}')">View</button>
       <button class="btn btn-pr btn-xs" onclick="printR('${o.id}')">🖨</button>
       <button class="btn btn-xs" style="background:#1D4ED8;color:white;border:none;" onclick="printLabel('${o.id}')">🏷</button>
-      <button class="btn btn-ol btn-xs" onclick="sendOrderReceipt('${o.id}','${o.client}','${o.product}',${o.qty},${o.total||0},'${o.payMethod||o.payment}','${o.date}')">📧</button>
+      <button class="btn btn-ol btn-xs" onclick="sendOrderReceipt('${o.id}')">📧</button>
+      <button class="btn btn-xs" style="background:#166534;color:white;border:none;" onclick="openTrackingModal('${o.id}')">🚚</button>
     </td></tr>`;
   }).join('');
   // Dash recent orders
@@ -2438,8 +2461,16 @@ window.updatePaymentStatus = async function(orderId,newStatus){
   }catch(e){}
 };
 
-window.sendOrderReceipt = async function(id, client, product, qty, total, payMethod, date) {
-  const email = prompt('Send receipt to email address:', '');
+window.sendOrderReceipt = async function(id) {
+  const order = DB_ORDERS.find(o=>o.id===id) || {id};
+  const client = order.client || order.customerName || '—';
+  const product = order.product || order.products || '—';
+  const qty = order.qty || 1;
+  const total = parseFloat(order.total||0);
+  const payMethod = order.payMethod || order.payment || '—';
+  const date = order.date || '';
+  const defaultEmail = order.email || order.customerEmail || '';
+  const email = prompt('Send receipt to email address:', defaultEmail);
   if (!email || !email.includes('@')) { if (email !== null) showToast('Invalid email'); return; }
   try {
     showToast('Sending receipt…');
@@ -2450,9 +2481,9 @@ window.sendOrderReceipt = async function(id, client, product, qty, total, payMet
         orderId: id,
         customerName: client,
         email,
-        items: [{name: product, size: '—', qty, price: total}],
-        subtotal: total,
-        deliveryFee: 0,
+        items: Array.isArray(order.items)&&order.items.length ? order.items : [{name: product, size: '—', qty, price: total}],
+        subtotal: total - parseFloat(order.deliveryFee||0),
+        deliveryFee: parseFloat(order.deliveryFee||0),
         total,
         shipDetail: payMethod
       })
@@ -2460,6 +2491,54 @@ window.sendOrderReceipt = async function(id, client, product, qty, total, payMet
     if (res.ok) { showToast('Receipt sent to ' + email); }
     else { const err = await res.text(); showToast('Send failed: ' + err); }
   } catch(e) { showToast('Send failed: ' + (e.message||'Network error')); }
+};
+
+window.openTrackingModal = function(orderId) {
+  document.getElementById('trk-order-id').value = orderId;
+  document.getElementById('trk-num').value = '';
+  document.getElementById('trk-notes').value = '';
+  document.getElementById('trk-date').value = '';
+  document.getElementById('trk-courier').value = 'Knutsford Express';
+  const order = DB_ORDERS.find(o=>o.id===orderId);
+  if (order && order.tracking) {
+    document.getElementById('trk-courier').value = order.tracking.courier||'Knutsford Express';
+    document.getElementById('trk-num').value = order.tracking.trackingNumber||'';
+    document.getElementById('trk-date').value = order.tracking.estimatedDelivery||'';
+    document.getElementById('trk-notes').value = order.tracking.notes||'';
+  }
+  openM('m-tracking');
+};
+
+window.saveTracking = async function() {
+  const orderId = document.getElementById('trk-order-id').value;
+  const courier = document.getElementById('trk-courier').value;
+  const trackingNumber = document.getElementById('trk-num').value.trim();
+  const estimatedDelivery = document.getElementById('trk-date').value;
+  const notes = document.getElementById('trk-notes').value.trim();
+  if (!orderId) return;
+  const order = DB_ORDERS.find(o=>o.id===orderId) || {id:orderId};
+  const client = order.client || order.customerName || 'Customer';
+  const waRaw = order.phone || order.wa || order.customerWhatsApp || '';
+  const waNum = waRaw.replace(/\D/g,'');
+  const tracking = { courier, trackingNumber: trackingNumber||'N/A', estimatedDelivery, notes, addedAt: new Date().toISOString() };
+  // Save to Firestore
+  try {
+    const snap = await getDocs(collection(db,'orders'));
+    snap.docs.forEach(async d => { if((d.data().id||d.data().orderId)===orderId) await updateDoc(doc(db,'orders',d.id),{tracking, status:'Shipped'}); });
+    const idx = DB_ORDERS.findIndex(o=>o.id===orderId);
+    if(idx>-1){ DB_ORDERS[idx].tracking=tracking; DB_ORDERS[idx].status='Shipped'; }
+  } catch(e) { console.error('Tracking save error:',e); }
+  renderOrdersTable();
+  closeM('m-tracking');
+  showToast('Tracking saved and client notified on WhatsApp ✓');
+  // Send WhatsApp message to client
+  if (waNum) {
+    const estDate = estimatedDelivery ? new Date(estimatedDelivery).toLocaleDateString('en-JM',{weekday:'short',month:'short',day:'numeric'}) : 'TBD';
+    let msg = `Hi ${client}, your Najah Chemist order ${orderId} has been shipped! 🎉\n\nCourier: ${courier}\nTracking #: ${trackingNumber||'N/A'}\nEst. Delivery: ${estDate}`;
+    if (notes) msg += `\n\n${notes}`;
+    msg += `\n\nTrack your order at: najahchemistja.com/track\nQuestions? WhatsApp us: +1876-885-1099`;
+    window.open('https://wa.me/'+waNum+'?text='+encodeURIComponent(msg),'_blank');
+  }
 };
 
 window.createOrder = async function(){
@@ -2823,19 +2902,38 @@ window.showReceipt = function(id,client,product,qty,total,pay,date){
   openM('m-receipt');
 };
 
+function _injectReceiptPrintStyle(){
+  const ts=document.createElement('style');
+  ts.id='_receipt_ps';
+  ts.textContent='@media print{@page{size:A5;margin:10mm;}body *{visibility:hidden!important;}#print-zone,#print-zone *{visibility:visible!important;}#print-zone{position:fixed;left:0;top:0;width:100%;}}';
+  document.head.appendChild(ts);
+}
+function _cleanReceiptPrint(area){
+  window.addEventListener('afterprint',function _rpc(){
+    document.getElementById('_receipt_ps')?.remove();
+    area.style.display='none';
+    window.removeEventListener('afterprint',_rpc);
+  });
+}
 window.printReceipt = function(){
   const area=document.getElementById('print-zone');
+  area.innerHTML='';
   area.innerHTML=document.getElementById('receipt-content').innerHTML;
   area.style.display='block';
-  setTimeout(()=>{window.print();area.style.display='none';},200);
+  _injectReceiptPrintStyle();
+  _cleanReceiptPrint(area);
+  setTimeout(()=>window.print(),200);
 };
 
 window.printR = function(orderOrId){
   const o = typeof orderOrId==='string' ? (DB_ORDERS.find(x=>x.id===orderOrId)||{id:orderOrId}) : orderOrId;
   const area=document.getElementById('print-zone');
+  area.innerHTML='';
   area.innerHTML=buildReceipt(o);
   area.style.display='block';
-  setTimeout(()=>{window.print();area.style.display='none';},200);
+  _injectReceiptPrintStyle();
+  _cleanReceiptPrint(area);
+  setTimeout(()=>window.print(),200);
 };
 
 window.printLabel = function(orderOrId){
@@ -2852,46 +2950,47 @@ window.printLabel = function(orderOrId){
     itemsHtml=o.items.map(i=>{
       const prod=prods.find(p=>p.id===i.productId);
       const sku=prod&&prod.sku?`[${prod.sku}] `:'';
-      return `<div style="font-size:8pt;">${sku}${i.name} · ${i.size||'—'} × ${i.qty}</div>`;
+      return `<div>${sku}${i.name} · ${i.size||'—'} ×${i.qty}</div>`;
     }).join('');
   } else {
-    itemsHtml=`<div style="font-size:8pt;">${o.product||o.products||'—'}</div>`;
+    itemsHtml=`<div>${o.product||o.products||'—'}</div>`;
   }
   const area=document.getElementById('print-zone');
+  area.innerHTML='';
   const qrId='lqr-'+Date.now();
-  area.innerHTML=`<div style="width:80mm;font-family:Arial,sans-serif;font-size:10pt;line-height:1.35;padding:3mm;box-sizing:border-box;">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #000;padding-bottom:2mm;margin-bottom:2mm;">
+  area.innerHTML=`<div style="width:74mm;height:94mm;overflow:hidden;font-family:Arial,sans-serif;font-size:7pt;line-height:1.3;box-sizing:border-box;padding:1mm;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:0.5pt solid #000;padding-bottom:1mm;margin-bottom:1.5mm;">
       <div>
-        <div style="font-size:20pt;font-weight:700;font-family:serif;line-height:1;margin-bottom:1mm;">Nc</div>
-        <div style="font-size:9pt;font-weight:700;">Najah Chemist · Kingston, Jamaica</div>
-        <div style="font-size:8pt;color:#444;">start@najahchemistja.com · +1876-885-1099</div>
+        <div style="font-size:14pt;font-weight:700;font-family:serif;line-height:1;">Nc</div>
+        <div style="font-size:8pt;font-weight:700;">Najah Chemist</div>
+        <div style="font-size:7pt;color:#444;">Kingston, Jamaica</div>
+        <div style="font-size:6.5pt;color:#444;">start@najahchemistja.com</div>
       </div>
-      <div id="${qrId}" style="width:75px;height:75px;flex-shrink:0;"></div>
+      <div id="${qrId}" style="width:55px;height:55px;flex-shrink:0;"></div>
     </div>
-    <div style="margin-bottom:2mm;">
-      <div style="font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#555;margin-bottom:1mm;">SHIP TO:</div>
-      <div style="font-size:12pt;font-weight:700;">${client}</div>
-      <div style="font-size:9pt;">${addr}</div>
-      ${wa!=='—'?`<div style="font-size:9pt;">${wa}</div>`:''}
+    <div style="margin-bottom:1.5mm;">
+      <div style="font-size:6pt;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:0.5mm;">SHIP TO:</div>
+      <div style="font-size:9pt;font-weight:700;line-height:1.2;">${client}</div>
+      <div style="font-size:7pt;">${addr}</div>
+      ${wa!=='—'?`<div style="font-size:7pt;">${wa}</div>`:''}
     </div>
-    <div style="border-top:1px dashed #aaa;padding-top:1.5mm;margin-bottom:1.5mm;">
-      <div style="font-size:8pt;display:flex;justify-content:space-between;"><span>Order: ${orderId}</span><span>${date}</span></div>
+    <div style="border-top:0.5pt dashed #aaa;padding-top:1mm;margin-bottom:1mm;">
+      <div style="display:flex;justify-content:space-between;"><span>Order: ${orderId}</span><span>${date}</span></div>
     </div>
-    ${itemsHtml}
-    <div style="font-size:11pt;font-weight:700;margin-top:1.5mm;margin-bottom:2mm;">Total: ${total}</div>
-    <div style="border-top:1px solid #000;padding-top:1.5mm;display:flex;justify-content:space-between;font-size:7pt;">
-      <div>najahchemistja.com</div>
-      <div style="font-weight:700;">FRAGILE — HANDLE WITH CARE</div>
+    <div style="font-size:7pt;margin-bottom:1mm;">${itemsHtml}</div>
+    <div style="font-size:8pt;font-weight:700;margin-bottom:1.5mm;">Total: ${total}</div>
+    <div style="border-top:0.5pt solid #000;padding-top:1mm;display:flex;justify-content:space-between;font-size:6pt;">
+      <span>najahchemistja.com</span><span style="font-weight:700;">FRAGILE — HANDLE WITH CARE</span>
     </div>
   </div>`;
   area.style.display='block';
   setTimeout(()=>{
     const qrEl=document.getElementById(qrId);
-    if(qrEl&&window.QRCode) new QRCode(qrEl,{text:'https://najahchemistja.com',width:75,height:75,colorDark:'#000000',colorLight:'#ffffff'});
+    if(qrEl&&window.QRCode) new QRCode(qrEl,{text:'https://najahchemistja.com',width:55,height:55,colorDark:'#000000',colorLight:'#ffffff'});
     setTimeout(()=>{
       const ts=document.createElement('style');
       ts.id='_thermal_ps';
-      ts.textContent='@media print{@page{size:80mm 100mm;margin:0;}#print-zone{width:80mm!important;}}';
+      ts.textContent='@media print{@page{size:80mm 100mm;margin:2mm;}html,body{width:80mm;height:100mm;overflow:hidden;}body *{visibility:hidden!important;}#print-zone,#print-zone *{visibility:visible!important;}#print-zone{position:fixed;left:0;top:0;width:80mm;height:100mm;overflow:hidden;}}';
       document.head.appendChild(ts);
       window.addEventListener('afterprint',function _apc(){
         document.getElementById('_thermal_ps')?.remove();
