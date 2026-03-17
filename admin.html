@@ -1451,12 +1451,21 @@ window.saveAdminTracking = async function(){
 window.printLabel = function(order){
   if(!order){ alert('Order not found'); return; }
   const o = typeof order==='string'?JSON.parse(order):order;
-  const items = (o.items||[]).map(i=>{
-    const parts = i.sku ? [i.sku, i.name||''] : [i.name||''];
-    if(i.size) parts.push(i.size);
-    parts.push(`x${i.qty||1}`);
-    return `<div style="font-size:7pt;">${parts.join(' · ')}</div>`;
-  }).join('');
+  console.log('[printLabel] order:', JSON.parse(JSON.stringify(o)));
+  // Bug 1: website orders have no items array — fall back to o.product string
+  const items = (() => {
+    const arr = Array.isArray(o.items) ? o.items : [];
+    if(arr.length > 0){
+      return arr.map(i=>{
+        const parts = i.sku ? [i.sku, i.name||''] : [i.name||''];
+        if(i.size) parts.push(i.size);
+        parts.push(`x${i.qty||1}`);
+        return `<div style="font-size:7pt;">${parts.join(' · ')}</div>`;
+      }).join('');
+    }
+    const prod = (o.product||'').trim();
+    return prod ? `<div style="font-size:7pt;">${prod}</div>` : '';
+  })();
   const dateStr = parseOrderDate(o.date||o.createdAt, 'short');
   const shipLine = (() => {
     const dl = (o.deliveryLocation||'').trim();
@@ -1482,9 +1491,9 @@ window.printLabel = function(order){
       <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
       <div style="font-size:7pt;font-weight:bold;">SHIP TO:</div>
       <div style="font-size:9pt;font-weight:bold;">${o.clientName||o.client||o.customerName||''}</div>
-      <div style="font-size:7pt;">${o.customerAddress||o.address||o.deliveryAddress||''}</div>
       ${shipLine?`<div style="font-size:7pt;">${shipLine}</div>`:''}
-      <div style="font-size:7pt;">${o.customerWhatsApp||o.phone||o.whatsapp||o.wa||'—'}</div>
+      <div style="font-size:7pt;">${o.customerAddress||o.address||o.deliveryAddress||''}</div>
+      <div style="font-size:7pt;">WhatsApp: ${o.customerWhatsApp||o.phone||o.whatsapp||o.wa||'—'}</div>
       <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
       <div style="font-size:6pt;">Order: ${o.id||o.orderId||''} · ${dateStr}</div>
       ${items}
