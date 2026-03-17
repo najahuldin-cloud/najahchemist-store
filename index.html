@@ -3153,6 +3153,16 @@ window.printLabel = function(order){
     return `<div style="font-size:7pt;">${parts.join(' · ')}</div>`;
   }).join('');
   const dateStr = parseOrderDate(o.date||o.createdAt, 'short');
+  const shipLine = (() => {
+    const dl = (o.deliveryLocation||'').trim();
+    const sm = (o.shipMethod||'').trim();
+    if(dl){
+      let s = dl.replace(/\s*-\s*/, ' — ');
+      return s.replace('Kingston/St. Andrew —', 'Kingston/St. Andrew Delivery —');
+    }
+    if(sm) return /kingston/i.test(sm) ? 'Kingston/St. Andrew Delivery' : sm;
+    return '';
+  })();
 
   // 1. Populate #print-zone with full label HTML
   const zone = document.getElementById('print-zone');
@@ -3167,8 +3177,9 @@ window.printLabel = function(order){
       <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
       <div style="font-size:7pt;font-weight:bold;">SHIP TO:</div>
       <div style="font-size:9pt;font-weight:bold;">${o.clientName||o.client||o.customerName||''}</div>
-      <div style="font-size:7pt;">${o.address||o.deliveryAddress||o.customerAddress||o.deliveryLocation||'—'}</div>
-      <div style="font-size:7pt;">${o.whatsapp||o.phone||o.customerWhatsApp||o.wa||'—'}</div>
+      <div style="font-size:7pt;">${o.customerAddress||o.address||o.deliveryAddress||''}</div>
+      ${shipLine?`<div style="font-size:7pt;">${shipLine}</div>`:''}
+      <div style="font-size:7pt;">${o.customerWhatsApp||o.phone||o.whatsapp||o.wa||'—'}</div>
       <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
       <div style="font-size:6pt;">Order: ${o.id||''} · ${dateStr}</div>
       ${items}
