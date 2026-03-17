@@ -3162,14 +3162,24 @@ window.printLabel = function(order){
     return prod ? `<div style="font-size:7pt;">${prod}</div>` : '';
   })();
   const dateStr = parseOrderDate(o.date||o.createdAt, 'short');
+  // Build shipping line; for admin Knutsford/Zipmail orders fold customerAddress
+  // in as branch/location so it doesn't get lost on a separate line.
+  let addrInShipLine = false;
   const shipLine = (() => {
     const dl = (o.deliveryLocation||'').trim();
     const sm = (o.shipMethod||'').trim();
     if(dl){
+      // website orders: "Knutsford Express - Gutters" → "Knutsford Express — Gutters"
       let s = dl.replace(/\s*-\s*/, ' — ');
       return s.replace('Kingston/St. Andrew —', 'Kingston/St. Andrew Delivery —');
     }
-    if(sm) return /kingston/i.test(sm) ? 'Kingston/St. Andrew Delivery' : sm;
+    if(sm){
+      const addr = (o.customerAddress||o.address||'').trim();
+      if(/kingston|direct/i.test(sm)) return 'Kingston/St. Andrew Delivery';
+      // Knutsford / Zipmail: customerAddress is the branch or pickup location
+      if(addr){ addrInShipLine = true; return sm + ' — ' + addr; }
+      return sm;
+    }
     return '';
   })();
 
@@ -3187,7 +3197,7 @@ window.printLabel = function(order){
       <div style="font-size:7pt;font-weight:bold;">SHIP TO:</div>
       <div style="font-size:9pt;font-weight:bold;">${o.clientName||o.client||o.customerName||''}</div>
       ${shipLine?`<div style="font-size:7pt;">${shipLine}</div>`:''}
-      <div style="font-size:7pt;">${o.customerAddress||o.address||o.deliveryAddress||''}</div>
+      ${addrInShipLine?'':(`<div style="font-size:7pt;">${o.customerAddress||o.address||o.deliveryAddress||''}</div>`)}
       <div style="font-size:7pt;">WhatsApp: ${o.customerWhatsApp||o.phone||o.whatsapp||o.wa||'—'}</div>
       <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
       <div style="font-size:6pt;">Order: ${o.id||''} · ${dateStr}</div>
