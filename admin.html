@@ -289,11 +289,16 @@ select.finp{cursor:pointer;}
         <button class="filter-btn" onclick="filterOrders('Complete',this)">Complete</button>
         <input class="search-inp" placeholder="🔍 Search orders…" oninput="searchOrders(this.value)">
       </div>
-      <div id="batch-bar" style="display:none;align-items:center;gap:0.6rem;flex-wrap:wrap;background:#0F0E0D;color:white;padding:0.6rem 0.9rem;border-radius:8px;margin-bottom:0.6rem;">
-        <span id="batch-count" style="font-size:0.8rem;font-weight:600;">0 selected</span>
-        <button class="btn btn-sm" style="background:white;color:#0F0E0D;" onclick="batchPrintLabels()">🏷 Print <span id="batch-lbl-n">0</span> Labels</button>
-        <button class="btn btn-sm" style="background:white;color:#0F0E0D;" onclick="batchPrintReceipts()">🧾 Print <span id="batch-rct-n">0</span> Receipts</button>
-        <button class="btn btn-sm" style="background:#374151;color:white;" onclick="clearOrderSelection()">✕ Clear</button>
+      <div id="orders-date-filter" style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.5rem;">
+        <label style="font-size:0.78rem;font-weight:600;color:#4B4846;">Filter by date:</label>
+        <input type="date" id="orders-date-input" oninput="filterOrdersByDate(this.value)" style="border:1.5px solid #E8E4DE;border-radius:8px;padding:0.3rem 0.6rem;font-family:inherit;font-size:0.8rem;outline:none;">
+        <button class="btn btn-sm btn-ol" onclick="selectAllFiltered()" style="font-size:0.75rem;">Select All Filtered</button>
+        <button class="btn btn-sm" style="background:#E8E4DE;color:#4B4846;font-size:0.75rem;" onclick="clearDateFilter()">Clear</button>
+      </div>
+      <div id="batch-bar" style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.6rem;">
+        <button id="btn-batch-labels" class="btn btn-sm" style="background:#9CA3AF;color:white;cursor:not-allowed;" onclick="batchPrintLabels()" disabled>🖨 Print Selected Labels (<span id="batch-lbl-n">0</span>)</button>
+        <button id="btn-batch-receipts" class="btn btn-sm" style="background:#9CA3AF;color:white;cursor:not-allowed;" onclick="batchPrintReceipts()" disabled>🖨 Print Selected Receipts (<span id="batch-rct-n">0</span>)</button>
+        <span id="batch-count" style="font-size:0.75rem;color:#8A8480;"></span>
       </div>
       <div class="tbl-wrap">
         <table>
@@ -835,11 +840,20 @@ function statusBadgeClass(s){
 }
 
 // ── ORDERS ──
+let _ordersDateFilter = '';
 function renderOrdersTable(){
   const tbody = document.getElementById('orders-tbody');
   let list = [...ORDERS];
   if(_currentOrderFilter !== 'all') list = list.filter(o => (o.status||'Pending').toLowerCase() === _currentOrderFilter.toLowerCase());
   if(_orderSearch) { const s=_orderSearch.toLowerCase(); list = list.filter(o=>(o.id||'').toLowerCase().includes(s)||(o.client||o.customerName||'').toLowerCase().includes(s)||(o.product||'').toLowerCase().includes(s)); }
+  if(_ordersDateFilter){
+    list = list.filter(o=>{
+      const raw=o.date||o.createdAt; if(!raw) return false;
+      let d; if(raw.seconds) d=new Date(raw.seconds*1000); else if(raw.toDate) d=raw.toDate(); else d=new Date(raw);
+      if(isNaN(d.getTime())) return false;
+      return d.toISOString().slice(0,10)===_ordersDateFilter;
+    });
+  }
   if(!list.length){ tbody.innerHTML='<tr><td colspan="10" class="empty-state">No orders found</td></tr>'; return; }
   const payStatuses=['Unpaid','Awaiting Payment','Paid','Refunded'];
   tbody.innerHTML = list.map(o=>`<tr>
@@ -1718,11 +1732,13 @@ window.updateOrderSelection = function(){
   const checks = document.querySelectorAll('input.order-cb:checked');
   const all = document.querySelectorAll('input.order-cb');
   const n = checks.length;
-  const bar = document.getElementById('batch-bar');
-  if(bar) bar.style.display = n>0 ? 'flex' : 'none';
-  const bc = document.getElementById('batch-count'); if(bc) bc.textContent = n+(n===1?' order':' orders')+' selected';
+  const bc = document.getElementById('batch-count'); if(bc) bc.textContent = n>0 ? n+(n===1?' order':' orders')+' selected' : '';
   const bl = document.getElementById('batch-lbl-n'); if(bl) bl.textContent = n;
   const br = document.getElementById('batch-rct-n'); if(br) br.textContent = n;
+  const btnL = document.getElementById('btn-batch-labels');
+  const btnR = document.getElementById('btn-batch-receipts');
+  if(btnL){ btnL.disabled=n===0; btnL.style.background=n>0?'#065F46':'#9CA3AF'; btnL.style.cursor=n>0?'pointer':'not-allowed'; }
+  if(btnR){ btnR.disabled=n===0; btnR.style.background=n>0?'#065F46':'#9CA3AF'; btnR.style.cursor=n>0?'pointer':'not-allowed'; }
   document.querySelectorAll('input.order-cb').forEach(cb=>{
     const row = cb.closest('tr'); if(row) row.style.background = cb.checked ? '#FFFBEB' : '';
   });
@@ -1735,37 +1751,70 @@ window.clearOrderSelection = function(){
   if(sa){ sa.checked=false; sa.indeterminate=false; }
   updateOrderSelection();
 };
+window.filterOrdersByDate = function(val){
+  _ordersDateFilter = val;
+  renderOrdersTable();
+};
+window.clearDateFilter = function(){
+  _ordersDateFilter = '';
+  const inp = document.getElementById('orders-date-input');
+  if(inp) inp.value = '';
+  renderOrdersTable();
+};
+window.selectAllFiltered = function(){
+  document.querySelectorAll('#orders-tbody tr').forEach(row=>{
+    if(row.style.display==='none') return;
+    const cb = row.querySelector('input.order-cb');
+    if(cb) cb.checked = true;
+  });
+  updateOrderSelection();
+};
 window.batchPrintLabels = function(){
   const checks = document.querySelectorAll('input.order-cb:checked');
   if(!checks.length){ alert('No orders selected'); return; }
   const orders = Array.from(checks).map(cb=>window.ordersMap&&window.ordersMap[cb.getAttribute('data-id')]).filter(Boolean);
   if(!orders.length){ alert('Order data not found'); return; }
-  const labelsHtml = orders.map((o,i)=>{
-    const items = (o.items||[]).slice(0,4).map(it=>`<div style="font-size:6pt;">${it.qty||1}x ${it.name||''} ${it.size||''}</div>`).join('');
-    const dateStr = parseOrderDate(o.date||o.createdAt,'short');
-    return `<div style="width:76mm;height:96mm;overflow:hidden;font-family:monospace;padding:2mm;box-sizing:border-box;${i<orders.length-1?'page-break-after:always;':''}">
-      <table width="100%"><tr><td style="font-size:12pt;font-weight:bold;">Nc</td><td align="right"><div id="qr-${i}"></div></td></tr></table>
+  const labelsHtml = orders.map((o,idx)=>{
+    const arr = Array.isArray(o.items)?o.items:[];
+    const itemsHtml = arr.length>0
+      ? arr.map(it=>{ const p=it.sku?[it.sku,it.name||'']:[it.name||'']; if(it.size)p.push(it.size); p.push('x'+(it.qty||1)); return `<div style="font-size:7pt;">${p.join(' · ')}</div>`; }).join('')
+      : ((o.product||'').trim() ? `<div style="font-size:7pt;">${o.product}</div>` : '');
+    const sd=(o.shippingDetail||'').trim();
+    let shipLine='';
+    if(sd){ shipLine=sd; }
+    else{ const dl=(o.deliveryLocation||'').trim(),sm=(o.shipMethod||'').trim();
+      if(dl){ let s=dl.replace(/\s*-\s*/,' — '); shipLine=s.replace('Kingston/St. Andrew —','Kingston/St. Andrew Delivery —'); }
+      else if(sm){ const a=(o.customerAddress||o.address||'').trim(); if(/kingston|direct/i.test(sm)) shipLine='Kingston/St. Andrew Delivery'; else shipLine=a?sm+' — '+a:sm; } }
+    const addrLine=(o.customerAddress||o.address||o.deliveryAddress||'').trim();
+    const showAddr = addrLine && !sd && !(o.deliveryLocation||'').trim();
+    const phoneStr=o.customerWhatsApp||o.phone||o.whatsapp||o.wa||'—';
+    const name=o.clientName||o.client||o.customerName||'';
+    const dateStr=parseOrderDate(o.date||o.createdAt,'short');
+    const pb=idx<orders.length-1?'page-break-after:always;':'';
+    return `<div style="width:76mm;min-height:96mm;max-height:96mm;overflow:hidden;font-family:monospace;padding:2mm;box-sizing:border-box;${pb}">
+      <table width="100%"><tr><td style="font-size:14pt;font-weight:bold;">Nc</td><td align="right"><div id="qr-${idx}"></div></td></tr></table>
       <div style="text-align:center;font-size:8pt;font-weight:bold;">NAJAH CHEMIST</div>
-      <div style="text-align:center;font-size:5.5pt;">Kingston, Jamaica · start@najahchemistja.com</div>
+      <div style="text-align:center;font-size:6pt;">Kingston, Jamaica · start@najahchemistja.com</div>
       <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
       <div style="font-size:7pt;font-weight:bold;">SHIP TO:</div>
-      <div style="font-size:9pt;font-weight:bold;">${o.clientName||o.client||o.customerName||''}</div>
-      <div style="font-size:7pt;">${o.address||o.deliveryAddress||o.customerAddress||o.deliveryLocation||'—'}</div>
-      <div style="font-size:7pt;">${o.whatsapp||o.phone||o.customerWhatsApp||'—'}</div>
+      <div style="font-size:9pt;font-weight:bold;">${name}</div>
+      ${shipLine?`<div style="font-size:7pt;">${shipLine}</div>`:''}
+      ${showAddr?`<div style="font-size:7pt;">${addrLine}</div>`:''}
+      <div style="font-size:7pt;">WhatsApp: ${phoneStr}</div>
       <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
       <div style="font-size:6pt;">Order: ${o.id||o.orderId||''} · ${dateStr}</div>
-      ${items}
+      ${itemsHtml}
       <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
       <div style="font-size:8pt;font-weight:bold;text-align:right;">TOTAL: J$${(parseFloat(o.total)||0).toLocaleString()}</div>
-      <div style="font-size:5.5pt;">najahchemistja.com &nbsp;&nbsp; ★ HANDLE WITH CARE</div>
+      <div style="font-size:5.5pt;">najahchemistja.com &nbsp;&nbsp;&nbsp; ★ HANDLE WITH CARE</div>
     </div>`;
   }).join('');
-  const win = window.open('','_blank','width=320,height=600');
+  const win = window.open('','_blank','width=302,height=378');
   win.document.write(`<!DOCTYPE html><html><head><title>Batch Labels (${orders.length})</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
-  <style>@page{size:80mm 100mm;margin:2mm;}body{margin:0;padding:0;}<\/style>
+  <style>@page{size:80mm 100mm;margin:0;}html,body{width:80mm;overflow:hidden;margin:0;padding:0;}<\/style>
   </head><body>${labelsHtml}
-  <script>window.onload=function(){for(var i=0;i<${orders.length};i++){new QRCode(document.getElementById("qr-"+i),{text:"https://najahchemistja.com",width:45,height:45,correctLevel:QRCode.CorrectLevel.L});}setTimeout(function(){window.print();},600);};<\/script>
+  <script>window.onload=function(){for(var i=0;i<${orders.length};i++){new QRCode(document.getElementById("qr-"+i),{text:"https://najahchemistja.com",width:45,height:45,correctLevel:QRCode.CorrectLevel.L});}setTimeout(function(){window.print();},800);};<\/script>
   </body></html>`);
   win.document.close();
   markBatchPrinted(Array.from(checks).map(cb=>cb.getAttribute('data-id')),'labelPrinted');
@@ -1776,24 +1825,39 @@ window.batchPrintReceipts = function(){
   const orders = Array.from(checks).map(cb=>window.ordersMap&&window.ordersMap[cb.getAttribute('data-id')]).filter(Boolean);
   if(!orders.length){ alert('Order data not found'); return; }
   const receiptsHtml = orders.map((order,i)=>{
-    const items = (order.items||[]).map(it=>`<tr><td>${it.name||''} ${it.size||''}</td><td align="right">x${it.qty||1}</td></tr>`).join('');
+    const arr = Array.isArray(order.items)?order.items:[];
+    const itemsHtml = arr.length>0
+      ? arr.map(it=>{ const p=it.sku?[it.sku,it.name||'']:[it.name||'']; if(it.size)p.push(it.size); return `<tr><td>${p.join(' · ')}</td><td align="right">x${it.qty||1}</td><td align="right">J$${((it.price||0)*(it.qty||1)).toLocaleString()}</td></tr>`; }).join('')
+      : `<tr><td colspan="3">${order.product||'—'}</td></tr>`;
+    const sub = (parseFloat(order.total)||0)-(parseFloat(order.deliveryFee)||0);
+    const ship = parseFloat(order.deliveryFee)||0;
+    const total = parseFloat(order.total)||0;
     const dateStr = parseOrderDate(order.date||order.createdAt);
-    return `<div style="${i<orders.length-1?'page-break-after:always;':''}padding:12px;">
+    const wa = order.customerWhatsApp||order.phone||order.whatsapp||order.wa||'—';
+    const addr = order.shippingDetail||order.deliveryLocation||order.customerAddress||order.address||'—';
+    const pb = i<orders.length-1?'page-break-after:always;':'';
+    return `<div style="${pb}padding:12px;">
       <h2 style="text-align:center;font-size:14pt;margin:0 0 2px;">Najah Chemist</h2>
       <div style="text-align:center;font-size:9pt;color:#555;margin-bottom:10px;">Jamaica's Skincare Manufacturer<br>najahchemistja.com · @najahchemist</div>
       <hr style="border:none;border-top:1px dashed #000;margin:8px 0;">
       <table width="100%" style="border-collapse:collapse;font-size:10pt;">
-        <tr><td>Order ID</td><td align="right"><b>${order.id||'—'}</b></td></tr>
+        <tr><td>Order ID</td><td align="right"><b>${order.id||order.orderId||'—'}</b></td></tr>
         <tr><td>Date</td><td align="right">${dateStr}</td></tr>
-        <tr><td>Client</td><td align="right">${order.clientName||order.client||'—'}</td></tr>
+        <tr><td>Client</td><td align="right">${order.clientName||order.client||order.customerName||'—'}</td></tr>
+        <tr><td>WhatsApp</td><td align="right">${wa}</td></tr>
+        <tr><td>Shipping</td><td align="right">${addr}</td></tr>
         <tr><td>Payment Method</td><td align="right">${order.payMethod||order.paymentMethod||'—'}</td></tr>
         <tr><td>Payment Status</td><td align="right">${order.paymentStatus||order.payment||'—'}</td></tr>
       </table>
       <hr style="border:none;border-top:1px dashed #000;margin:8px 0;">
       <b>ORDER DETAILS</b>
-      <table width="100%" style="margin-top:6px;border-collapse:collapse;font-size:10pt;">${items||`<tr><td>${order.product||'—'}</td></tr>`}</table>
+      <table width="100%" style="margin-top:6px;border-collapse:collapse;font-size:10pt;">
+        <thead><tr><th align="left">Item</th><th align="right">Qty</th><th align="right">Amount</th></tr></thead>
+        <tbody>${itemsHtml}</tbody>
+      </table>
       <hr style="border:none;border-top:1px dashed #000;margin:8px 0;">
-      <div style="font-size:13pt;font-weight:bold;text-align:right;margin-top:6px;">Total: J$${(parseFloat(order.total)||0).toLocaleString()}</div>
+      ${ship>0?`<div style="display:flex;justify-content:space-between;font-size:10pt;margin-bottom:3px;"><span>Subtotal</span><span>J$${(sub>0?sub:total).toLocaleString()}</span></div><div style="display:flex;justify-content:space-between;font-size:10pt;margin-bottom:3px;"><span>Shipping</span><span>J$${ship.toLocaleString()}</span></div>`:''}
+      <div style="font-size:13pt;font-weight:bold;text-align:right;margin-top:6px;">Total: J$${total.toLocaleString()}</div>
       <div style="text-align:center;font-size:8pt;color:#888;margin-top:14px;">Thank you for choosing Najah Chemist! · najahchemistja.com</div>
     </div>`;
   }).join('');
