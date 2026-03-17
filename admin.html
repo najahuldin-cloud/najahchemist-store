@@ -808,7 +808,6 @@ window.doLogin = async function() {
     err.style.display = 'block';
   }
 };
-// Allow Enter key to submit login
 document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') window.doLogin(); });
 
 window.doLogout = async function() {
@@ -820,7 +819,6 @@ async function initAdmin() {
   document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
   document.getElementById('dash-date-sub').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
-  // Products (real-time)
   _productsUnsub = onSnapshot(collection(db,'products'), snap => {
     PRODUCTS = snap.docs.map(d => ({...d.data(), _docId: d.id}));
     renderProductsTable();
@@ -829,7 +827,6 @@ async function initAdmin() {
     renderBestSellersManager();
   });
 
-  // Orders (real-time)
   _ordersUnsub = onSnapshot(
     query(collection(db,'orders'), orderBy('createdAt','desc')),
     snap => {
@@ -844,7 +841,6 @@ async function initAdmin() {
         renderLabelsTable();
         updateDashStats();
       }
-      // Update pending badge
       const pending = ORDERS.filter(o => o.status === 'Pending' || o.status === 'pending').length;
       const badge = document.getElementById('nb-orders-badge');
       badge.textContent = pending;
@@ -853,7 +849,6 @@ async function initAdmin() {
     err => console.log('[Admin] Orders error:', err.message)
   );
 
-  // Clients (one-time load + listen)
   onSnapshot(query(collection(db,'clients'), orderBy('createdAt','desc')), snap => {
     CLIENTS = snap.docs.map(d => ({...d.data(), _docId: d.id}));
     renderClientsTable();
@@ -861,18 +856,14 @@ async function initAdmin() {
     rebuildClientDatalist();
   });
 
-  // Load best sellers
   getDoc(doc(db,'settings','bestSellers')).then(d=>{
     if(d.exists()) window._bsIds=(d.data().productIds||d.data().ids||[]);
     else window._bsIds=[];
     renderBestSellersManager();
   }).catch(()=>{ window._bsIds=[]; });
 
-  // Consultations
   loadConsultations();
-  // Knowledge base
   loadKnowledge();
-  // Site Content images
   loadStartPageImages();
 }
 
@@ -885,7 +876,6 @@ window.nav = function(id, btn) {
   const titles = {dashboard:'Dashboard',orders:'Orders',clients:'Clients',products:'Products',labels:'Shipping Labels',consultations:'Consultations',knowledge:'Chatbot Knowledge Base',sitecontent:'Site Content'};
   document.getElementById('topbar-title').textContent = titles[id]||id;
   closeSidebar();
-  // Reset client profile view when going to clients
   if(id==='clients'){
     document.getElementById('v-clients-list').style.display='';
     document.getElementById('v-client-profile').style.display='none';
@@ -1203,7 +1193,6 @@ window.saveClient = async function(){
   const name = document.getElementById('cl-name').value.trim();
   if(!name){ toast('Enter client name'); return; }
   const editId = document.getElementById('edit-client-id').value;
-  // Auto-generate client ID
   let clientId = editId ? (CLIENTS.find(c=>c._docId===editId)||{}).clientId : '';
   if(!clientId){
     const maxId = CLIENTS.reduce((m,c)=>{ const n=parseInt((c.clientId||'NC-000').replace('NC-',''));return n>m?n:m; },0);
@@ -1303,10 +1292,8 @@ window.editProduct = function(id){
   document.getElementById('ep-ben').value = Array.isArray(p.benefits)?p.benefits.join(', '):(p.benefits||'');
   document.getElementById('ep-use').value = p.usage||'';
   document.getElementById('ep-hidden').value = p.hidden?'true':'false';
-  // Image
   if(p.img){ document.getElementById('ep-img-preview').src=p.img; document.getElementById('ep-img-preview').style.display='block'; }
   else { document.getElementById('ep-img-preview').style.display='none'; }
-  // Pricing
   updatePricingUI(p.cat);
   const pKeys = Object.keys(p.pricing||{});
   if(pKeys.some(k=>k.startsWith('bars')||k==='bar')){
@@ -1371,7 +1358,6 @@ window.saveProduct = async function(){
   if(!name){ toast('Enter a product name'); return; }
   const cat = document.getElementById('ep-cat').value;
   const editId = document.getElementById('ep-id').value;
-  // Build pricing
   let pricing = {};
   const _pType = window._epPricingType || 'liquid';
   const soapVis = _pType==='soap';
@@ -1529,7 +1515,6 @@ window.saveAdminTracking = async function(){
   const notes = document.getElementById('atrk-notes').value.trim();
   const tracking = { courier, trackingNumber: trackingNumber||'N/A', estimatedDelivery, notes, addedAt: new Date().toISOString() };
 
-  // Build WhatsApp URL and open popup BEFORE any await (must be synchronous with user gesture)
   let num = (o.customerWhatsApp||o.whatsapp||o.phone||'').replace(/\D/g,'');
   if(num.length===7) num='1876'+num;
   if(num.length===10) num='1'+num;
@@ -1557,8 +1542,6 @@ window.saveAdminTracking = async function(){
 window.printLabel = function(order){
   if(!order){ alert('Order not found'); return; }
   const o = typeof order==='string'?JSON.parse(order):order;
-  console.log('[printLabel] order:', JSON.parse(JSON.stringify(o)));
-  // Bug 1: website orders have no items array — fall back to o.product string
   const items = (() => {
     const arr = Array.isArray(o.items) ? o.items : [];
     if(arr.length > 0){
@@ -1573,28 +1556,23 @@ window.printLabel = function(order){
     return prod ? `<div style="font-size:7pt;">${prod}</div>` : '';
   })();
   const dateStr = parseOrderDate(o.date||o.createdAt, 'short');
-  // Build shipping line; for admin Knutsford/Zipmail orders fold customerAddress
-  // in as branch/location so it doesn't get lost on a separate line.
   let addrInShipLine = false;
   const shipLine = (() => {
     const dl = (o.deliveryLocation||'').trim();
     const sm = (o.shipMethod||'').trim();
     if(dl){
-      // website orders: "Knutsford Express - Gutters" → "Knutsford Express — Gutters"
       let s = dl.replace(/\s*-\s*/, ' — ');
       return s.replace('Kingston/St. Andrew —', 'Kingston/St. Andrew Delivery —');
     }
     if(sm){
       const addr = (o.customerAddress||o.address||'').trim();
       if(/kingston|direct/i.test(sm)) return 'Kingston/St. Andrew Delivery';
-      // Knutsford / Zipmail: customerAddress is the branch or pickup location
       if(addr){ addrInShipLine = true; return sm + ' — ' + addr; }
       return sm;
     }
     return '';
   })();
 
-  // 1. Populate #print-zone with full label HTML
   const zone = document.getElementById('print-zone');
   zone.innerHTML = `
     <div id="thermal-label" style="width:76mm;min-height:96mm;max-height:96mm;overflow:hidden;font-family:monospace;padding:2mm;box-sizing:border-box;">
@@ -1619,10 +1597,8 @@ window.printLabel = function(order){
     </div>
   `;
 
-  // 2. Make #print-zone visible but off-screen so QR renders before printing
   zone.style.cssText = 'display:block;position:fixed;left:-9999px;top:0;visibility:visible;';
 
-  // 7. Cleanup after print
   function resetZone(){
     zone.style.cssText = 'display:none;';
     zone.innerHTML = '';
@@ -1631,28 +1607,22 @@ window.printLabel = function(order){
 
   function doPrint(){
     window.print();
-    // Fallback cleanup in case afterprint doesn't fire
     setTimeout(resetZone, 2000);
   }
 
-  // 3 & 4. Init QRCode, then 5. wait for canvas before printing
   const qrEl = document.getElementById('qr-thermal');
   if(typeof QRCode !== 'undefined' && qrEl){
     new QRCode(qrEl, { text:'https://najahchemistja.com', width:45, height:45, correctLevel:QRCode.CorrectLevel.L });
     if(qrEl.querySelector('canvas')){
-      // Canvas already present (sync render)
       doPrint();
     } else {
-      // 5. Wait for canvas via MutationObserver
       const obs = new MutationObserver(()=>{
         if(qrEl.querySelector('canvas')){ obs.disconnect(); doPrint(); }
       });
       obs.observe(qrEl, { childList: true, subtree: true });
-      // 6. Fallback after 1500ms regardless
       setTimeout(()=>{ obs.disconnect(); doPrint(); }, 1500);
     }
   } else {
-    // No QR library — print after short delay
     setTimeout(doPrint, 300);
   }
 };
@@ -1729,7 +1699,6 @@ async function loadKnowledge(){
     });
     if(!found){
       document.getElementById('kb-text').value=DEFAULT_KNOWLEDGE;
-      // Save default on first load
       await setDoc(doc(db,'settings','chatbot_knowledge'),{content:DEFAULT_KNOWLEDGE,updatedAt:serverTimestamp()});
       document.getElementById('kb-status').textContent='Default policy loaded';
     }
@@ -1861,6 +1830,7 @@ window.selectAllFiltered = function(){
   });
   updateOrderSelection();
 };
+
 // ── BULK PRINT ──
 function getSelectedOrders(){
   return Array.from(document.querySelectorAll('input.order-cb:checked'))
@@ -1873,6 +1843,7 @@ window._bpClose = function(){
   document.body.classList.remove('bulk-printing');
 };
 
+// ── BULK PRINT LABELS (FIXED) ──
 window.batchPrintLabels = function(){
   const selected = getSelectedOrders();
   if (!selected.length) return;
@@ -1882,6 +1853,23 @@ window.batchPrintLabels = function(){
   let html = '';
   selected.forEach((order, i) => {
     const isLast = i === selected.length - 1;
+
+    // Correct field names matching Firestore order schema
+    const clientName = order.client || order.customerName || order.clientName || '—';
+    const whatsapp = order.customerWhatsApp || order.whatsapp || order.phone || '—';
+    const shipLine = order.deliveryLocation || order.shipMethod || order.shippingDetail || '';
+    const dateStr = order.createdAt
+      ? new Date(order.createdAt.seconds * 1000).toLocaleDateString('en-JM')
+      : (order.date || '—');
+
+    // Items: prefer items array, fall back to product string
+    const itemsText = (() => {
+      if (Array.isArray(order.items) && order.items.length) {
+        return order.items.map(it => `${it.name||''} ${it.size||''} x${it.qty||1}`).join(' | ');
+      }
+      return order.product || '—';
+    })();
+
     html += `<div class="label-page" style="page-break-after:${isLast ? 'avoid' : 'always'};width:80mm;min-height:100mm;padding:3mm;box-sizing:border-box;font-family:Arial,sans-serif;font-size:8pt;border:1px dashed #ccc;margin-bottom:4mm;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div style="font-size:18pt;font-weight:bold;">Nc</div>
@@ -1890,13 +1878,13 @@ window.batchPrintLabels = function(){
       <div style="font-size:7pt;">Najah Chemist · Kingston, Jamaica · start@najahchemistja.com</div>
       <hr style="border:1px dashed #000;margin:2mm 0;">
       <div style="font-weight:bold;font-size:7pt;">SHIP TO:</div>
-      <div style="font-weight:bold;font-size:10pt;">${order.clientName || order.name || ''}</div>
-      <div style="font-size:7pt;">${order.shippingDetail || order.shippingMethod || ''}</div>
-      <div style="font-size:7pt;">WhatsApp: ${order.whatsapp || order.phone || order.custPhone || ''}</div>
+      <div style="font-weight:bold;font-size:10pt;">${clientName}</div>
+      <div style="font-size:7pt;">${shipLine}</div>
+      <div style="font-size:7pt;">WhatsApp: ${whatsapp}</div>
       <hr style="border:1px dashed #000;margin:2mm 0;">
-      <div style="font-size:7pt;">Order: ${order.id || ''} · ${order.createdAt ? new Date(order.createdAt.seconds*1000).toLocaleDateString() : ''}</div>
-      <div style="font-size:7pt;">${(order.items||order.products||order.cart||[]).map(it=>`${it.name||''} ${it.size||''} x${it.qty||1}`).join(' | ')}</div>
-      <div style="font-weight:bold;font-size:9pt;text-align:right;margin-top:1mm;">TOTAL: J$${(order.total||0).toLocaleString()}</div>
+      <div style="font-size:7pt;">Order: ${order.id || order.orderId || ''} · ${dateStr}</div>
+      <div style="font-size:7pt;">${itemsText}</div>
+      <div style="font-weight:bold;font-size:9pt;text-align:right;margin-top:1mm;">TOTAL: J$${(parseFloat(order.total)||0).toLocaleString()}</div>
       <div style="font-size:6pt;display:flex;justify-content:space-between;margin-top:2mm;"><span>najahchemistja.com</span><span>★ HANDLE WITH CARE</span></div>
     </div>`;
   });
@@ -1919,6 +1907,8 @@ window.batchPrintLabels = function(){
   }
   markBatchPrinted(selected.map(o=>o.id||o.orderId||'').filter(Boolean),'labelPrinted');
 };
+
+// ── BULK PRINT RECEIPTS (FIXED) ──
 window.batchPrintReceipts = function(){
   const selected = getSelectedOrders();
   if (!selected.length) return;
@@ -1928,23 +1918,51 @@ window.batchPrintReceipts = function(){
   let html = '';
   selected.forEach((order, i) => {
     const isLast = i === selected.length - 1;
-    const items = (order.items||order.products||order.cart||[]);
+
+    // Correct field names matching Firestore order schema
+    const clientName = order.client || order.customerName || order.clientName || '—';
+    const whatsapp = order.customerWhatsApp || order.whatsapp || order.phone || '—';
+    const shipLine = order.deliveryLocation || order.shipMethod || order.shippingDetail || '—';
+    const payMethod = order.payMethod || order.paymentMethod || '—';
+    const payStatus = order.paymentStatus || order.payment || '—';
+    const dateStr = order.createdAt
+      ? new Date(order.createdAt.seconds * 1000).toLocaleString('en-JM')
+      : (order.date || '—');
+
+    // Items: prefer items array, fall back to product string
+    const itemsHtml = (() => {
+      if (Array.isArray(order.items) && order.items.length) {
+        return order.items.map(it =>
+          `<div style="display:flex;justify-content:space-between;padding:1mm 0;border-bottom:1px solid #eee;">
+            <span>${it.name||''} ${it.size||''}</span>
+            <span>x${it.qty||1} — J$${((it.price||0)*(it.qty||1)).toLocaleString()}</span>
+          </div>`
+        ).join('');
+      }
+      return `<div style="padding:1mm 0;">${order.product || '—'}</div>`;
+    })();
+
     html += `<div class="receipt-page" style="page-break-after:${isLast ? 'avoid' : 'always'};padding:10mm;box-sizing:border-box;font-family:Arial,sans-serif;font-size:9pt;margin-bottom:4mm;border:1px dashed #ccc;">
       <div style="text-align:center;margin-bottom:4mm;">
         <div style="font-size:16pt;font-weight:bold;">Najah Chemist</div>
-        <div style="font-size:8pt;">Kingston, Jamaica · start@najahchemistja.com</div>
+        <div style="font-size:8pt;color:#555;">Jamaica's Skincare Manufacturer · najahchemistja.com · @najahchemist</div>
       </div>
-      <hr>
-      <div><b>Order ID:</b> ${order.id||''}</div>
-      <div><b>Date:</b> ${order.createdAt ? new Date(order.createdAt.seconds*1000).toLocaleString() : ''}</div>
-      <div><b>Client:</b> ${order.clientName||order.name||''}</div>
-      <div><b>WhatsApp:</b> ${order.whatsapp||order.phone||''}</div>
-      <div><b>Shipping:</b> ${order.shippingDetail||order.shippingMethod||''}</div>
-      <hr>
-      ${items.map(it=>`<div>${it.name||''} ${it.size||''} x${it.qty||1} — J$${((it.price||0)*(it.qty||1)).toLocaleString()}</div>`).join('')}
-      <hr>
-      <div><b>Total: J$${(order.total||0).toLocaleString()}</b></div>
-      <div><b>Payment:</b> ${order.paymentMethod||''} · ${order.payStatus||''}</div>
+      <hr style="border:none;border-top:1px dashed #000;margin:2mm 0;">
+      <div style="display:flex;justify-content:space-between;padding:1mm 0;"><span>Order ID</span><strong>${order.id || order.orderId || '—'}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:1mm 0;"><span>Date</span><span>${dateStr}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:1mm 0;"><span>Client</span><span>${clientName}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:1mm 0;"><span>WhatsApp</span><span>${whatsapp}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:1mm 0;"><span>Shipping</span><span>${shipLine}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:1mm 0;"><span>Payment Method</span><span>${payMethod}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:1mm 0;"><span>Payment Status</span><span>${payStatus}</span></div>
+      <hr style="border:none;border-top:1px dashed #000;margin:2mm 0;">
+      <div style="font-size:8pt;font-weight:bold;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1mm;">Order Details</div>
+      ${itemsHtml}
+      <hr style="border:none;border-top:1.5px solid #000;margin:2mm 0;">
+      <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:11pt;">
+        <span>Total</span><span>J$${(parseFloat(order.total)||0).toLocaleString()}</span>
+      </div>
+      <div style="text-align:center;margin-top:4mm;font-size:8pt;color:#888;">Thank you for choosing Najah Chemist! · najahchemistja.com</div>
     </div>`;
   });
 
@@ -1959,6 +1977,7 @@ window.batchPrintReceipts = function(){
   zone.style.display = 'block';
   markBatchPrinted(selected.map(o=>o.id||o.orderId||'').filter(Boolean),'receiptPrinted');
 };
+
 async function markBatchPrinted(ids, field){
   if(!ids||!ids.length) return;
   for(const id of ids){
@@ -2098,7 +2117,6 @@ window.saveBestSellers = async function(){
   } catch(e){ toast('Save failed: '+e.message); }
 };
 
-// Init order form with one item row on modal open
 document.getElementById('m-new-order').addEventListener('click', function(e){
   if(e.target===this) closeM('m-new-order');
 });
@@ -2146,7 +2164,6 @@ window.spUpload = async function(field, input) {
   input.value = '';
 };
 
-// Add initial row when modal opens
 const newOrderModal = document.getElementById('m-new-order');
 const observer = new MutationObserver(()=>{
   if(newOrderModal.classList.contains('open')&&document.getElementById('order-items-container').children.length===0)
