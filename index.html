@@ -226,7 +226,8 @@ tr:hover td{background:var(--warm);}
   /* bulk print */
   body.bulk-printing { overflow: visible !important; height: auto !important; margin: 0; padding: 0; }
   body.bulk-printing > *:not(#bulk-print-zone) { display: none !important; }
-  body.bulk-printing #bulk-print-zone { display: block !important; visibility: visible !important; position: static !important; background: white !important; }
+  body.bulk-printing #bulk-print-zone { display: block !important; visibility: visible !important; position: relative !important; top: auto !important; left: auto !important; background: white !important; height: auto !important; overflow: visible !important; }
+  body.bulk-printing #bulk-print-zone > * { display: block !important; visibility: visible !important; }
   body.bulk-printing #bulk-print-zone * { visibility: visible !important; }
 }
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:var(--light);border-radius:2px;}
