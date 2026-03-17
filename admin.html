@@ -230,6 +230,7 @@ select.finp{cursor:pointer;}
     <button class="nb" onclick="nav('consultations',this)"><span class="nb-icon">📋</span>Consultations</button>
     <button class="nb" onclick="nav('knowledge',this)"><span class="nb-icon">🤖</span>Chatbot KB</button>
     <button class="nb" onclick="nav('sitecontent',this)"><span class="nb-icon">🌐</span>Site Content</button>
+    <button class="nb" onclick="nav('leads',this)"><span class="nb-icon">🌱</span>Leads</button>
   </nav>
   <div class="sb-footer">
     <div class="sb-user" id="sb-user-email"></div>
@@ -486,6 +487,36 @@ select.finp{cursor:pointer;}
           </div>
         </div>
 
+      </div>
+    </div>
+
+    <!-- ══════════ LEADS ══════════ -->
+    <div class="view" id="v-leads">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:0.75rem;">
+        <div>
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--mid);margin-bottom:0.2rem;">Brand Builder</div>
+          <div style="font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:700;">Leads from /start</div>
+        </div>
+        <button class="btn btn-sm btn-ol" onclick="leadsExportCSV()">⬇ Export CSV</button>
+      </div>
+      <div class="tbl-wrap">
+        <table id="leads-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>WhatsApp</th>
+              <th>Email</th>
+              <th>Brand Type</th>
+              <th>Budget</th>
+              <th>Branch</th>
+              <th>Date</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="leads-tbody">
+            <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--mid);">Loading…</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -873,13 +904,14 @@ window.nav = function(id, btn) {
   document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
   document.getElementById('v-'+id).classList.add('on');
   if(btn) btn.classList.add('on');
-  const titles = {dashboard:'Dashboard',orders:'Orders',clients:'Clients',products:'Products',labels:'Shipping Labels',consultations:'Consultations',knowledge:'Chatbot Knowledge Base',sitecontent:'Site Content'};
+  const titles = {dashboard:'Dashboard',orders:'Orders',clients:'Clients',products:'Products',labels:'Shipping Labels',consultations:'Consultations',knowledge:'Chatbot Knowledge Base',sitecontent:'Site Content',leads:'Leads'};
   document.getElementById('topbar-title').textContent = titles[id]||id;
   closeSidebar();
   if(id==='clients'){
     document.getElementById('v-clients-list').style.display='';
     document.getElementById('v-client-profile').style.display='none';
   }
+  if(id==='leads') loadLeads();
 };
 
 window.openM = function(id){ document.getElementById(id).classList.add('open'); };
@@ -2170,6 +2202,59 @@ const observer = new MutationObserver(()=>{
     addOrderItemRow();
 });
 observer.observe(newOrderModal,{attributes:true,attributeFilter:['class']});
+
+// ── LEADS ──
+let _leadsCache = [];
+
+window.loadLeads = async function() {
+  const tbody = document.getElementById('leads-tbody');
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--mid);">Loading…</td></tr>';
+  try {
+    const snap = await getDocs(query(collection(db,'leads'), orderBy('createdAt','desc')));
+    _leadsCache = [];
+    snap.forEach(d => _leadsCache.push({ id: d.id, ...d.data() }));
+    if (_leadsCache.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--mid);">No leads yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = _leadsCache.map(l => {
+      const wa = (l.whatsapp||'').replace(/\D/g,'');
+      const waLink = wa ? `<a href="https://wa.me/${wa}?text=${encodeURIComponent('Hi '+( l.name||'there')+'! I\'m from Najah Chemist — following up on your interest in starting a brand. How can I help?')}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;background:#166534;color:white;padding:0.25rem 0.6rem;border-radius:6px;font-size:0.68rem;font-weight:700;text-decoration:none;">💬 WA</a>` : '—';
+      const date = l.createdAt?.toDate ? l.createdAt.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+      const branch = l.branch === 'starting' ? '<span class="badge b-processing">Starting</span>' : l.branch === 'existing' ? '<span class="badge b-shipped">Existing</span>' : '—';
+      return `<tr>
+        <td style="font-weight:600;">${l.name||'—'}</td>
+        <td style="font-family:monospace;font-size:0.78rem;">${l.whatsapp||'—'}</td>
+        <td style="font-size:0.78rem;">${l.email||'—'}</td>
+        <td>${l.brandType||'—'}</td>
+        <td>${l.budget||'—'}</td>
+        <td>${branch}</td>
+        <td style="white-space:nowrap;font-size:0.75rem;color:var(--mid);">${date}</td>
+        <td>${waLink}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2rem;color:#DC2626;">Error: ${e.message}</td></tr>`;
+    console.error('loadLeads error:', e);
+  }
+};
+
+window.leadsExportCSV = function() {
+  if (!_leadsCache.length) { toast('No leads to export'); return; }
+  const headers = ['Name','WhatsApp','Email','Brand Type','Budget','Branch','Journey','Target Customer','Date'];
+  const rows = _leadsCache.map(l => {
+    const date = l.createdAt?.toDate ? l.createdAt.toDate().toISOString().slice(0,10) : '';
+    return [l.name,l.whatsapp,l.email,l.brandType,l.budget,l.branch,l.journey,l.targetCustomer,date]
+      .map(v => '"'+(v||'').toString().replace(/"/g,'""')+'"').join(',');
+  });
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'najah-leads-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); URL.revokeObjectURL(url);
+  toast('CSV exported ✓');
+};
 </script>
 </body>
 </html>
