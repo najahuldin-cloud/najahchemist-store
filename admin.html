@@ -128,6 +128,12 @@ select.finp{cursor:pointer;}
   body * { visibility: hidden; }
   #print-zone, #print-zone * { visibility: visible; }
   #print-zone { display: block !important; position: fixed !important; left: 0 !important; top: 0 !important; width: 80mm !important; background: white !important; }
+  /* Bulk print zone (page size injected dynamically per mode) */
+  #bulk-print-zone, #bulk-print-zone * { visibility: visible; }
+  #bulk-print-zone { display: block !important; position: fixed !important; left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; background: white !important; }
+  #bulk-print-zone .bulk-print-toolbar { display: none !important; visibility: hidden !important; }
+  .label-page { page-break-after: always; width: 80mm; height: 100mm; overflow: hidden; padding: 3mm; box-sizing: border-box; font-family: Arial, sans-serif; font-size: 8pt; }
+  .receipt-page { page-break-after: always; }
 }
 .label-box{border:2px solid var(--black);border-radius:4px;padding:1.2rem;max-width:420px;font-size:0.78rem;font-family:'Outfit',sans-serif;}
 .label-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1.5px solid var(--black);padding-bottom:0.7rem;margin-bottom:0.7rem;}
@@ -485,6 +491,7 @@ select.finp{cursor:pointer;}
 <!-- ══════════ TOAST ══════════ -->
 <div id="a-toast"></div>
 <div id="print-zone" style="display:none;"></div>
+<div id="bulk-print-zone" style="display:none;position:fixed;top:0;left:0;z-index:99999;background:white;width:100%;height:100%;overflow:auto;"></div>
 <!-- TRACKING MODAL -->
 <div id="m-admin-tracking" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:800;align-items:center;justify-content:center;">
   <div style="background:white;border-radius:16px;padding:2rem;width:420px;max-width:calc(100vw - 2rem);max-height:90vh;overflow-y:auto;position:relative;">
@@ -1850,6 +1857,26 @@ window.selectAllFiltered = function(){
   });
   updateOrderSelection();
 };
+// ── BULK PRINT HELPERS ──
+window.closeBulkPrint = function(){
+  const zone = document.getElementById('bulk-print-zone');
+  zone.style.display = 'none';
+  zone.innerHTML = '';
+  const s = document.getElementById('bulk-page-style');
+  if(s) s.textContent = '';
+};
+window.bulkPrint = function(mode){
+  let s = document.getElementById('bulk-page-style');
+  if(!s){ s = document.createElement('style'); s.id = 'bulk-page-style'; document.head.appendChild(s); }
+  if(mode === 'receipts'){
+    s.textContent = '@media print{@page{size:A5;margin:10mm;}html,body{width:auto!important;height:auto!important;overflow:visible!important;}}';
+  } else {
+    s.textContent = '@media print{@page{size:80mm 100mm;margin:0;}html,body{width:auto!important;height:auto!important;overflow:visible!important;}}';
+  }
+  window.print();
+  window.onafterprint = function(){ window.onafterprint=null; const st=document.getElementById('bulk-page-style'); if(st) st.textContent=''; };
+};
+
 window.batchPrintLabels = function(){
   const checks = document.querySelectorAll('input.order-cb:checked');
   if(!checks.length){ alert('No orders selected'); return; }
@@ -1871,9 +1898,8 @@ window.batchPrintLabels = function(){
     const phoneStr=o.customerWhatsApp||o.phone||o.whatsapp||o.wa||'—';
     const name=o.clientName||o.client||o.customerName||'';
     const dateStr=parseOrderDate(o.date||o.createdAt,'short');
-    const isLast = idx === orders.length - 1;
-    return `<div style="page-break-after:${isLast?'avoid':'always'};width:80mm;height:100mm;overflow:hidden;padding:3mm;box-sizing:border-box;font-family:Arial,sans-serif;font-size:8pt;">
-      <table width="100%"><tr><td style="font-size:14pt;font-weight:bold;">Nc</td><td align="right"><div id="qr-${idx}"></div></td></tr></table>
+    return `<div class="label-page">
+      <table width="100%"><tr><td style="font-size:14pt;font-weight:bold;">Nc</td><td align="right"><div id="bulk-qr-${idx}"></div></td></tr></table>
       <div style="text-align:center;font-size:8pt;font-weight:bold;">NAJAH CHEMIST</div>
       <div style="text-align:center;font-size:6pt;">Kingston, Jamaica · start@najahchemistja.com</div>
       <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
@@ -1890,19 +1916,21 @@ window.batchPrintLabels = function(){
       <div style="font-size:5.5pt;">najahchemistja.com &nbsp;&nbsp;&nbsp; ★ HANDLE WITH CARE</div>
     </div>`;
   }).join('');
-  const win = window.open('','_blank','width=302,height=600');
-  win.document.write('<!DOCTYPE html><html><head><title>Batch Labels ('+orders.length+')</title><style>@page{size:80mm 100mm;margin:0;}body{margin:0;padding:0;}</style></head><body>'+labelsHtml+'</body></html>');
-  win.document.close();
-  const s = win.document.createElement('script');
-  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
-  s.onload = function(){
+  const zone = document.getElementById('bulk-print-zone');
+  zone.innerHTML = `
+    <div class="bulk-print-toolbar" style="position:sticky;top:0;z-index:10;background:#1C1A18;color:white;padding:0.6rem 1rem;display:flex;align-items:center;gap:0.8rem;">
+      <span style="font-size:0.82rem;font-weight:600;">${orders.length} label${orders.length===1?'':'s'} ready</span>
+      <button onclick="bulkPrint('labels')" style="background:#B45309;color:white;border:none;padding:0.4rem 0.9rem;border-radius:6px;font-family:'Outfit',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;">🖨 Print Labels</button>
+      <button onclick="closeBulkPrint()" style="margin-left:auto;background:none;border:1.5px solid #6B7280;color:#9CA3AF;padding:0.35rem 0.75rem;border-radius:6px;font-family:'Outfit',sans-serif;font-size:0.8rem;cursor:pointer;">✕ Close Preview</button>
+    </div>
+    <div style="padding:1rem;">${labelsHtml}</div>`;
+  zone.style.display = 'block';
+  setTimeout(function(){
     for(var i=0;i<orders.length;i++){
-      new win.QRCode(win.document.getElementById('qr-'+i),{text:'https://najahchemistja.com',width:45,height:45,correctLevel:win.QRCode.CorrectLevel.L});
+      const el=document.getElementById('bulk-qr-'+i);
+      if(el && !el.querySelector('canvas')) new QRCode(el,{text:'https://najahchemistja.com',width:45,height:45,correctLevel:QRCode.CorrectLevel.L});
     }
-    setTimeout(function(){ win.print(); }, 1500);
-  };
-  win.document.head.appendChild(s);
-  win.onafterprint = function(){ win.close(); };
+  }, 100);
   markBatchPrinted(Array.from(checks).map(cb=>cb.getAttribute('data-id')),'labelPrinted');
 };
 window.batchPrintReceipts = function(){
@@ -1921,8 +1949,7 @@ window.batchPrintReceipts = function(){
     const dateStr = parseOrderDate(order.date||order.createdAt);
     const wa = order.customerWhatsApp||order.phone||order.whatsapp||order.wa||'—';
     const addr = order.shippingDetail||order.deliveryLocation||order.customerAddress||order.address||'—';
-    const pb = i<orders.length-1?'page-break-after:always;':'';
-    return `<div style="${pb}padding:12px;">
+    return `<div class="receipt-page" style="padding:12px;font-family:Arial,sans-serif;">
       <h2 style="text-align:center;font-size:14pt;margin:0 0 2px;">Najah Chemist</h2>
       <div style="text-align:center;font-size:9pt;color:#555;margin-bottom:10px;">Jamaica's Skincare Manufacturer<br>najahchemistja.com · @najahchemist</div>
       <hr style="border:none;border-top:1px dashed #000;margin:8px 0;">
@@ -1947,11 +1974,15 @@ window.batchPrintReceipts = function(){
       <div style="text-align:center;font-size:8pt;color:#888;margin-top:14px;">Thank you for choosing Najah Chemist! · najahchemistja.com</div>
     </div>`;
   }).join('');
-  const win = window.open('','_blank','width=420,height=600');
-  win.document.write('<!DOCTYPE html><html><head><title>Batch Receipts ('+orders.length+')</title><style>@page{size:A5;margin:10mm;}body{font-family:Arial,sans-serif;font-size:11pt;color:#000;margin:0;}</style></head><body>'+receiptsHtml+'</body></html>');
-  win.document.close();
-  setTimeout(function(){ win.print(); }, 400);
-  win.onafterprint = function(){ win.close(); };
+  const zone = document.getElementById('bulk-print-zone');
+  zone.innerHTML = `
+    <div class="bulk-print-toolbar" style="position:sticky;top:0;z-index:10;background:#1C1A18;color:white;padding:0.6rem 1rem;display:flex;align-items:center;gap:0.8rem;">
+      <span style="font-size:0.82rem;font-weight:600;">${orders.length} receipt${orders.length===1?'':'s'} ready</span>
+      <button onclick="bulkPrint('receipts')" style="background:#B45309;color:white;border:none;padding:0.4rem 0.9rem;border-radius:6px;font-family:'Outfit',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;">🖨 Print Receipts</button>
+      <button onclick="closeBulkPrint()" style="margin-left:auto;background:none;border:1.5px solid #6B7280;color:#9CA3AF;padding:0.35rem 0.75rem;border-radius:6px;font-family:'Outfit',sans-serif;font-size:0.8rem;cursor:pointer;">✕ Close Preview</button>
+    </div>
+    <div style="padding:1rem;">${receiptsHtml}</div>`;
+  zone.style.display = 'block';
   markBatchPrinted(Array.from(checks).map(cb=>cb.getAttribute('data-id')),'receiptPrinted');
 };
 async function markBatchPrinted(ids, field){
