@@ -216,7 +216,7 @@ tr:hover td{background:var(--warm);}
 .info-row{display:flex;justify-content:space-between;padding:0.38rem 0;border-bottom:1px solid var(--border);font-size:0.83rem;}
 .info-row:last-child{border-bottom:none;}
 .benefit-tag{display:inline-block;background:var(--warm);border-radius:20px;padding:0.2rem 0.65rem;font-size:0.7rem;margin:0.18rem 0.12rem;}
-@media print{.no-print{display:none!important;}}
+@media print{.no-print{display:none!important;}@page{size:80mm 100mm;margin:2mm;}body>*:not(#print-zone){display:none!important;}#print-zone{display:block!important;position:fixed;top:0;left:0;width:80mm;}}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:var(--light);border-radius:2px;}
 @media(max-width:900px){.g2,.g3,.g4{grid-template-columns:1fr 1fr;}}
 @media(max-width:600px){.g2,.g3,.g4{grid-template-columns:1fr;}.view{padding:1rem;}.brand-n,.nb span:not(.badge){display:none;}nav{padding:0 0.75rem;}}
@@ -1881,6 +1881,7 @@ Add anything else you want the chatbot to know..."></textarea>
   </div>
 </div>
 
+<div id="print-zone" style="display:none;"></div>
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="module">
 // ════════════════════════════════════════════════════
 // NAJAH CHEMIST — Single clean script. No duplicates.
@@ -2425,7 +2426,7 @@ function renderOrdersTable(){
     <td style="white-space:nowrap;">
       <button class="btn-gh btn-xs" onclick="showReceipt('${o.id}','${o.client}','${o.product}',${o.qty},${o.total||0},'${o.payMethod||o.payment}','${o.date}')">View</button>
       <button class="btn btn-pr btn-xs" onclick="printR('${o.id}')">🖨</button>
-      <button class="btn btn-xs" style="background:#1D4ED8;color:white;border:none;" onclick="printLabel('${o.id}')">🏷</button>
+      <button class="btn btn-xs" style="background:#1D4ED8;color:white;border:none;" onclick="printLabel(${JSON.stringify(o).replace(/"/g,'&quot;')})">🏷</button>
       <button class="btn btn-ol btn-xs" onclick="sendOrderReceipt('${o.id}')">📧</button>
       <button class="btn btn-xs" style="background:#166534;color:white;border:none;" onclick="openTrackingModal('${o.id}')">🚚</button>
     </td></tr>`;
@@ -2938,78 +2939,45 @@ window.printR = function(orderOrId){
   setTimeout(() => w.print(), 200);
 };
 
-window.printLabel = function(orderOrId){
-  const o = typeof orderOrId==='string' ? (DB_ORDERS.find(x=>x.id===orderOrId)||{id:orderOrId}) : orderOrId;
-  const orderId = o.id||'—';
-  const rawClient = o.client||o.customerName||'—';
-  const client = rawClient.length>25 ? rawClient.substring(0,25)+'…' : rawClient;
-  const wa = o.phone||o.wa||o.customerWhatsApp||'';
-  const rawAddr = o.deliveryLocation||o.address||o.customerAddress||'—';
-  const addrLines = rawAddr.split(/,|\n/).map(s=>s.trim()).filter(Boolean).slice(0,2).join(', ');
-  const total = o.total?'J$'+parseFloat(o.total).toLocaleString():'—';
-  const date = o.date||new Date().toLocaleDateString();
-  let itemLines=[];
-  if(Array.isArray(o.items)&&o.items.length){
-    const prods=window.PRODUCTS||[];
-    itemLines=o.items.map(i=>{
-      const prod=prods.find(p=>p.id===i.productId);
-      const sku=prod&&prod.sku?`[${prod.sku}] `:'';
-      return `${sku}${i.name} · ${i.size||'—'} ×${i.qty}`;
-    });
-  } else {
-    itemLines=[(o.product||o.products||'—')];
-  }
-  const extraItems = itemLines.length>3 ? ` +${itemLines.length-3} more` : '';
-  const itemsHtml = itemLines.slice(0,3).map(l=>`<div>${l}</div>`).join('')+(extraItems?`<div>${extraItems}</div>`:'');
-  const qrUrl='https://api.qrserver.com/v1/create-qr-code/?size=76x76&data=https%3A%2F%2Fnajahchemistja.com';
-  const w = window.open('','_print','width=302,height=378,toolbar=0,menubar=0,scrollbars=0');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-@page { size: 80mm 100mm; margin: 2mm; }
-html, body { width: 80mm; height: 100mm; overflow: hidden; font-family: Arial, sans-serif; }
-.label { width: 76mm; height: 96mm; font-size: 8pt; overflow: hidden; padding: 2mm; }
-.label-header { font-size: 14pt; font-weight: bold; }
-.label-sub { font-size: 7pt; }
-.label-ship-to { font-size: 10pt; font-weight: bold; margin: 2mm 0; }
-.label-address { font-size: 8pt; }
-.label-order { font-size: 7pt; margin-top: 2mm; }
-.label-total { font-size: 9pt; font-weight: bold; }
-.label-footer { font-size: 6pt; margin-top: 2mm; }
-.qr-img { width: 20mm; height: 20mm; }
-hr { border: none; border-top: 0.5px solid #000; margin: 1mm 0; }
-</style></head><body><div class="label">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-    <div>
-      <div class="label-header">Nc</div>
-      <div style="font-size:8pt;font-weight:bold;">Najah Chemist</div>
-      <div class="label-sub">Kingston, Jamaica</div>
-      <div class="label-sub">start@najahchemistja.com</div>
+window.printLabel = function(order){
+  const o = typeof order==='string'?JSON.parse(order):order;
+  const items = (o.items||[]).slice(0,4).map(i=>
+    `<div style="font-size:6pt;">${i.qty||1}x ${i.name||''} ${i.size||''}</div>`
+  ).join('');
+  const dateVal = o.date||o.createdAt;
+  const dateStr = dateVal ? new Date(dateVal.seconds ? dateVal.seconds*1000 : dateVal).toLocaleDateString('en-JM') : '';
+  document.getElementById('print-zone').innerHTML = `
+    <div id="thermal-label" style="width:76mm;min-height:96mm;max-height:96mm;overflow:hidden;font-family:monospace;padding:2mm;box-sizing:border-box;">
+      <table width="100%"><tr>
+        <td style="font-size:14pt;font-weight:bold;">Nc</td>
+        <td align="right"><div id="qr-thermal"></div></td>
+      </tr></table>
+      <div style="text-align:center;font-size:8pt;font-weight:bold;">NAJAH CHEMIST</div>
+      <div style="text-align:center;font-size:6pt;">Kingston, Jamaica · start@najahchemistja.com</div>
+      <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
+      <div style="font-size:7pt;font-weight:bold;">SHIP TO:</div>
+      <div style="font-size:9pt;font-weight:bold;">${o.clientName||o.client||o.customerName||''}</div>
+      <div style="font-size:7pt;">${o.address||o.deliveryAddress||o.customerAddress||o.deliveryLocation||'—'}</div>
+      <div style="font-size:7pt;">${o.whatsapp||o.phone||o.customerWhatsApp||o.wa||'—'}</div>
+      <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
+      <div style="font-size:6pt;">Order: ${o.id||''} · ${dateStr}</div>
+      ${items}
+      <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
+      <div style="font-size:8pt;font-weight:bold;text-align:right;">TOTAL: J$${(parseFloat(o.total)||0).toLocaleString()}</div>
+      <div style="font-size:5.5pt;">najahchemistja.com &nbsp;&nbsp;&nbsp; ★ HANDLE WITH CARE</div>
     </div>
-    <img src="${qrUrl}" class="qr-img">
-  </div>
-  <hr>
-  <div style="font-size:6pt;font-weight:bold;text-transform:uppercase;color:#555;">SHIP TO:</div>
-  <div class="label-ship-to">${client}</div>
-  <div class="label-address">${addrLines}</div>
-  ${wa?`<div class="label-address">${wa}</div>`:''}
-  <hr>
-  <div class="label-order" style="display:flex;justify-content:space-between;"><span>Order: ${orderId}</span><span>${date}</span></div>
-  <div class="label-order" style="margin-top:1mm;">${itemsHtml}</div>
-  <div class="label-total" style="margin-top:1mm;">Total: ${total}</div>
-  <hr>
-  <div class="label-footer" style="display:flex;justify-content:space-between;">
-    <span>najahchemistja.com</span><span style="font-weight:bold;">FRAGILE</span>
-  </div>
-</div></body></html>`);
-  w.document.close();
-  w.onafterprint = () => w.close();
-  const img = w.document.querySelector('img');
-  if(img && !img.complete){
-    img.onload = () => w.print();
-    img.onerror = () => w.print();
-  } else {
-    setTimeout(() => w.print(), 300);
+  `;
+  if(typeof QRCode !== 'undefined'){
+    new QRCode(document.getElementById('qr-thermal'),{
+      text:'https://najahchemistja.com',
+      width:45,height:45,
+      correctLevel:QRCode.CorrectLevel.L
+    });
   }
+  setTimeout(()=>{
+    window.print();
+    setTimeout(()=>{ document.getElementById('print-zone').innerHTML=''; },1000);
+  },400);
 };
 
 // ═══ FORMS ═══
