@@ -124,8 +124,10 @@ select.finp{cursor:pointer;}
 /* ── SHIPPING LABEL PRINT ── */
 @media print {
   @page { size: 80mm 100mm; margin: 2mm; }
-  body > *:not(#print-zone) { display: none !important; }
-  #print-zone { display: block !important; position: fixed; top: 0; left: 0; width: 80mm; }
+  body { margin: 0; }
+  body > * { display: none !important; visibility: hidden !important; }
+  #print-zone { display: block !important; visibility: visible !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 80mm !important; z-index: 99999 !important; background: white !important; }
+  #print-zone * { visibility: visible !important; }
 }
 .label-box{border:2px solid var(--black);border-radius:4px;padding:1.2rem;max-width:420px;font-size:0.78rem;font-family:'Outfit',sans-serif;}
 .label-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1.5px solid var(--black);padding-bottom:0.7rem;margin-bottom:0.7rem;}
@@ -1439,8 +1441,7 @@ window.printLabel = function(order){
   const items = (o.items||[]).slice(0,4).map(i=>
     `<div style="font-size:6pt;">${i.qty||1}x ${i.name||''} ${i.size||''}</div>`
   ).join('');
-  const dateVal = o.date||o.createdAt;
-  const dateStr = dateVal ? new Date(dateVal.seconds ? dateVal.seconds*1000 : dateVal).toLocaleDateString('en-JM') : '';
+  const dateStr = parseOrderDate(o.date||o.createdAt, 'short');
   document.getElementById('print-zone').innerHTML = `
     <div id="thermal-label" style="width:76mm;min-height:96mm;max-height:96mm;overflow:hidden;font-family:monospace;padding:2mm;box-sizing:border-box;">
       <table width="100%"><tr>
@@ -1469,10 +1470,8 @@ window.printLabel = function(order){
       correctLevel:QRCode.CorrectLevel.L
     });
   }
-  setTimeout(()=>{
-    window.print();
-    setTimeout(()=>{ document.getElementById('print-zone').innerHTML=''; },1000);
-  },400);
+  setTimeout(()=>{ window.print(); },500);
+  window.addEventListener('afterprint', ()=>{ document.getElementById('print-zone').innerHTML=''; },{ once: true });
 };
 
 // ── CONSULTATIONS ──
@@ -1633,12 +1632,15 @@ window.printOrderReceipt = function(order){
   setTimeout(() => w.print(), 200);
 };
 
-function parseOrderDate(d){
-  if(!d) return '—';
-  if(d.seconds) return new Date(d.seconds*1000).toLocaleString('en-JM');
-  if(d.toDate) return d.toDate().toLocaleString('en-JM');
-  if(typeof d==='string'||typeof d==='number') return new Date(d).toLocaleString('en-JM');
-  return '—';
+function parseOrderDate(date, format) {
+  if (!date) return '—';
+  let d;
+  if (date && date.seconds) d = new Date(date.seconds * 1000);
+  else if (date && date.toDate) d = date.toDate();
+  else d = new Date(date);
+  if (isNaN(d.getTime())) return '—';
+  if (format === 'short') return d.toLocaleDateString('en-JM');
+  return d.toLocaleString('en-JM');
 }
 window.openReceiptModal = function(order){
   if(!order){ alert('Order not found'); return; }
@@ -1708,7 +1710,12 @@ window.openEditOrder = function(order){
       const sizeInp = row.querySelector('[data-role="size"]');
       const qtyInp = row.querySelector('[data-role="qty"]');
       const priceInp = row.querySelector('[data-role="price"]');
-      if(sel) sel.value = item.productId||'';
+      if(sel){
+        sel.value = item.productId||'';
+        if(!sel.value && item.name){
+          for(let opt of sel.options){ if(opt.text.includes(item.name)){ sel.value=opt.value; break; } }
+        }
+      }
       if(sizeInp) sizeInp.value = item.size||'';
       if(qtyInp) qtyInp.value = item.qty||1;
       if(priceInp) priceInp.value = item.price||0;

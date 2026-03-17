@@ -216,7 +216,13 @@ tr:hover td{background:var(--warm);}
 .info-row{display:flex;justify-content:space-between;padding:0.38rem 0;border-bottom:1px solid var(--border);font-size:0.83rem;}
 .info-row:last-child{border-bottom:none;}
 .benefit-tag{display:inline-block;background:var(--warm);border-radius:20px;padding:0.2rem 0.65rem;font-size:0.7rem;margin:0.18rem 0.12rem;}
-@media print{.no-print{display:none!important;}@page{size:80mm 100mm;margin:2mm;}body>*:not(#print-zone){display:none!important;}#print-zone{display:block!important;position:fixed;top:0;left:0;width:80mm;}}
+@media print {
+  @page { size: 80mm 100mm; margin: 2mm; }
+  body { margin: 0; }
+  body > * { display: none !important; visibility: hidden !important; }
+  #print-zone { display: block !important; visibility: visible !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 80mm !important; z-index: 99999 !important; background: white !important; }
+  #print-zone * { visibility: visible !important; }
+}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:var(--light);border-radius:2px;}
 @media(max-width:900px){.g2,.g3,.g4{grid-template-columns:1fr 1fr;}}
 @media(max-width:600px){.g2,.g3,.g4{grid-template-columns:1fr;}.view{padding:1rem;}.brand-n,.nb span:not(.badge){display:none;}nav{padding:0 0.75rem;}}
@@ -2577,17 +2583,24 @@ window.createOrder = async function(){
 
 window.openEditOrder = function(order){
   if(!order){ alert('Order not found'); return; }
+  rebuildOrderProductSelect();
   document.getElementById('new-order-title').textContent='Edit Order — '+(order.id||'');
   document.getElementById('edit-order-id').value=order.id||'';
   document.getElementById('no-c').value=order.client||order.customerName||'';
   document.getElementById('no-e').value=order.email||'';
   const pSel=document.getElementById('no-p');
-  for(let opt of pSel.options){if(opt.value===order.product||opt.text.includes(order.product||'')){pSel.value=opt.value;break;}}
-  document.getElementById('no-q').value=order.qty||1;
+  const firstItem=Array.isArray(order.items)&&order.items[0];
+  if(firstItem&&firstItem.productId) pSel.value=firstItem.productId;
+  if(!pSel.value){
+    const matchName=firstItem?firstItem.name:order.product;
+    for(let opt of pSel.options){if(opt.value===(order.product||'')||opt.text.includes(matchName||'')){pSel.value=opt.value;break;}}
+  }
+  document.getElementById('no-q').value=(firstItem&&firstItem.qty)||order.qty||1;
   document.getElementById('no-pay').value=order.payMethod||'Bank Transfer';
   document.getElementById('no-nt').value=order.notes||'';
   updateSizeOpts();
-  if(order.size&&order.size!=='—'){document.getElementById('no-sz').value=order.size;}
+  const sizeVal=(firstItem&&firstItem.size)||order.size;
+  if(sizeVal&&sizeVal!=='—'){document.getElementById('no-sz').value=sizeVal;}
   openM('m-new-order');
 };
 
@@ -2906,7 +2919,7 @@ window.previewImg = function(input){
 function buildReceipt(o){
   const id=o.id||'—', client=o.client||'—', product=o.product||'—';
   const qty=o.qty||1, total=parseFloat(o.total||0), pay=o.payMethod||o.payment||'—';
-  const date=o.date||new Date().toLocaleDateString();
+  const date=parseOrderDate(o.date||o.createdAt,'short');
   const wa=o.phone||o.wa||'—', addr=o.deliveryLocation||o.address||o.customerAddress||'—';
   const ship=parseFloat(o.deliveryFee||0), sub=total-ship;
   const ps=o.paymentStatus||o.payment||'—';
@@ -2939,12 +2952,15 @@ window.showReceipt = function(id,client,product,qty,total,pay,date){
   openM('m-receipt');
 };
 
-function parseOrderDate(d){
-  if(!d) return '—';
-  if(d.seconds) return new Date(d.seconds*1000).toLocaleString('en-JM');
-  if(d.toDate) return d.toDate().toLocaleString('en-JM');
-  if(typeof d==='string'||typeof d==='number') return new Date(d).toLocaleString('en-JM');
-  return '—';
+function parseOrderDate(date, format) {
+  if (!date) return '—';
+  let d;
+  if (date && date.seconds) d = new Date(date.seconds * 1000);
+  else if (date && date.toDate) d = date.toDate();
+  else d = new Date(date);
+  if (isNaN(d.getTime())) return '—';
+  if (format === 'short') return d.toLocaleDateString('en-JM');
+  return d.toLocaleString('en-JM');
 }
 
 window.printReceipt = function(order){
@@ -3013,8 +3029,7 @@ window.printLabel = function(order){
   const items = (o.items||[]).slice(0,4).map(i=>
     `<div style="font-size:6pt;">${i.qty||1}x ${i.name||''} ${i.size||''}</div>`
   ).join('');
-  const dateVal = o.date||o.createdAt;
-  const dateStr = dateVal ? new Date(dateVal.seconds ? dateVal.seconds*1000 : dateVal).toLocaleDateString('en-JM') : '';
+  const dateStr = parseOrderDate(o.date||o.createdAt, 'short');
   document.getElementById('print-zone').innerHTML = `
     <div id="thermal-label" style="width:76mm;min-height:96mm;max-height:96mm;overflow:hidden;font-family:monospace;padding:2mm;box-sizing:border-box;">
       <table width="100%"><tr>
@@ -3043,10 +3058,8 @@ window.printLabel = function(order){
       correctLevel:QRCode.CorrectLevel.L
     });
   }
-  setTimeout(()=>{
-    window.print();
-    setTimeout(()=>{ document.getElementById('print-zone').innerHTML=''; },1000);
-  },400);
+  setTimeout(()=>{ window.print(); },500);
+  window.addEventListener('afterprint', ()=>{ document.getElementById('print-zone').innerHTML=''; },{ once: true });
 };
 
 // ═══ FORMS ═══
