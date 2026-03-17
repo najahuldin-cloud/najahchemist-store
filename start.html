@@ -132,20 +132,6 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
 .faq-item.open .faq-answer{max-height:300px;padding-bottom:1rem;}
 .faq-answer p{font-size:0.88rem;color:var(--mid);line-height:1.75;}
 
-/* ── WhatsApp Capture ── */
-#whatsapp-capture{background:white;}
-.capture-grid{display:grid;grid-template-columns:1fr 1fr;gap:2.5rem;align-items:stretch;margin-top:3rem;}
-.capture-form-box{background:var(--cream);border-radius:20px;padding:2.5rem;border:1.5px solid var(--border);}
-.capture-form-box h3{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;margin-bottom:1.5rem;}
-.form-group{margin-bottom:1rem;}
-.form-group label{display:block;font-size:0.78rem;font-weight:600;margin-bottom:0.35rem;color:var(--text);}
-.form-group input,.form-group select{width:100%;padding:0.75rem 1rem;border:1.5px solid var(--border);border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.88rem;color:var(--text);background:white;outline:none;transition:border-color 0.2s;}
-.form-group input:focus,.form-group select:focus{border-color:var(--green);}
-.form-success{display:none;background:var(--green-light);border:1.5px solid var(--green-mid);border-radius:10px;padding:1rem 1.2rem;font-size:0.88rem;color:var(--green);font-weight:600;}
-.capture-wa-box{background:var(--green);border-radius:20px;padding:2.5rem;display:flex;flex-direction:column;justify-content:center;gap:1.5rem;}
-.capture-wa-box h3{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:white;line-height:1.3;}
-.capture-wa-box p{font-size:0.9rem;color:rgba(255,255,255,0.8);line-height:1.6;}
-.wa-icon{width:52px;height:52px;background:rgba(255,255,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;}
 
 
 /* ── Footer ── */
@@ -330,7 +316,7 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
             <img src="/assets/images/skincare-bundle.jpeg" alt="Skincare Bundle" style="width:100%;max-height:220px;object-fit:cover;display:block;border-radius:10px;">
           </div>
           <div class="brand-card-products"><strong>Formulas we manufacture:</strong> Serums, creams, dark spot correctors, toners</div>
-          <a href="#whatsapp-capture" class="btn btn-green" style="width:100%;justify-content:center;">Get a Quote</a>
+          <a href="#" onclick="ncToggleChat();return false;" class="btn btn-green" style="width:100%;justify-content:center;">Get a Quote</a>
         </div>
         <!-- Card 2: Feminine Care -->
         <div class="brand-card pink-bg">
@@ -346,7 +332,7 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
             <img src="/assets/images/feminine-care-bundle.png" alt="Feminine Care Bundle" style="width:100%;max-height:220px;object-fit:cover;display:block;border-radius:10px;">
           </div>
           <div class="brand-card-products"><strong>Formulas we manufacture:</strong> Yoni wash, yoni oil, boric acid capsules, scrubs</div>
-          <a href="#whatsapp-capture" class="btn btn-green" style="width:100%;justify-content:center;">Get a Quote</a>
+          <a href="#" onclick="ncToggleChat();return false;" class="btn btn-green" style="width:100%;justify-content:center;">Get a Quote</a>
         </div>
         <!-- Card 3: Men's Grooming -->
         <div class="brand-card grey-bg">
@@ -362,7 +348,7 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
             <img src="/assets/images/mencare-bundle.jpeg" alt="Men's Grooming Bundle" style="width:100%;max-height:220px;object-fit:cover;display:block;border-radius:10px;">
           </div>
           <div class="brand-card-products"><strong>Formulas we manufacture:</strong> Beard oil, 3-in-1 body wash, beard balm, supplements</div>
-          <a href="#whatsapp-capture" class="btn btn-green" style="width:100%;justify-content:center;background:var(--black);">Get a Quote</a>
+          <a href="#" onclick="ncToggleChat();return false;" class="btn btn-green" style="width:100%;justify-content:center;background:var(--black);">Get a Quote</a>
         </div>
       </div>
       <!-- Testimonial -->
@@ -372,7 +358,7 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
         <div class="testimonial-attr">— Sarah R., Najah Chemist Client</div>
         <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,0.2);">
           <p style="font-size:0.82rem;color:rgba(255,255,255,0.8);margin-bottom:1rem;">Ready to start your own brand story?</p>
-          <a href="#whatsapp-capture" class="btn btn-white" style="width:100%;justify-content:center;">Get Started Today</a>
+          <a href="#" onclick="ncToggleChat();return false;" class="btn btn-white" style="width:100%;justify-content:center;">Get Started Today</a>
         </div>
       </div>
     </div>
@@ -386,121 +372,163 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
   <div class="container">
     <div class="section-label">Common Questions</div>
     <h2 class="section-title">Frequently Asked Questions</h2>
+
+    <!-- Getting Started -->
+    <div style="margin-top:2.5rem;margin-bottom:0.4rem;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--green-mid);">Getting Started</div>
     <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          How do I start my own skincare brand with Najah Chemist?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer"><p>We make it simple. You choose the type of product you want, and we guide you through formulation, packaging, and branding. Even if you're starting from zero, we walk you step-by-step.</p></div>
+      </div>
       <div class="faq-item">
         <button class="faq-question" onclick="toggleFaq(this)">
           Do I need experience to start?
           <span class="faq-icon">+</span>
         </button>
-        <div class="faq-answer"><p>No experience needed. We handle all the manufacturing. You just brand and sell.</p></div>
+        <div class="faq-answer"><p>No experience is needed. Most of our clients are beginners. We guide you through everything — from product selection to selling.</p></div>
       </div>
       <div class="faq-item">
         <button class="faq-question" onclick="toggleFaq(this)">
-          How much does it cost to begin?
+          What products should I start with?
           <span class="faq-icon">+</span>
         </button>
-        <div class="faq-answer"><p>Manufacturing orders start from J$12,000. MOQ is 1 litre or 2 lbs per formula — no large production run required.</p></div>
+        <div class="faq-answer"><p>We recommend starting with high-demand products like face serums, acne treatments, body scrubs, or feminine care products. We'll guide you based on your target market.</p></div>
       </div>
       <div class="faq-item">
         <button class="faq-question" onclick="toggleFaq(this)">
-          Can I use my own label and brand name?
+          What if I don't know what product to choose?
           <span class="faq-icon">+</span>
         </button>
-        <div class="faq-answer"><p>Yes. All orders are manufactured under your brand name. We offer full private label with custom labels and packaging.</p></div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-question" onclick="toggleFaq(this)">
-          How long does it take to get my order?
-          <span class="faq-icon">+</span>
-        </button>
-        <div class="faq-answer"><p>Standard orders: 2–3 business days. Private label orders: 7–14 business days.</p></div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-question" onclick="toggleFaq(this)">
-          How do I pay?
-          <span class="faq-icon">+</span>
-        </button>
-        <div class="faq-answer"><p>Bank transfer (NCB), Lynk @najahchemist, or card via Fygaro. No COD — full payment required before processing.</p></div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-question" onclick="toggleFaq(this)">
-          Can I sell internationally?
-          <span class="faq-icon">+</span>
-        </button>
-        <div class="faq-answer"><p>Yes. We ship to freight forwarding addresses. International shipping is at additional cost.</p></div>
+        <div class="faq-answer"><p>That's completely fine. Most clients start there — we'll recommend the best products based on your goals and budget.</p></div>
       </div>
     </div>
+
+    <!-- Orders & Pricing -->
+    <div style="margin-top:2rem;margin-bottom:0.4rem;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--green-mid);">Orders &amp; Pricing</div>
+    <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          What is the minimum order to start?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer"><p>Our minimum order depends on the product, but we offer beginner-friendly quantities so you can start small and grow.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          How much does it cost to start?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer"><p>It depends on your product choice and quantity, but we work with different budget levels — from beginners to large-scale brands.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Can I get samples before ordering?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer"><p>Yes. We offer samples so you can test the quality before committing to bulk production.</p></div>
+      </div>
+    </div>
+
+    <!-- Production & Delivery -->
+    <div style="margin-top:2rem;margin-bottom:0.4rem;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--green-mid);">Production &amp; Delivery</div>
+    <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          How long does production take?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer"><p>Production time depends on the order size and product type, but we aim for fast and efficient turnaround.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Do you ship internationally?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer"><p>Yes, we ship both locally and internationally.</p></div>
+      </div>
+    </div>
+
+    <!-- Branding & Growth -->
+    <div style="margin-top:2rem;margin-bottom:0.4rem;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--green-mid);">Branding &amp; Growth</div>
+    <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Do you offer private labeling?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer"><p>Yes. We can produce finished products under your brand name, so you can sell as your own.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Do you help with branding and product selection?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer"><p>Yes. Based on your goals, we recommend the best products to sell and guide you on positioning your brand for success.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Will my products be unique?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer"><p>Yes. We can customize formulations or help you position your brand uniquely in the market.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Can I start small and scale later?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer"><p>Absolutely. Many of our clients start small and scale into full brands over time.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          How do I know what will sell?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer"><p>We guide you based on market demand and proven product ideas that customers are already buying.</p></div>
+      </div>
+    </div>
+
+    <!-- Final Questions -->
+    <div style="margin-top:2rem;margin-bottom:0.4rem;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--green-mid);">Final Questions</div>
+    <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Is this a legit business model?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer"><p>Yes. Private labeling is one of the fastest ways to start a skincare brand without owning a factory.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          What if I've never sold anything before?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer"><p>No problem. We guide beginners all the time and help you get started step-by-step.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          How do I place an order?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer"><p>Click "Start Your Brand" or message us on WhatsApp. Our team will guide you through the process step-by-step.</p></div>
+      </div>
+    </div>
+
+    <!-- Still have questions? -->
+    <div style="margin-top:2.5rem;text-align:center;padding:2rem;background:var(--green-bg);border-radius:14px;border:1.5px solid var(--border);">
+      <p style="font-size:0.95rem;font-weight:600;margin-bottom:1rem;color:var(--text);">Still have questions?</p>
+      <a href="https://wa.me/18768851099" target="_blank" rel="noopener" class="btn btn-green">
+        <svg style="margin-right:0.5rem;" width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.129.558 4.122 1.532 5.855L0 24l6.321-1.506A11.93 11.93 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.8 9.8 0 01-5.001-1.368l-.359-.213-3.751.893.924-3.653-.234-.374A9.79 9.79 0 012.182 12C2.182 6.57 6.57 2.182 12 2.182S21.818 6.57 21.818 12 17.43 21.818 12 21.818z"/></svg>
+        Chat with Us on WhatsApp
+      </a>
+    </div>
+
   </div>
 </section>
 
-<div class="divider"></div>
-
-<!-- ═══ WHATSAPP CAPTURE ═══ -->
-<section class="section" id="whatsapp-capture">
-  <div class="container">
-    <div class="section-label">Get Started</div>
-    <h2 class="section-title">Take the First Step</h2>
-    <div class="capture-grid">
-      <!-- LEFT: Lead capture form -->
-      <div class="capture-form-box">
-        <h3>Get Your Free Brand Launch Guide</h3>
-        <div id="nc-form-success" class="form-success">
-          Thanks <span id="nc-success-name"></span>! We'll be in touch on WhatsApp shortly. 🎉
-        </div>
-        <form id="nc-lead-form" onsubmit="submitLeadForm(event)">
-          <div class="form-group">
-            <label for="lf-name">Your Name *</label>
-            <input id="lf-name" type="text" placeholder="e.g. Sarah Reid" required>
-          </div>
-          <div class="form-group">
-            <label for="lf-wa">WhatsApp Number *</label>
-            <input id="lf-wa" type="tel" placeholder="+1876…" required>
-          </div>
-          <div class="form-group">
-            <label for="lf-brand">What type of brand?</label>
-            <select id="lf-brand">
-              <option value="">— Select —</option>
-              <option value="Skincare">Skincare</option>
-              <option value="Feminine Care">Feminine Care</option>
-              <option value="Men's Grooming">Men's Grooming</option>
-              <option value="Not sure yet">Not sure yet</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="lf-src">How did you hear about us?</label>
-            <select id="lf-src">
-              <option value="">— Select —</option>
-              <option value="TikTok">TikTok</option>
-              <option value="Instagram">Instagram</option>
-              <option value="WhatsApp">WhatsApp</option>
-              <option value="Google">Google</option>
-              <option value="Referral">Referral</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-          <button type="submit" class="btn btn-green" style="width:100%;justify-content:center;margin-top:0.5rem;">Send Me the Guide</button>
-        </form>
-      </div>
-      <!-- RIGHT: WhatsApp CTA box -->
-      <div class="capture-wa-box">
-        <div class="wa-icon">💬</div>
-        <h3>Start Your Beauty Brand Today</h3>
-        <p>Tell us your brand vision and we'll manufacture it for you. Message us on WhatsApp and we'll walk you through formulas, pricing, and labelling.</p>
-        <a
-          href="https://wa.me/18768851099?text=Hi%20Najah%20Chemist!%20I%20want%20to%20start%20my%20own%20brand.%20Can%20you%20help%20me%20get%20started%3F"
-          target="_blank"
-          rel="noopener"
-          class="btn btn-white"
-          style="justify-content:center;"
-        >
-          <svg style="margin-right:0.5rem;" width="18" height="18" viewBox="0 0 24 24" fill="#166534"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.129.558 4.122 1.532 5.855L0 24l6.321-1.506A11.93 11.93 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.8 9.8 0 01-5.001-1.368l-.359-.213-3.751.893.924-3.653-.234-.374A9.79 9.79 0 012.182 12C2.182 6.57 6.57 2.182 12 2.182S21.818 6.57 21.818 12 17.43 21.818 12 21.818z"/></svg>
-          Start on WhatsApp
-        </a>
-        <p style="font-size:0.72rem;opacity:0.65;margin-top:auto;">Typically replies within 1 hour · Mon–Sat</p>
-      </div>
-    </div>
-  </div>
-</section>
 
 <!-- ═══ FOOTER ═══ -->
 <footer id="nc-footer">
