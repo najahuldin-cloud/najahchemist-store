@@ -1871,8 +1871,8 @@ window.batchPrintLabels = function(){
     const phoneStr=o.customerWhatsApp||o.phone||o.whatsapp||o.wa||'—';
     const name=o.clientName||o.client||o.customerName||'';
     const dateStr=parseOrderDate(o.date||o.createdAt,'short');
-    const pb=idx<orders.length-1?'page-break-after:always;':'';
-    return `<div style="width:76mm;min-height:96mm;max-height:96mm;overflow:hidden;font-family:monospace;padding:2mm;box-sizing:border-box;${pb}">
+    const isLast = idx === orders.length - 1;
+    return `<div style="page-break-after:${isLast?'avoid':'always'};width:80mm;height:100mm;overflow:hidden;padding:3mm;box-sizing:border-box;font-family:Arial,sans-serif;font-size:8pt;">
       <table width="100%"><tr><td style="font-size:14pt;font-weight:bold;">Nc</td><td align="right"><div id="qr-${idx}"></div></td></tr></table>
       <div style="text-align:center;font-size:8pt;font-weight:bold;">NAJAH CHEMIST</div>
       <div style="text-align:center;font-size:6pt;">Kingston, Jamaica · start@najahchemistja.com</div>
@@ -1890,14 +1890,19 @@ window.batchPrintLabels = function(){
       <div style="font-size:5.5pt;">najahchemistja.com &nbsp;&nbsp;&nbsp; ★ HANDLE WITH CARE</div>
     </div>`;
   }).join('');
-  const win = window.open('','_blank','width=302,height=378');
-  win.document.write(`<!DOCTYPE html><html><head><title>Batch Labels (${orders.length})</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
-  <style>@page{size:80mm 100mm;margin:0;}html,body{width:80mm;overflow:hidden;margin:0;padding:0;}<\/style>
-  </head><body>${labelsHtml}
-  <script>window.onload=function(){for(var i=0;i<${orders.length};i++){new QRCode(document.getElementById("qr-"+i),{text:"https://najahchemistja.com",width:45,height:45,correctLevel:QRCode.CorrectLevel.L});}setTimeout(function(){window.print();},800);};<\/script>
-  </body></html>`);
+  const win = window.open('','_blank','width=302,height=600');
+  win.document.write('<!DOCTYPE html><html><head><title>Batch Labels ('+orders.length+')</title><style>@page{size:80mm 100mm;margin:0;}body{margin:0;padding:0;}</style></head><body>'+labelsHtml+'</body></html>');
   win.document.close();
+  const s = win.document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+  s.onload = function(){
+    for(var i=0;i<orders.length;i++){
+      new win.QRCode(win.document.getElementById('qr-'+i),{text:'https://najahchemistja.com',width:45,height:45,correctLevel:win.QRCode.CorrectLevel.L});
+    }
+    setTimeout(function(){ win.print(); }, 1500);
+  };
+  win.document.head.appendChild(s);
+  win.onafterprint = function(){ win.close(); };
   markBatchPrinted(Array.from(checks).map(cb=>cb.getAttribute('data-id')),'labelPrinted');
 };
 window.batchPrintReceipts = function(){
@@ -1943,12 +1948,10 @@ window.batchPrintReceipts = function(){
     </div>`;
   }).join('');
   const win = window.open('','_blank','width=420,height=600');
-  win.document.write(`<!DOCTYPE html><html><head><title>Batch Receipts (${orders.length})</title>
-  <style>@page{size:A5;margin:10mm;}body{font-family:Arial,sans-serif;font-size:11pt;color:#000;margin:0;}<\/style>
-  </head><body>${receiptsHtml}
-  <script>setTimeout(function(){window.print();},400);<\/script>
-  </body></html>`);
+  win.document.write('<!DOCTYPE html><html><head><title>Batch Receipts ('+orders.length+')</title><style>@page{size:A5;margin:10mm;}body{font-family:Arial,sans-serif;font-size:11pt;color:#000;margin:0;}</style></head><body>'+receiptsHtml+'</body></html>');
   win.document.close();
+  setTimeout(function(){ win.print(); }, 400);
+  win.onafterprint = function(){ win.close(); };
   markBatchPrinted(Array.from(checks).map(cb=>cb.getAttribute('data-id')),'receiptPrinted');
 };
 async function markBatchPrinted(ids, field){
