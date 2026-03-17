@@ -1467,11 +1467,7 @@ window.printLabel = function(order){
     .large { font-size:12pt; }
     .small { font-size:5.5pt; }
   </style></head><body>
-  <table width="100%"><tr>
-    <td class="large bold">Nc</td>
-    <td align="right"><div id="qr"></div></td>
-  </tr></table>
-  <div class="center bold" style="font-size:8pt;">NAJAH CHEMIST</div>
+  <div class="center large bold">NAJAH CHEMIST</div>
   <div class="center small">Kingston, Jamaica · start@najahchemistja.com</div>
   <div class="divider"></div>
   <div class="bold">SHIP TO:</div>
@@ -1484,18 +1480,9 @@ window.printLabel = function(order){
   <div class="divider"></div>
   <div class="bold right" style="font-size:8pt;">TOTAL: J$${(parseFloat(o.total)||0).toLocaleString()}</div>
   <div class="small">najahchemistja.com &nbsp;&nbsp; ★ HANDLE WITH CARE</div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
-  <script>
-    window.onload = function() {
-      new QRCode(document.getElementById("qr"), {
-        text: "https://najahchemistja.com", width:45, height:45,
-        correctLevel: QRCode.CorrectLevel.L
-      });
-      setTimeout(function(){ window.print(); }, 600);
-    };
-  <\/script>
   </body></html>`);
   win.document.close();
+  setTimeout(()=>{ win.print(); }, 600);
 };
 
 // ── CONSULTATIONS ──
