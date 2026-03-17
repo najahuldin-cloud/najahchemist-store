@@ -11,6 +11,11 @@
   status = 200
 
 [[redirects]]
+  from = "/start"
+  to = "/start.html"
+  status = 200
+
+[[redirects]]
   from = "/__/auth/*"
   to = "https://najah-chemist.firebaseapp.com/__/auth/:splat"
   status = 200
