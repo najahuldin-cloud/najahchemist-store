@@ -218,7 +218,7 @@ tr:hover td{background:var(--warm);}
 .benefit-tag{display:inline-block;background:var(--warm);border-radius:20px;padding:0.2rem 0.65rem;font-size:0.7rem;margin:0.18rem 0.12rem;}
 @media print {
   @page { size: 80mm 100mm; margin: 0; }
-  body { margin: 0; }
+  html, body { width: 80mm; height: 100mm; overflow: hidden; margin: 0; padding: 0; }
   body * { visibility: hidden; }
   #print-zone, #print-zone * { visibility: visible; }
   #print-zone { display: block !important; position: fixed !important; left: 0 !important; top: 0 !important; width: 80mm !important; background: white !important; }
@@ -3146,9 +3146,12 @@ window.printR = function(orderOrId){
 
 window.printLabel = function(order){
   const o = typeof order==='string'?JSON.parse(order):order;
-  const items = (o.items||[]).slice(0,4).map(i=>
-    `<div style="font-size:6pt;">${i.qty||1}x ${i.name||''} ${i.size||''}</div>`
-  ).join('');
+  const items = (o.items||[]).map(i=>{
+    const parts = i.sku ? [i.sku, i.name||''] : [i.name||''];
+    if(i.size) parts.push(i.size);
+    parts.push(`x${i.qty||1}`);
+    return `<div style="font-size:7pt;">${parts.join(' · ')}</div>`;
+  }).join('');
   const dateStr = parseOrderDate(o.date||o.createdAt, 'short');
 
   // 1. Populate #print-zone with full label HTML

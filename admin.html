@@ -124,7 +124,7 @@ select.finp{cursor:pointer;}
 /* ── SHIPPING LABEL PRINT ── */
 @media print {
   @page { size: 80mm 100mm; margin: 0; }
-  body { margin: 0; }
+  html, body { width: 80mm; height: 100mm; overflow: hidden; margin: 0; padding: 0; }
   body * { visibility: hidden; }
   #print-zone, #print-zone * { visibility: visible; }
   #print-zone { display: block !important; position: fixed !important; left: 0 !important; top: 0 !important; width: 80mm !important; background: white !important; }
@@ -1451,9 +1451,12 @@ window.saveAdminTracking = async function(){
 window.printLabel = function(order){
   if(!order){ alert('Order not found'); return; }
   const o = typeof order==='string'?JSON.parse(order):order;
-  const items = (o.items||[]).slice(0,4).map(i=>
-    `<div style="font-size:6pt;">${i.qty||1}x ${i.name||''} ${i.size||''}</div>`
-  ).join('');
+  const items = (o.items||[]).map(i=>{
+    const parts = i.sku ? [i.sku, i.name||''] : [i.name||''];
+    if(i.size) parts.push(i.size);
+    parts.push(`x${i.qty||1}`);
+    return `<div style="font-size:7pt;">${parts.join(' · ')}</div>`;
+  }).join('');
   const dateStr = parseOrderDate(o.date||o.createdAt, 'short');
 
   // 1. Populate #print-zone with full label HTML
