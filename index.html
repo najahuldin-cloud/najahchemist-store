@@ -216,8 +216,7 @@ tr:hover td{background:var(--warm);}
 .info-row{display:flex;justify-content:space-between;padding:0.38rem 0;border-bottom:1px solid var(--border);font-size:0.83rem;}
 .info-row:last-child{border-bottom:none;}
 .benefit-tag{display:inline-block;background:var(--warm);border-radius:20px;padding:0.2rem 0.65rem;font-size:0.7rem;margin:0.18rem 0.12rem;}
-.no-print{}
-.no-print{display:none!important;}
+@media print{.no-print{display:none!important;}}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:var(--light);border-radius:2px;}
 @media(max-width:900px){.g2,.g3,.g4{grid-template-columns:1fr 1fr;}}
 @media(max-width:600px){.g2,.g3,.g4{grid-template-columns:1fr;}.view{padding:1rem;}.brand-n,.nb span:not(.badge){display:none;}nav{padding:0 0.75rem;}}
@@ -1269,9 +1268,9 @@ tr:hover td{background:var(--warm);}
       <button class="btn btn-dk btn-sm" onclick="openM('m-new-order')">+ New Order</button>
     </div>
   </div>
-  <div class="card">
-    <table>
-      <thead><tr><th>Order ID</th><th>Client</th><th>Product</th><th>Size</th><th>Qty</th><th>Source</th><th>Pay Status</th><th>Order Status</th><th>Date</th><th class="no-print">Tracking</th><th class="no-print">Actions</th></tr></thead>
+  <div class="card" style="overflow-x:auto;">
+    <table style="min-width:900px;">
+      <thead><tr><th>Order ID</th><th>Client</th><th>Product</th><th>Size</th><th>Qty</th><th>Source</th><th>Pay Status</th><th>Order Status</th><th>Date</th><th>Tracking</th><th>Actions</th></tr></thead>
       <tbody id="orders-body"></tbody>
     </table>
   </div>
@@ -2422,8 +2421,8 @@ function renderOrdersTable(){
     <td><select onchange="updatePaymentStatus('${o.id}',this.value)" style="border:1px solid var(--border);padding:0.2rem 0.4rem;font-size:0.72rem;font-family:Outfit,sans-serif;border-radius:4px;">${payStatuses.map(s=>`<option${s===ps?' selected':''}>${s}</option>`).join('')}</select></td>
     <td><select onchange="updateOrderStatus('${o.id}',this.value)" style="border:1px solid var(--border);padding:0.2rem 0.4rem;font-size:0.72rem;font-family:Outfit,sans-serif;border-radius:4px;">${['Pending','Processing','Shipped','Complete','Cancelled'].map(s=>`<option${s===o.status?' selected':''}>${s}</option>`).join('')}</select></td>
     <td>${o.date}</td>
-    <td class="no-print"><span style="font-size:0.72rem;color:${o.tracking?'#16a34a':'#9CA3AF'};">${o.tracking?'📦 '+o.tracking.courier:'No tracking'}</span></td>
-    <td class="no-print" style="display:flex;gap:0.3rem;flex-wrap:wrap;">
+    <td><span style="font-size:0.72rem;color:${o.tracking?'#16a34a':'#9CA3AF'};">${o.tracking?'📦 '+o.tracking.courier:'—'}</span></td>
+    <td style="white-space:nowrap;">
       <button class="btn-gh btn-xs" onclick="showReceipt('${o.id}','${o.client}','${o.product}',${o.qty},${o.total||0},'${o.payMethod||o.payment}','${o.date}')">View</button>
       <button class="btn btn-pr btn-xs" onclick="printR('${o.id}')">🖨</button>
       <button class="btn btn-xs" style="background:#1D4ED8;color:white;border:none;" onclick="printLabel('${o.id}')">🏷</button>
@@ -2567,6 +2566,7 @@ window.updateSizeOpts = function(){
 // ═══ INBOX ═══
 function renderInbox(){
   const tb=document.getElementById('inbox-body'); if(!tb) return;
+  if(!DB_MESSAGES.length){ tb.innerHTML='<tr><td colspan="6" class="empty-state">No messages yet</td></tr>'; return; }
   tb.innerHTML=DB_MESSAGES.map(m=>`<tr><td><strong>${m.from}</strong></td><td>${m.subject}</td><td>${m.email}</td><td style="color:var(--mid);max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${m.preview}</td><td>${m.date}</td><td><span class="bge ${m.status==='New'?'b-new':'b-done'}">${m.status}</span></td></tr>`).join('');
 }
 
