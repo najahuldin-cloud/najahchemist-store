@@ -858,7 +858,7 @@ tr:hover td{background:var(--warm);}
         <p style="font-size:0.88rem;color:#8A8480;line-height:1.85;margin-bottom:1rem;">We're a Jamaican professional-grade skincare manufacturer crafting effective formulations trusted by salons, spas and private label brands island-wide.</p>
         <p style="font-size:0.88rem;color:#8A8480;line-height:1.85;margin-bottom:1.2rem;">Whether you need 24 bars or 5 gallons, we've got you. Orders processed within <strong style="color:#0F0E0D;">2–3 business days</strong>.</p>
         <div class="sf-about-stats">
-          <div class="sf-about-stat"><div class="sf-about-stat-n">11+</div><div class="sf-about-stat-l">Products</div></div>
+          <div class="sf-about-stat"><div class="sf-about-stat-n" id="sf-about-prod-count">11+</div><div class="sf-about-stat-l">Products</div></div>
           <div class="sf-about-stat"><div class="sf-about-stat-n">500+</div><div class="sf-about-stat-l">Happy customers</div></div>
           <div class="sf-about-stat"><div class="sf-about-stat-n">2–3</div><div class="sf-about-stat-l">Day processing</div></div>
           <div class="sf-about-stat"><div class="sf-about-stat-n">🇯🇲</div><div class="sf-about-stat-l">Made in Jamaica</div></div>
@@ -914,7 +914,7 @@ tr:hover td{background:var(--warm);}
             What payment methods does Najah Chemist accept?
             <span style="font-size:1.2rem;color:#8A8480;">+</span>
           </summary>
-          <p style="margin-top:0.85rem;font-size:0.88rem;color:#8A8480;line-height:1.8;">We accept bank transfer (NCB — JMD account 354-747-294, USD account 354-747-308), Lynk (@najahchemist), and cash on delivery for Kingston & St. Andrew orders.</p>
+          <p style="margin-top:0.85rem;font-size:0.88rem;color:#8A8480;line-height:1.8;">We accept bank transfer (NCB — JMD account 354-747-294, USD account 354-747-308), Lynk (@najahchemist), and card payments via Fygaro on najahchemistja.com. No cash on delivery — full payment required before processing.</p>
         </details>
 
         <details style="background:white;border-radius:12px;padding:1.2rem 1.4rem;margin-bottom:0.85rem;border:1px solid #E8E4DE;cursor:pointer;">
@@ -980,7 +980,7 @@ tr:hover td{background:var(--warm);}
         "name": "What payment methods does Najah Chemist accept?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "We accept bank transfer (NCB — JMD account 354-747-294, USD account 354-747-308), Lynk (@najahchemist), and cash on delivery for Kingston & St. Andrew orders."
+          "text": "We accept bank transfer (NCB — JMD account 354-747-294, USD account 354-747-308), Lynk (@najahchemist), and card payments via Fygaro on najahchemistja.com. No cash on delivery — full payment required before processing."
         }
       },
       {
@@ -2288,6 +2288,8 @@ function updateProductStat(){
   const sub = document.getElementById('stat-prods-sub');
   if(el) el.textContent = total + ' total';
   if(sub) sub.textContent = total > 0 ? `${visible} visible · ${total-visible} hidden` : 'In catalogue';
+  const aboutCount = document.getElementById('sf-about-prod-count');
+  if(aboutCount && total > 0) aboutCount.textContent = total + '+';
 }
 window.updateProductStat = updateProductStat;
 
