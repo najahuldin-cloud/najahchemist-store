@@ -366,7 +366,7 @@ tr:hover td{background:var(--warm);}
 
 @media(max-width:900px){
   .sf-hero-inner{grid-template-columns:1fr;gap:2rem;}
-  .sf-hero-right{display:none;}
+  .sf-hero-right{display:flex;}
   .sf-grid{grid-template-columns:1fr 1fr;}
   .sf-rev-grid{grid-template-columns:1fr 1fr;}
   .sf-why-grid{grid-template-columns:1fr 1fr;}
@@ -380,7 +380,7 @@ tr:hover td{background:var(--warm);}
   .sf-hero-p{font-size:0.86rem;margin-bottom:1.5rem;}
   .sf-hero-btns{flex-direction:column;gap:0.6rem;}
   .sf-btn-wa,.sf-btn-ol,.sf-btn-gold{width:100%;justify-content:center;text-align:center;padding:0.85rem 1rem;}
-  .sf-hero-right{display:none;}
+  .sf-hero-right{display:flex;}
   .sf-section{padding:2.5rem 1.2rem;}
   .sf-section-h2{font-size:1.5rem;}
   .sf-section-sub{font-size:0.82rem;}
@@ -609,6 +609,30 @@ tr:hover td{background:var(--warm);}
       <div class="sf-section-label">Best Sellers</div>
       <h2 class="sf-section-h2">Our most popular <em>products</em></h2>
       <div class="sf-bs-grid" id="sf-bs-grid"></div>
+    </div>
+  </section>
+
+  <!-- Private Label -->
+  <section style="background:#f0fdf4;padding:4.5rem 2rem;">
+    <div style="max-width:1200px;margin:0 auto;">
+      <div class="sf-section-label" style="color:#16a34a;">Private Label</div>
+      <h2 class="sf-section-h2">We manufacture. You brand. <em>You sell.</em></h2>
+      <p class="sf-section-sub">Order any formula in bulk, apply your label, and sell under your own brand name. Used by 500+ clients island-wide.</p>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-bottom:2.5rem;">
+        <div style="background:white;border:1px solid #bbf7d0;border-radius:14px;padding:1.4rem 1.5rem;text-align:center;">
+          <div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:#0F0E0D;">1 litre</div>
+          <div style="font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#16a34a;margin-top:0.3rem;">Minimum Order</div>
+        </div>
+        <div style="background:white;border:1px solid #bbf7d0;border-radius:14px;padding:1.4rem 1.5rem;text-align:center;">
+          <div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:#0F0E0D;">7–14 days</div>
+          <div style="font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#16a34a;margin-top:0.3rem;">Lead Time</div>
+        </div>
+        <div style="background:white;border:1px solid #bbf7d0;border-radius:14px;padding:1.4rem 1.5rem;text-align:center;">
+          <div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:#0F0E0D;">15%</div>
+          <div style="font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#16a34a;margin-top:0.3rem;">Packaging Fee</div>
+        </div>
+      </div>
+      <a href="/start" style="display:inline-flex;align-items:center;padding:0.85rem 2rem;background:#16a34a;color:white;border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.9rem;font-weight:700;text-decoration:none;transition:background 0.2s;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">Start Your Private Label Order →</a>
     </div>
   </section>
 
@@ -3823,6 +3847,33 @@ function sfRenderProducts(filter) {
   }).join('');
 }
 window.sfRenderProducts = sfRenderProducts;
+
+// ── Hero best sellers panel ───────────────────────────
+function sfRenderHeroCards() {
+  const el = document.getElementById('sf-hero-cards');
+  if (!el) return;
+  const ids = window._bestSellerIds || [];
+  const prods = window.PRODUCTS || [];
+  const list = ids.map(id => prods.find(p => p.id === id)).filter(Boolean).slice(0, 3);
+  if (!list.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.18em;color:#c9a84c;margin-bottom:0.5rem;">⭐ Best Sellers</div>` +
+    list.map(p => {
+      const {price, moq} = sfGetPrice(p);
+      return `<div class="sf-hero-card" onclick="sfOpenProduct('${p.id}')">
+        <div class="sf-hero-card-top">
+          <span class="sf-hero-card-emoji">${p.emoji || '🧴'}</span>
+          <div>
+            <div class="sf-hero-card-name">${p.name}</div>
+            ${p.tag ? `<span class="sf-hero-card-tag">${p.tag}</span>` : ''}
+          </div>
+        </div>
+        <div class="sf-hero-card-tl">${p.tagline || ''}</div>
+        <div style="margin-top:0.45rem;font-size:0.78rem;font-weight:700;color:#c9a84c;">${price}</div>
+        <div style="font-size:0.65rem;color:#6B7280;margin-top:0.1rem;">${moq}</div>
+      </div>`;
+    }).join('');
+}
+window.sfRenderHeroCards = sfRenderHeroCards;
 
 function sfFilter(cat, btn) {
   document.querySelectorAll('.sf-cat').forEach(b => b.classList.remove('on'));
