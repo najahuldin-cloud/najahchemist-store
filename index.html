@@ -636,6 +636,20 @@ tr:hover td{background:var(--warm);}
     </div>
   </section>
 
+  <!-- Starter Kit -->
+  <section id="sf-starter-kit" style="background:white;padding:4.5rem 2rem;border-top:1px solid #E8E4DE;">
+    <div style="max-width:1200px;margin:0 auto;">
+      <div class="sf-section-label">Save More</div>
+      <h2 class="sf-section-h2">Build your starter kit — <em>pick any 3 products</em></h2>
+      <p class="sf-section-sub">Order 3 or more products together and save 10% on your total order.</p>
+      <div id="sk-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-bottom:2rem;"></div>
+      <div id="sk-summary" style="display:none;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:14px;padding:1.5rem 1.75rem;">
+        <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#16a34a;margin-bottom:0.75rem;">Your Starter Kit</div>
+        <div id="sk-summary-body"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- Products -->
   <section id="sf-products">
     <div class="sf-section">
@@ -2318,6 +2332,7 @@ async function loadFromDB() {
   if (typeof sfRenderProducts === 'function') {
     sfRenderProducts('all');
     if (typeof sfRenderHeroCards === 'function') sfRenderHeroCards();
+    if (typeof sfRenderStarterKit === 'function') sfRenderStarterKit();
     sfRenderReviews();
   }
   renderBestSellers();
@@ -3874,6 +3889,88 @@ function sfRenderHeroCards() {
     }).join('');
 }
 window.sfRenderHeroCards = sfRenderHeroCards;
+
+// ── Starter Kit selector ─────────────────────────────
+let _skSelected = [];
+
+function sfRenderStarterKit() {
+  const grid = document.getElementById('sk-grid');
+  if (!grid) return;
+  const prods = (window.PRODUCTS || []).filter(p => !p.hidden);
+  if (!prods.length) return;
+  grid.innerHTML = prods.map(p => {
+    const {price, moq} = sfGetPrice(p);
+    const imgInner = p.img
+      ? `<img src="${p.img}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;">`
+      : `<span style="font-size:2.2rem;line-height:90px;">${p.emoji||'🧴'}</span>`;
+    return `<div id="sk-card-${p.id}" onclick="skToggle('${p.id}')" style="position:relative;border:1.5px solid #E8E4DE;border-radius:14px;overflow:hidden;cursor:pointer;transition:all 0.2s;background:white;">
+      <div style="height:90px;background:#F5F2ED;display:flex;align-items:center;justify-content:center;overflow:hidden;">${imgInner}</div>
+      <div style="padding:0.65rem 0.75rem 0.8rem;">
+        <div style="font-size:0.8rem;font-weight:600;color:#0F0E0D;line-height:1.3;margin-bottom:0.2rem;">${p.name}</div>
+        <div style="font-size:0.71rem;font-weight:700;color:#16a34a;">${price}</div>
+        <div style="font-size:0.63rem;color:#8A8480;">${moq}</div>
+      </div>
+      <div id="sk-check-${p.id}" style="display:none;position:absolute;top:7px;right:7px;width:22px;height:22px;background:#16a34a;border-radius:50%;align-items:center;justify-content:center;color:white;font-size:0.75rem;font-weight:700;">✓</div>
+    </div>`;
+  }).join('');
+  skUpdateSummary();
+}
+window.sfRenderStarterKit = sfRenderStarterKit;
+
+window.skToggle = function(id) {
+  const idx = _skSelected.indexOf(id);
+  if (idx > -1) {
+    _skSelected.splice(idx, 1);
+  } else {
+    if (_skSelected.length >= 3) { sfShowToast('Maximum 3 products — deselect one first'); return; }
+    _skSelected.push(id);
+  }
+  skUpdateSummary();
+};
+
+function skUpdateSummary() {
+  // Update card states
+  document.querySelectorAll('[id^="sk-card-"]').forEach(el => {
+    const id = el.id.replace('sk-card-', '');
+    const sel = _skSelected.includes(id);
+    el.style.borderColor = sel ? '#16a34a' : '#E8E4DE';
+    el.style.background = sel ? '#f0fdf4' : 'white';
+    el.style.transform = sel ? 'translateY(-3px)' : '';
+    el.style.boxShadow = sel ? '0 8px 20px rgba(22,163,74,0.15)' : '';
+    const chk = document.getElementById('sk-check-' + id);
+    if (chk) chk.style.display = sel ? 'flex' : 'none';
+  });
+
+  const summary = document.getElementById('sk-summary');
+  const body = document.getElementById('sk-summary-body');
+  if (!summary || !body) return;
+
+  if (_skSelected.length < 3) { summary.style.display = 'none'; return; }
+
+  const prods = window.PRODUCTS || [];
+  const selected = _skSelected.map(id => prods.find(p => p.id === id)).filter(Boolean);
+  const total = selected.reduce((sum, p) => {
+    const keys = Object.keys(p.pricing || {});
+    return sum + (keys.length ? (p.pricing[keys[0]].price || 0) : 0);
+  }, 0);
+  const discounted = Math.round(total * 0.9);
+  const waMsg = encodeURIComponent(
+    'Hi! I\u2019d like to order the Najah Chemist Starter Kit (10% bundle discount):\n' +
+    selected.map((p, i) => { const {price} = sfGetPrice(p); return (i+1)+'. '+p.name+' \u2014 '+price; }).join('\n') +
+    '\n\nBundle total (10% off): J$' + discounted.toLocaleString() +
+    '\n\nPlease confirm availability and payment details. Thank you!'
+  );
+  body.innerHTML =
+    `<div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;">` +
+    selected.map(p => `<span style="background:white;border:1px solid #bbf7d0;border-radius:20px;padding:0.25rem 0.75rem;font-size:0.78rem;font-weight:600;color:#0F0E0D;">✓ ${p.name}</span>`).join('') +
+    `</div>` +
+    `<div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">` +
+    `<div><div style="font-size:0.72rem;color:#6B7280;margin-bottom:0.15rem;">Original total</div><div style="font-size:1rem;color:#9CA3AF;text-decoration:line-through;">J$${total.toLocaleString()}</div></div>` +
+    `<div><div style="font-size:0.72rem;color:#16a34a;margin-bottom:0.15rem;font-weight:600;">10% kit discount</div><div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:#0F0E0D;">J$${discounted.toLocaleString()}</div></div>` +
+    `<a href="https://wa.me/18768851099?text=${waMsg}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.8rem 1.6rem;background:#25D366;color:white;border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.9rem;font-weight:700;text-decoration:none;transition:background 0.2s;" onmouseover="this.style.background='#1ebe5a'" onmouseout="this.style.background='#25D366'">💬 Order on WhatsApp</a>` +
+    `</div>`;
+  summary.style.display = 'block';
+}
 
 function sfFilter(cat, btn) {
   document.querySelectorAll('.sf-cat').forEach(b => b.classList.remove('on'));
