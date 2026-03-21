@@ -920,6 +920,17 @@ tr:hover td{background:var(--warm);}
           <div class="sf-modal-label">How to Use</div>
           <div class="sf-modal-text" id="sf-modal-use"></div>
         </div>
+        <div class="sf-modal-section">
+          <div class="sf-modal-label" style="display:flex;align-items:center;gap:0.5rem;">Customer Reviews <span id="sf-modal-avg" style="font-size:0.72rem;color:#B45309;font-weight:700;"></span></div>
+          <div id="sf-modal-revs"></div>
+          <button style="margin-top:0.5rem;font-size:0.75rem;font-weight:600;background:none;border:1px solid #E8E4DE;border-radius:6px;padding:0.3rem 0.75rem;cursor:pointer;font-family:'Outfit',sans-serif;color:#4B4846;" onclick="sfOpenReviewForm()">+ Write a Review</button>
+          <div id="sf-modal-rev-form" style="display:none;margin-top:0.75rem;padding:1rem;background:#F5F2ED;border-radius:10px;">
+            <div style="margin-bottom:0.5rem;"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:0.25rem;color:#4B4846;">Your Name</label><input id="sfr-name" class="fi" placeholder="Your name" style="padding:0.45rem 0.7rem;font-size:0.82rem;"></div>
+            <div style="margin-bottom:0.5rem;"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:0.25rem;color:#4B4846;">Rating</label><div id="sfr-stars" style="display:flex;gap:4px;font-size:1.4rem;"><span onclick="sfSetStars(1)" style="cursor:pointer;">☆</span><span onclick="sfSetStars(2)" style="cursor:pointer;">☆</span><span onclick="sfSetStars(3)" style="cursor:pointer;">☆</span><span onclick="sfSetStars(4)" style="cursor:pointer;">☆</span><span onclick="sfSetStars(5)" style="cursor:pointer;">☆</span></div></div>
+            <div style="margin-bottom:0.7rem;"><label style="font-size:0.72rem;font-weight:600;display:block;margin-bottom:0.25rem;color:#4B4846;">Review</label><textarea id="sfr-text" class="ft" placeholder="Share your experience..." style="min-height:72px;font-size:0.82rem;"></textarea></div>
+            <button onclick="sfSubmitReview()" style="width:100%;padding:0.65rem;background:#0F0E0D;color:white;border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.82rem;font-weight:700;cursor:pointer;">Submit Review</button>
+          </div>
+        </div>
         <button style="width:100%;padding:0.82rem;background:#0F0E0D;color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.92rem;font-weight:700;cursor:pointer;margin-bottom:0.5rem;letter-spacing:0.02em;" onclick="sfAddToCart()">🛒 Add to Cart</button>
       </div>
     </div>
@@ -2047,6 +2058,7 @@ let REVIEWS = {
   'ds':[{name:'Latoya R.',stars:5,text:'I ordered the litre and it lasted months. Amazing results.',date:'Feb 18'}],
   'pg':[{name:'Shanice M.',stars:4,text:'Love the probiotic wash. No irritation at all.',date:'Jan 30'}]
 };
+window.REVIEWS = REVIEWS;
 
 let DB_ORDERS = [
   {id:'NC-0041',client:'Marcia Brown',product:'Turmeric Kojic Bar Soap',size:'—',qty:50,source:'Website',payment:'Paid',status:'Shipped',date:'Feb 25',total:125,payMethod:'Fygaro'},
@@ -2280,6 +2292,7 @@ async function saveReviewToDB(review) {
   try { await addDoc(collection(db,'reviews'),{...review,createdAt:serverTimestamp()}); }
   catch(e){ console.error(e); }
 }
+window.saveReviewToDB = saveReviewToDB;
 
 async function loadFromDB() {
   // ── 1. Products (public read — always runs) ────────────────────────────
@@ -3846,10 +3859,14 @@ function sfRenderProducts(filter) {
   grid.innerHTML = list.map(p => {
     const {price, moq} = sfGetPrice(p);
     const imgHtml = p.img ? `<img src="${p.img}" alt="${p.name}">` : `<span style="font-size:3rem;">${p.emoji}</span>`;
+    const revs = (window.REVIEWS || {})[p.id] || [];
+    const starHtml = revs.length
+      ? `<span style="font-size:0.68rem;color:#B45309;font-weight:600;">⭐ ${(revs.reduce((s,r)=>s+r.stars,0)/revs.length).toFixed(1)} (${revs.length})</span>`
+      : '';
     return `<div class="sf-card" onclick="sfOpenProduct('${p.id}')">
       <div class="sf-card-img ${SF_IMG_CLASS[p.cat]||'img-cream'}">${imgHtml}${p.tag?`<span class="sf-card-badge">${p.tag}</span>`:''}</div>
       <div class="sf-card-body">
-        <div class="sf-card-cat">${SF_CAT_LABEL[p.cat]||p.cat}</div>
+        <div class="sf-card-cat" style="display:flex;justify-content:space-between;align-items:center;">${SF_CAT_LABEL[p.cat]||p.cat}${starHtml}</div>
         <div class="sf-card-name">${p.name}</div>
         <div style="font-size:0.78rem;font-weight:700;color:#B45309;margin-bottom:0.25rem;">${price}</div>
         <div class="sf-card-tl">${p.tagline}</div>
@@ -3889,6 +3906,60 @@ function sfRenderHeroCards() {
     }).join('');
 }
 window.sfRenderHeroCards = sfRenderHeroCards;
+
+// ── Product modal reviews ─────────────────────────────
+let _sfrStars = 0;
+
+function sfRenderModalReviews(id) {
+  const revs = (window.REVIEWS || {})[id] || [];
+  const listEl = document.getElementById('sf-modal-revs');
+  const avgEl  = document.getElementById('sf-modal-avg');
+  if (!listEl) return;
+  if (avgEl) avgEl.textContent = revs.length
+    ? '⭐ ' + (revs.reduce((s,r)=>s+r.stars,0)/revs.length).toFixed(1) + ' (' + revs.length + ')'
+    : '';
+  listEl.innerHTML = revs.length === 0
+    ? '<p style="font-size:0.78rem;color:#8A8480;margin:0.4rem 0 0.6rem;">No reviews yet — be the first!</p>'
+    : revs.map(r =>
+        '<div style="padding:0.65rem 0;border-bottom:1px solid #F0EDE8;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.18rem;">' +
+        '<span style="font-weight:600;font-size:0.82rem;color:#0F0E0D;">' + r.name + '</span>' +
+        '<span style="font-size:0.8rem;color:#B45309;">' + '⭐'.repeat(r.stars) + '</span></div>' +
+        '<div style="font-size:0.79rem;color:#4B4846;line-height:1.5;margin-bottom:0.18rem;">' + r.text + '</div>' +
+        '<div style="font-size:0.67rem;color:#8A8480;">' + r.date + '</div></div>'
+      ).join('');
+}
+
+window.sfOpenReviewForm = function() {
+  const f = document.getElementById('sf-modal-rev-form');
+  if (f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
+};
+
+window.sfSetStars = function(n) {
+  _sfrStars = n;
+  document.querySelectorAll('#sfr-stars span').forEach((s,i) => s.textContent = i < n ? '⭐' : '☆');
+};
+
+window.sfSubmitReview = async function() {
+  const name = (document.getElementById('sfr-name')?.value || '').trim();
+  const text = (document.getElementById('sfr-text')?.value || '').trim();
+  const id   = window.sfCurrentReviewProduct;
+  if (!name || !text || !_sfrStars) { sfShowToast('Please fill in your name, rating, and review'); return; }
+  const review = {
+    name, stars: _sfrStars, text, productId: id,
+    date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'})
+  };
+  if (!window.REVIEWS[id]) window.REVIEWS[id] = [];
+  window.REVIEWS[id].unshift(review);
+  if (typeof window.saveReviewToDB === 'function') await window.saveReviewToDB(review);
+  document.getElementById('sfr-name').value = '';
+  document.getElementById('sfr-text').value = '';
+  sfSetStars(0);
+  document.getElementById('sf-modal-rev-form').style.display = 'none';
+  sfRenderModalReviews(id);
+  sfRenderProducts('all'); // refresh card ratings
+  sfShowToast('Review submitted — thank you!');
+};
 
 // ── Starter Kit selector ─────────────────────────────
 let _skSelected = [];
@@ -4068,6 +4139,13 @@ function sfOpenProduct(id) {
     const msg = `Hi Najah Chemist! I'd like to order: *${p.name}*. Can you help me?`;
     window.open(`https://wa.me/${WA}?text=${encodeURIComponent(msg)}`,'_blank');
   };
+
+  // Reviews
+  window.sfCurrentReviewProduct = id;
+  const revForm = document.getElementById('sf-modal-rev-form');
+  if (revForm) revForm.style.display = 'none';
+  sfSetStars(0);
+  sfRenderModalReviews(id);
 
   const modal = document.getElementById('sf-modal');
   if (modal) { modal.classList.add('open'); document.body.style.overflow='hidden'; }
