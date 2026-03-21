@@ -41,7 +41,7 @@
   "logo": "https://najahchemistja.com/favicon.ico",
   "image": "https://fygaro-subscribers.s3.amazonaws.com/40341bc0-0b62-4026-8b33-b7b7f2ee55a3/products/338703/t/14dbe12b-0de5-4f29-9405-231584401f03.png",
   "telephone": "+18768851099",
-  "email": "start@najahchemist.com",
+  "email": "start@najahchemistja.com",
   "address": {
     "@type": "PostalAddress",
     "addressCountry": "JM",
@@ -748,7 +748,7 @@ tr:hover td{background:var(--warm);}
         <p style="margin:0.5rem 0 0;">Orders may be cancelled within 24 hours of placement. After 24 hours or once dispatched, cancellations may not be possible. Private label orders are non-cancellable once production has commenced.</p>
       </div>
 
-      <p style="font-size:0.75rem;color:#8A8480;margin-top:1.5rem;text-align:center;">Questions? Contact us via the Contact section above · start@najahchemist.com · @najahchemist</p>
+      <p style="font-size:0.75rem;color:#8A8480;margin-top:1.5rem;text-align:center;">Questions? Contact us via the Contact section above · start@najahchemistja.com · @najahchemist</p>
     </div>
   </section>
 
@@ -874,7 +874,7 @@ tr:hover td{background:var(--warm);}
         <p style="font-size:0.88rem;color:#8A8480;line-height:1.85;margin-bottom:1rem;">We're a Jamaican professional-grade skincare manufacturer crafting effective formulations trusted by salons, spas and private label brands island-wide.</p>
         <p style="font-size:0.88rem;color:#8A8480;line-height:1.85;margin-bottom:1.2rem;">Whether you need 24 bars or 5 gallons, we've got you. Orders processed within <strong style="color:#0F0E0D;">2–3 business days</strong>.</p>
         <div class="sf-about-stats">
-          <div class="sf-about-stat"><div class="sf-about-stat-n" id="sf-about-prod-count">11+</div><div class="sf-about-stat-l">Products</div></div>
+          <div class="sf-about-stat"><div class="sf-about-stat-n" id="sf-about-prod-count">58+</div><div class="sf-about-stat-l">Products</div></div>
           <div class="sf-about-stat"><div class="sf-about-stat-n">500+</div><div class="sf-about-stat-l">Happy customers</div></div>
           <div class="sf-about-stat"><div class="sf-about-stat-n">2–3</div><div class="sf-about-stat-l">Day processing</div></div>
           <div class="sf-about-stat"><div class="sf-about-stat-n">🇯🇲</div><div class="sf-about-stat-l">Made in Jamaica</div></div>
@@ -1249,7 +1249,7 @@ tr:hover td{background:var(--warm);}
       <h2 style="font-size:1.2rem;margin-bottom:0.2rem;">Staff Login</h2>
       <p style="font-size:0.78rem;color:#8A8480;">Najah Chemist internal portal</p>
     </div>
-    <div style="margin-bottom:0.8rem;"><label class="fl">Email</label><input class="fi" id="staff-email" type="email" placeholder="start@najahchemist.com" onkeydown="if(event.key==='Enter')staffLogin()"></div>
+    <div style="margin-bottom:0.8rem;"><label class="fl">Email</label><input class="fi" id="staff-email" type="email" placeholder="start@najahchemistja.com" onkeydown="if(event.key==='Enter')staffLogin()"></div>
     <div style="margin-bottom:0.8rem;"><label class="fl">Password</label><input class="fi" id="staff-pass" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')staffLogin()"></div>
     <div id="staff-err" style="display:none;background:#FEE2E2;color:#991B1B;font-size:0.78rem;padding:0.5rem 0.8rem;border-radius:8px;margin-bottom:0.75rem;"></div>
     <button id="staff-btn" class="btn btn-dk" style="width:100%;padding:0.75rem;" onclick="staffLogin()">Sign In</button>
@@ -1631,7 +1631,7 @@ Add anything else you want the chatbot to know..."></textarea>
         </div>
         <div>
           <label class="fl">Business Email</label>
-          <input class="fi" id="set-email" value="start@najahchemist.com" placeholder="your@email.com">
+          <input class="fi" id="set-email" value="start@najahchemistja.com" placeholder="your@email.com">
         </div>
         <div>
           <label class="fl">Website URL</label>
@@ -1731,7 +1731,7 @@ Add anything else you want the chatbot to know..."></textarea>
     </div>
     <div class="fg">
       <label class="fl">Email</label>
-      <input class="fi" id="adm-email" type="email" placeholder="start@najahchemist.com" onkeydown="if(event.key==='Enter')doLogin()">
+      <input class="fi" id="adm-email" type="email" placeholder="start@najahchemistja.com" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <div class="fg">
       <label class="fl">Password</label>
@@ -3789,9 +3789,10 @@ function sfRenderProducts(filter) {
       <div class="sf-card-body">
         <div class="sf-card-cat">${SF_CAT_LABEL[p.cat]||p.cat}</div>
         <div class="sf-card-name">${p.name}</div>
+        <div style="font-size:0.78rem;font-weight:700;color:#B45309;margin-bottom:0.25rem;">${price}</div>
         <div class="sf-card-tl">${p.tagline}</div>
         <div class="sf-card-footer">
-          <div><div class="sf-card-price">${price}</div><div class="sf-card-moq">${moq}</div></div>
+          <div class="sf-card-moq">${moq}</div>
           <button class="sf-card-btn" onclick="event.stopPropagation();sfOpenProduct('${p.id}')">Details</button>
         </div>
       </div>
