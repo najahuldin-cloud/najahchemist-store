@@ -840,7 +840,7 @@ tr:hover td{background:var(--warm);}
       <div style="margin-bottom:0.8rem;"><label class="fl">Your Name</label><input class="fi" id="ep-name" placeholder="e.g. Kezia"></div>
       <div style="margin-bottom:0.8rem;"><label class="fl">Email Address</label><input class="fi" id="ep-email" type="email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')submitEmailPopup()"></div>
       <div id="ep-err" style="display:none;background:#FEE2E2;color:#991B1B;font-size:0.75rem;padding:0.4rem 0.7rem;border-radius:6px;margin-bottom:0.7rem;"></div>
-      <div id="ep-success" style="display:none;background:#D1FAE5;color:#065F46;font-size:0.82rem;padding:0.6rem 0.9rem;border-radius:8px;margin-bottom:0.7rem;text-align:center;">🎉 You're in! Check WhatsApp or email for your discount.</div>
+      <div id="ep-success" style="display:none;background:#D1FAE5;color:#065F46;font-size:0.82rem;padding:0.6rem 0.9rem;border-radius:8px;margin-bottom:0.7rem;text-align:center;">You're in! 🎉 WhatsApp is opening so you can claim your 10% discount. We'll be in touch!</div>
       <button id="ep-btn" class="sf-modal-wa" onclick="submitEmailPopup()">Claim My 10% Discount</button>
       <button onclick="closeEmailPopup()" style="width:100%;margin-top:0.6rem;background:none;border:none;font-size:0.75rem;color:#8A8480;cursor:pointer;font-family:'Outfit',sans-serif;">No thanks, I'll pay full price</button>
     </div>
@@ -3732,9 +3732,16 @@ window.submitEmailPopup = async function() {
   if (!email || !email.includes('@')) { sfShowToast('Please enter a valid email'); return; }
   if (btn) { btn.textContent = 'Saving...'; btn.disabled = true; }
   try { await saveSubscriber(name, email, 'popup_discount'); } catch(e) {}
-  if (btn) { btn.textContent = 'Done! Use code NAJAH10'; btn.style.background = '#16a34a'; }
-  sfShowToast('Discount code: NAJAH10 — use at checkout!');
-  setTimeout(window.closeEmailPopup, 2500);
+  const waMsg = encodeURIComponent(
+    'Hi Najah Chemist! I just subscribed and I\u2019d like to claim my 10% first order discount.' +
+    ' My name is ' + (name || 'a new subscriber') + ' and my email is ' + email +
+    '. Please apply the discount to my first order.'
+  );
+  window.open('https://wa.me/18768851099?text=' + waMsg, '_blank');
+  const succ = document.getElementById('ep-success');
+  if (succ) succ.style.display = 'block';
+  if (btn) btn.style.display = 'none';
+  setTimeout(window.closeEmailPopup, 4000);
 };
 
 window.submitEmailSection = async function() {
