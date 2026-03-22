@@ -21,6 +21,11 @@
   status = 200
 
 [[redirects]]
+  from = "/how-to-start-skincare-business-jamaica"
+  to = "/how-to-start-skincare-business-jamaica.html"
+  status = 200
+
+[[redirects]]
   from = "/how-skincare-products-are-made"
   to = "/how-skincare-products-are-made.html"
   status = 200
