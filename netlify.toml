@@ -46,6 +46,16 @@
   status = 200
 
 [[redirects]]
+  from = "/do-you-need-to-make-your-own-products-jamaica"
+  to = "/do-you-need-to-make-your-own-products-jamaica.html"
+  status = 200
+
+[[redirects]]
+  from = "/private-label-vs-white-label-skincare"
+  to = "/private-label-vs-white-label-skincare.html"
+  status = 200
+
+[[redirects]]
   from = "/__/auth/*"
   to = "https://najah-chemist.firebaseapp.com/__/auth/:splat"
   status = 200
