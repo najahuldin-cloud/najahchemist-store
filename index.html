@@ -3188,35 +3188,42 @@ var _LABEL_CSS = [
   'body{background:#e8e8e8;display:flex;flex-direction:column;align-items:center;padding:10mm;}',
   '@page{size:A4;margin:0;}',
   '@media print{body{background:white;padding:10mm;}}',
-  '.label{width:80mm;height:150mm;border:1.5px solid #000;padding:4mm 5mm;background:white;',
-    'overflow:hidden;font-family:Arial,Helvetica,sans-serif;font-size:7.5pt;line-height:1.4;',
+  '.label{width:80mm;height:150mm;border:1.5px solid #000;padding:3mm 5mm;background:white;',
+    'overflow:hidden;font-family:Arial,Helvetica,sans-serif;font-size:7pt;line-height:1.4;',
     'page-break-after:always;}',
   '.label:last-child{page-break-after:avoid;}',
-  '.lbl-hdr{display:flex;align-items:flex-start;gap:3mm;margin-bottom:2mm;}',
-  '.lbl-box{border:1.5px solid #000;width:14mm;height:14mm;display:flex;flex-direction:column;',
-    'align-items:center;justify-content:center;flex-shrink:0;}',
-  '.lbl-box-nc{font-family:Georgia,"Times New Roman",serif;font-size:13pt;font-weight:bold;line-height:1;}',
-  '.lbl-box-sub{font-size:3.5pt;font-family:Georgia,"Times New Roman",serif;text-align:center;line-height:1.2;}',
-  '.lbl-co{flex:1;}',
-  '.lbl-co-name{font-family:Georgia,"Times New Roman",serif;font-weight:bold;font-size:10pt;margin-bottom:0.5mm;}',
-  '.lbl-co-line{font-size:6.5pt;color:#333;line-height:1.55;}',
-  '.lbl-dash{border:none;border-top:1px dashed #000;margin:2mm 0;}',
-  '.lbl-rcpt{text-align:center;font-size:13pt;font-weight:bold;letter-spacing:3px;margin-bottom:2mm;}',
-  '.lbl-bc{width:100%;margin-bottom:1mm;}',
-  '.lbl-bc svg{display:block;width:100%;height:9mm;}',
-  '.lbl-oid{text-align:center;font-family:monospace;font-size:7pt;letter-spacing:1px;}',
-  '.lbl-tagline{display:flex;justify-content:space-between;font-style:italic;font-size:6.5pt;margin-bottom:2mm;}',
-  '.lbl-cname{font-family:Georgia,"Times New Roman",serif;font-size:14pt;font-weight:bold;',
-    'line-height:1.2;margin-bottom:1mm;}',
-  '.lbl-btag{font-size:7pt;color:#555;margin-bottom:1mm;}',
-  '.lbl-ship{font-size:8.5pt;font-weight:bold;margin-bottom:0.5mm;}',
-  '.lbl-phone{font-size:8pt;}',
-  '.lbl-gap{height:4mm;}',
-  '.lbl-from{font-size:7pt;line-height:1.4;}',
-  '.lbl-foot{display:flex;align-items:center;gap:3mm;margin-top:2mm;}',
+  /* ── Header: all centred ── */
+  '.lbl-hdr{text-align:center;margin-bottom:1mm;}',
+  '.lbl-box{border:1.5px solid #000;width:12mm;height:12mm;display:flex;flex-direction:column;',
+    'align-items:center;justify-content:center;margin:0 auto 1mm;}',
+  '.lbl-box-nc{font-family:Georgia,"Times New Roman",serif;font-size:12pt;font-weight:bold;line-height:1;}',
+  '.lbl-co-name{font-family:Georgia,"Times New Roman",serif;font-weight:bold;font-size:9.5pt;margin-bottom:0.5mm;}',
+  '.lbl-co-line{font-size:6pt;color:#000;line-height:1.55;}',
+  /* ── Dashes ── */
+  '.lbl-dash{border:none;border-top:1px dashed #000;margin:1.5mm 0;}',
+  /* ── RECEIPT block ── */
+  '.lbl-rcpt{text-align:center;font-size:12pt;font-weight:bold;letter-spacing:3px;margin-bottom:1.5mm;}',
+  '.lbl-bc{width:100%;margin-bottom:0.5mm;}',
+  '.lbl-bc svg{display:block;width:100%;height:8mm;}',
+  '.lbl-oid{text-align:center;font-family:monospace;font-size:7pt;font-weight:bold;letter-spacing:1px;}',
+  /* ── Tagline ── */
+  '.lbl-tagline{display:flex;justify-content:space-between;font-style:italic;font-size:5.5pt;margin-bottom:1.5mm;}',
+  /* ── Customer ── */
+  '.lbl-cname{font-family:Georgia,"Times New Roman",serif;font-size:13pt;font-weight:bold;',
+    'line-height:1.2;margin-bottom:0.5mm;text-align:center;}',
+  '.lbl-tier{font-weight:bold;font-size:8pt;text-align:center;margin-bottom:1.5mm;}',
+  '.lbl-ship{font-size:9pt;font-weight:bold;margin-bottom:0.5mm;}',
+  '.lbl-contact{font-size:9pt;font-weight:bold;}',
+  '.lbl-gap{height:3mm;}',
+  /* ── Sender block ── */
+  '.lbl-from-row{display:flex;justify-content:space-between;align-items:center;',
+    'font-size:7pt;font-weight:bold;line-height:1.5;}',
+  '.lbl-from-addr{font-size:6.5pt;line-height:1.5;}',
+  /* ── Footer ── */
+  '.lbl-foot{text-align:center;margin-top:1mm;}',
   '.lbl-foot-logo{border:1px solid #000;font-family:Georgia,"Times New Roman",serif;font-weight:bold;',
-    'font-size:7.5pt;padding:0.5mm 2mm;display:inline-block;}',
-  '.lbl-foot-txt{font-size:6pt;color:#555;}'
+    'font-size:7pt;padding:0.5mm 2mm;display:inline-block;margin-bottom:0.5mm;}',
+  '.lbl-foot-txt{font-size:5pt;color:#333;line-height:1.6;}'
 ].join('');
 
 function _makeBarcode(str){
@@ -3239,41 +3246,55 @@ function _buildLabel(o){
   var dl=(o.deliveryLocation||'').trim();
   var sm=(o.shipMethod||'').trim();
   var shipLine='';
-  if(sd){ shipLine=sd; }
-  else if(dl){ var s=dl.replace(/\s*-\s*/,' \u00b7 '); shipLine=s.replace('Kingston/St. Andrew \u00b7','Kingston/St. Andrew Delivery \u00b7'); }
-  else if(sm){ var addr=(o.customerAddress||o.address||'').trim(); shipLine=addr?sm+' \u00b7 '+addr:sm; }
+  if(sd){ shipLine=sd.replace(/\s*[\u00b7\u2014\-]+\s*/,': '); }
+  else if(dl){ shipLine=dl.replace(/\s*-\s*/,': ').replace('Kingston/St. Andrew:','Kingston/St. Andrew Delivery:'); }
+  else if(sm){ var addr=(o.customerAddress||o.address||'').trim(); shipLine=addr?sm+': '+addr:sm; }
+
   var name=o.clientName||o.client||o.customerName||'';
   var phone=o.customerWhatsApp||o.phone||o.whatsapp||o.wa||'';
   var orderId=o.id||'';
-  var brandTag=o.brandTag||o.tag||'';
+
+  // Calculate customer tier from order total
+  var total=parseFloat(o.total)||0;
+  var tier=total>=150000?'PREMIUM':total>=61000?'GROWTH':total>=3550?'STARTER':'';
+
   var bc=_makeBarcode('NC-'+(orderId||'ORDER'));
   return '<div class="label">'
+    // ── Header: Nc logo centred → company name → address → phones → email → site ──
     +'<div class="lbl-hdr">'
-      +'<div class="lbl-box"><div class="lbl-box-nc">Nc</div><div class="lbl-box-sub">Najah<br>Chemist</div></div>'
-      +'<div class="lbl-co">'
-        +'<div class="lbl-co-name">Najah Chemist</div>'
-        +'<div class="lbl-co-line">8 Beechwood Ave, Kingston 5, Jamaica</div>'
-        +'<div class="lbl-co-line">+1 876 885 1099</div>'
-        +'<div class="lbl-co-line">start@najahchemist.com</div>'
-        +'<div class="lbl-co-line">najahchemistja.com</div>'
-      +'</div>'
+      +'<div class="lbl-box"><div class="lbl-box-nc">Nc</div></div>'
+      +'<div class="lbl-co-name">Najah Chemist</div>'
+      +'<div class="lbl-co-line">Carlton Crescent, Kingston 10 JA W.I.</div>'
+      +'<div class="lbl-co-line">1(876)885-1099</div>'
+      +'<div class="lbl-co-line">1(876)807-7104</div>'
+      +'<div class="lbl-co-line">start@najahchemistja.com</div>'
+      +'<div class="lbl-co-line">www.najahchemistja.com</div>'
     +'</div>'
+    // ── Separator → RECEIPT → barcode → order number ──
     +'<div class="lbl-dash"></div>'
     +'<div class="lbl-rcpt">RECEIPT</div>'
     +'<div class="lbl-bc">'+bc+'</div>'
     +'<div class="lbl-oid">NC-'+orderId+'</div>'
+    // ── Separator → tagline → customer name → tier → ship → contact ──
     +'<div class="lbl-dash"></div>'
     +'<div class="lbl-tagline"><em>Luxury Certified</em><em>Time 2 Shine &#9661;</em></div>'
     +'<div class="lbl-cname">'+name+'</div>'
-    +(brandTag?'<div class="lbl-btag">('+brandTag+')</div>':'')
+    +(tier?'<div class="lbl-tier">('+tier+')</div>':'')
     +'<div class="lbl-ship">'+shipLine+'</div>'
-    +'<div class="lbl-phone">'+phone+'</div>'
+    +'<div class="lbl-contact">Contact: '+phone+'</div>'
+    // ── Gap → sender block ──
     +'<div class="lbl-gap"></div>'
-    +'<div class="lbl-from"><strong>Fr: Najah Chemist</strong>&nbsp;&nbsp;8 Beechwood Ave, Kingston 5&nbsp;&nbsp;&#128666;</div>'
+    +'<div class="lbl-from-row"><span>Fr: Najah Chemist</span><span>&#128666;</span></div>'
+    +'<div class="lbl-from-addr">Carlton Crescent<br>Kingston 10 JA W.I.</div>'
+    // ── Separator → small logo → full address footer ──
     +'<div class="lbl-dash"></div>'
     +'<div class="lbl-foot">'
-      +'<span class="lbl-foot-logo">Nc</span>'
-      +'<span class="lbl-foot-txt">najahchemistja.com&nbsp;&nbsp;&middot;&nbsp;&nbsp;&#9733; Handle With Care</span>'
+      +'<div class="lbl-foot-logo">Nc</div>'
+      +'<div class="lbl-foot-txt">'
+        +'Najah Chemist &middot; Carlton Crescent, Kingston 10 JA W.I.<br>'
+        +'1(876)885-1099 &middot; 1(876)807-7104<br>'
+        +'start@najahchemistja.com &middot; www.najahchemistja.com'
+      +'</div>'
     +'</div>'
   +'</div>';
 }
