@@ -559,7 +559,8 @@ tr:hover td{background:var(--warm);}
     </div>
     <div style="display:flex;align-items:center;gap:0.6rem;">
       <a class="sf-nav-wa" href="https://wa.me/18768851099" target="_blank" rel="noopener">💬 WhatsApp Us</a>
-      <button id="sf-staff-btn" class="sf-nav-link" style="font-size:0.7rem;color:#B45309;border:1px solid #B45309;padding:0.3rem 0.7rem;border-radius:6px;" onclick="document.getElementById('m-staff-login').classList.add('open')">Staff</button>
+      <a id="sf-staff-btn" class="sf-nav-link" href="/admin.html" style="font-size:0.7rem;color:#B45309;border:1px solid #B45309;padding:0.3rem 0.7rem;border-radius:6px;text-decoration:none;">Staff</a>
+      <a id="btn-admin-panel" class="sf-nav-link" href="/admin.html" style="font-size:0.7rem;color:#1D4ED8;border:1px solid #1D4ED8;padding:0.3rem 0.7rem;border-radius:6px;text-decoration:none;">Admin Panel</a>
     </div>
   </nav>
 
@@ -2311,20 +2312,32 @@ async function saveReviewToDB(review) {
 window.saveReviewToDB = saveReviewToDB;
 
 async function loadFromDB() {
-  // ── 1. Products (public read — always runs) ────────────────────────────
+  // ── 1. Products — real-time listener keeps prices in sync with admin ──────
+  // Using onSnapshot instead of getDocs so any price saved in admin.html
+  // immediately re-renders the storefront without requiring a page reload.
   try {
-    const prodSnap = await getDocs(collection(db,'products'));
-    if (!prodSnap.empty) {
-      const dbProds = prodSnap.docs.map(d=>({...d.data()}));
-      PRODUCTS.length = 0;
-      dbProds.forEach(dbP => PRODUCTS.push(dbP));
-      console.log(`[Najah] Loaded ${PRODUCTS.length} products from Firestore`);
-    } else {
-      console.log('[Najah] No products in Firestore — using hardcoded fallback');
-    }
-    updateProductStat();
-    renderShop();
-    renderAdminProducts();
+    await new Promise(function(resolve) {
+      var settled = false;
+      onSnapshot(collection(db,'products'), function(snap) {
+        const dbProds = snap.docs.map(function(d){ return {...d.data()}; });
+        PRODUCTS.length = 0;
+        dbProds.forEach(function(dbP){ PRODUCTS.push(dbP); });
+        console.log('[Najah] Products synced: ' + PRODUCTS.length);
+        updateProductStat();
+        renderShop();
+        renderAdminProducts();
+        if(typeof sfRenderProducts==='function'){
+          sfRenderProducts('all');
+          if(typeof sfRenderHeroCards==='function') sfRenderHeroCards();
+          if(typeof sfRenderStarterKit==='function') sfRenderStarterKit();
+          if(typeof renderBestSellers==='function') renderBestSellers();
+        }
+        if(!settled){ settled=true; resolve(); }
+      }, function(e){
+        console.log('[Najah] Products listener error:', e.message);
+        if(!settled){ settled=true; resolve(); }
+      });
+    });
   } catch(e) { console.log('[Najah] Products load failed:', e.message); }
 
   // ── 2. Reviews (public read) ───────────────────────────────────────────
