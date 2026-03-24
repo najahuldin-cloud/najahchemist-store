@@ -3182,59 +3182,114 @@ window.selectAllFiltered = function(){
   });
   updateOrderSelection();
 };
+// ── Shared label helpers ──────────────────────────────────────────────────────
+var _LABEL_CSS = [
+  '*{margin:0;padding:0;box-sizing:border-box;}',
+  'body{background:#e8e8e8;display:flex;flex-direction:column;align-items:center;padding:10mm;}',
+  '@page{size:A4;margin:0;}',
+  '@media print{body{background:white;padding:10mm;}}',
+  '.label{width:80mm;height:150mm;border:1.5px solid #000;padding:4mm 5mm;background:white;',
+    'overflow:hidden;font-family:Arial,Helvetica,sans-serif;font-size:7.5pt;line-height:1.4;',
+    'page-break-after:always;}',
+  '.label:last-child{page-break-after:avoid;}',
+  '.lbl-hdr{display:flex;align-items:flex-start;gap:3mm;margin-bottom:2mm;}',
+  '.lbl-box{border:1.5px solid #000;width:14mm;height:14mm;display:flex;flex-direction:column;',
+    'align-items:center;justify-content:center;flex-shrink:0;}',
+  '.lbl-box-nc{font-family:Georgia,"Times New Roman",serif;font-size:13pt;font-weight:bold;line-height:1;}',
+  '.lbl-box-sub{font-size:3.5pt;font-family:Georgia,"Times New Roman",serif;text-align:center;line-height:1.2;}',
+  '.lbl-co{flex:1;}',
+  '.lbl-co-name{font-family:Georgia,"Times New Roman",serif;font-weight:bold;font-size:10pt;margin-bottom:0.5mm;}',
+  '.lbl-co-line{font-size:6.5pt;color:#333;line-height:1.55;}',
+  '.lbl-dash{border:none;border-top:1px dashed #000;margin:2mm 0;}',
+  '.lbl-rcpt{text-align:center;font-size:13pt;font-weight:bold;letter-spacing:3px;margin-bottom:2mm;}',
+  '.lbl-bc{width:100%;margin-bottom:1mm;}',
+  '.lbl-bc svg{display:block;width:100%;height:9mm;}',
+  '.lbl-oid{text-align:center;font-family:monospace;font-size:7pt;letter-spacing:1px;}',
+  '.lbl-tagline{display:flex;justify-content:space-between;font-style:italic;font-size:6.5pt;margin-bottom:2mm;}',
+  '.lbl-cname{font-family:Georgia,"Times New Roman",serif;font-size:14pt;font-weight:bold;',
+    'line-height:1.2;margin-bottom:1mm;}',
+  '.lbl-btag{font-size:7pt;color:#555;margin-bottom:1mm;}',
+  '.lbl-ship{font-size:8.5pt;font-weight:bold;margin-bottom:0.5mm;}',
+  '.lbl-phone{font-size:8pt;}',
+  '.lbl-gap{height:4mm;}',
+  '.lbl-from{font-size:7pt;line-height:1.4;}',
+  '.lbl-foot{display:flex;align-items:center;gap:3mm;margin-top:2mm;}',
+  '.lbl-foot-logo{border:1px solid #000;font-family:Georgia,"Times New Roman",serif;font-weight:bold;',
+    'font-size:7.5pt;padding:0.5mm 2mm;display:inline-block;}',
+  '.lbl-foot-txt{font-size:6pt;color:#555;}'
+].join('');
+
+function _makeBarcode(str){
+  var u=[2,1,1];
+  for(var i=0;i<str.length;i++){
+    var c=str.charCodeAt(i);
+    u.push((c>>6)&1?3:1,(c>>5)&1?1:2,(c>>4)&1?2:1,(c>>3)&1?1:1,(c>>2)&1?3:1,(c>>1)&1?1:2,c&1?2:1,1);
+  }
+  u.push(2,1,2);
+  var x=0,rects='';
+  u.forEach(function(w,i){
+    if(i%2===0)rects+='<rect x="'+x+'" y="0" width="'+w+'" height="28" fill="#000"/>';
+    x+=w;
+  });
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="9mm" viewBox="0 0 '+x+' 28" preserveAspectRatio="none">'+rects+'</svg>';
+}
+
+function _buildLabel(o){
+  var sd=(o.shippingDetail||'').trim();
+  var dl=(o.deliveryLocation||'').trim();
+  var sm=(o.shipMethod||'').trim();
+  var shipLine='';
+  if(sd){ shipLine=sd; }
+  else if(dl){ var s=dl.replace(/\s*-\s*/,' \u00b7 '); shipLine=s.replace('Kingston/St. Andrew \u00b7','Kingston/St. Andrew Delivery \u00b7'); }
+  else if(sm){ var addr=(o.customerAddress||o.address||'').trim(); shipLine=addr?sm+' \u00b7 '+addr:sm; }
+  var name=o.clientName||o.client||o.customerName||'';
+  var phone=o.customerWhatsApp||o.phone||o.whatsapp||o.wa||'';
+  var orderId=o.id||'';
+  var brandTag=o.brandTag||o.tag||'';
+  var bc=_makeBarcode('NC-'+(orderId||'ORDER'));
+  return '<div class="label">'
+    +'<div class="lbl-hdr">'
+      +'<div class="lbl-box"><div class="lbl-box-nc">Nc</div><div class="lbl-box-sub">Najah<br>Chemist</div></div>'
+      +'<div class="lbl-co">'
+        +'<div class="lbl-co-name">Najah Chemist</div>'
+        +'<div class="lbl-co-line">8 Beechwood Ave, Kingston 5, Jamaica</div>'
+        +'<div class="lbl-co-line">+1 876 885 1099</div>'
+        +'<div class="lbl-co-line">start@najahchemist.com</div>'
+        +'<div class="lbl-co-line">najahchemistja.com</div>'
+      +'</div>'
+    +'</div>'
+    +'<div class="lbl-dash"></div>'
+    +'<div class="lbl-rcpt">RECEIPT</div>'
+    +'<div class="lbl-bc">'+bc+'</div>'
+    +'<div class="lbl-oid">NC-'+orderId+'</div>'
+    +'<div class="lbl-dash"></div>'
+    +'<div class="lbl-tagline"><em>Luxury Certified</em><em>Time 2 Shine &#9661;</em></div>'
+    +'<div class="lbl-cname">'+name+'</div>'
+    +(brandTag?'<div class="lbl-btag">('+brandTag+')</div>':'')
+    +'<div class="lbl-ship">'+shipLine+'</div>'
+    +'<div class="lbl-phone">'+phone+'</div>'
+    +'<div class="lbl-gap"></div>'
+    +'<div class="lbl-from"><strong>Fr: Najah Chemist</strong>&nbsp;&nbsp;8 Beechwood Ave, Kingston 5&nbsp;&nbsp;&#128666;</div>'
+    +'<div class="lbl-dash"></div>'
+    +'<div class="lbl-foot">'
+      +'<span class="lbl-foot-logo">Nc</span>'
+      +'<span class="lbl-foot-txt">najahchemistja.com&nbsp;&nbsp;&middot;&nbsp;&nbsp;&#9733; Handle With Care</span>'
+    +'</div>'
+  +'</div>';
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 window.batchPrintLabels = function(){
   const checks = document.querySelectorAll('input.order-cb:checked');
   if(!checks.length){ alert('No orders selected'); return; }
   const orders = Array.from(checks).map(cb=>window.ordersMap&&window.ordersMap[cb.getAttribute('data-id')]).filter(Boolean);
   if(!orders.length){ alert('Order data not found'); return; }
-  // Clear any stale content from previous print sessions
-  const _zone = document.getElementById('bulk-print-zone');
-  if(_zone){ _zone.innerHTML = ''; _zone.style.display = 'none'; }
-  document.body.classList.remove('bulk-printing');
-  const labelsHtml = orders.map((o,idx)=>{
-    const arr = Array.isArray(o.items)?o.items:[];
-    const itemsHtml = arr.length>0
-      ? arr.map(it=>{ const p=it.sku?[it.sku,it.name||'']:[it.name||'']; if(it.size)p.push(it.size); p.push('x'+(it.qty||1)); return `<div style="font-size:7pt;">${p.join(' · ')}</div>`; }).join('')
-      : ((o.product||'').trim() ? `<div style="font-size:7pt;">${o.product}</div>` : '');
-    const sd=(o.shippingDetail||'').trim();
-    let shipLine='';
-    if(sd){ shipLine=sd; }
-    else{ const dl=(o.deliveryLocation||'').trim(),sm=(o.shipMethod||'').trim();
-      if(dl){ let s=dl.replace(/\s*-\s*/,' — '); shipLine=s.replace('Kingston/St. Andrew —','Kingston/St. Andrew Delivery —'); }
-      else if(sm){ const a=(o.customerAddress||o.address||'').trim(); if(/kingston|direct/i.test(sm)) shipLine='Kingston/St. Andrew Delivery'; else shipLine=a?sm+' — '+a:sm; } }
-    const addrLine=(o.customerAddress||o.address||o.deliveryAddress||'').trim();
-    const showAddr = addrLine && !sd && !(o.deliveryLocation||'').trim();
-    const phoneStr=o.customerWhatsApp||o.phone||o.whatsapp||o.wa||'—';
-    const name=o.clientName||o.client||o.customerName||'';
-    const dateStr=parseOrderDate(o.date||o.createdAt,'short');
-    const pb=idx<orders.length-1?'page-break-after:always;':'';
-    return `<div style="width:76mm;min-height:96mm;max-height:96mm;overflow:hidden;font-family:monospace;padding:2mm;box-sizing:border-box;${pb}">
-      <table width="100%"><tr><td style="font-size:14pt;font-weight:bold;">Nc</td><td align="right"><div id="qr-${idx}"></div></td></tr></table>
-      <div style="text-align:center;font-size:8pt;font-weight:bold;">NAJAH CHEMIST</div>
-      <div style="text-align:center;font-size:6pt;">Kingston, Jamaica · start@najahchemistja.com</div>
-      <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
-      <div style="font-size:7pt;font-weight:bold;">SHIP TO:</div>
-      <div style="font-size:9pt;font-weight:bold;">${name}</div>
-      ${shipLine?`<div style="font-size:7pt;">${shipLine}</div>`:''}
-      ${showAddr?`<div style="font-size:7pt;">${addrLine}</div>`:''}
-      <div style="font-size:7pt;">WhatsApp: ${phoneStr}</div>
-      <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
-      <div style="font-size:6pt;">Order: ${o.id||''} · ${dateStr}</div>
-      ${itemsHtml}
-      <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
-      <div style="font-size:8pt;font-weight:bold;text-align:right;">TOTAL: J$${(parseFloat(o.total)||0).toLocaleString()}</div>
-      <div style="font-size:5.5pt;">najahchemistja.com &nbsp;&nbsp;&nbsp; ★ HANDLE WITH CARE</div>
-    </div>`;
-  }).join('');
-  const qrInits = orders.map((_,i)=>`new QRCode(document.getElementById('qr-${i}'),{text:'https://najahchemistja.com',width:45,height:45,correctLevel:QRCode.CorrectLevel.L});`).join('');
-  const win = window.open('','_blank','width=440,height=620');
+  const labelsHtml = orders.map(o=>_buildLabel(o)).join('');
+  const win = window.open('','_blank','width=500,height=750');
   if(!win){ alert('Please allow popups for this site to use bulk printing.'); return; }
-  win.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:monospace;background:white;}@media print{@page{size:80mm 100mm;margin:0;}body{width:80mm;}}</style></head><body>'
-    + labelsHtml
-    + '<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" onload="'
-    + qrInits.replace(/"/g,"'")
-    + 'setTimeout(function(){window.print();window.close();},600);"><\/script></body></html>');
+  win.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><style>'+_LABEL_CSS+'</style></head><body>'+labelsHtml+'<script>setTimeout(function(){window.print();},400);<\/script></body></html>');
   win.document.close();
+  win.onafterprint = ()=>win.close();
   markBatchPrinted(Array.from(checks).map(cb=>cb.getAttribute('data-id')),'labelPrinted');
 };
 window.batchPrintReceipts = function(){
@@ -3431,106 +3486,12 @@ window.printR = function(orderOrId){
 
 window.printLabel = function(order){
   const o = typeof order==='string'?JSON.parse(order):order;
-  console.log('[printLabel] order:', JSON.parse(JSON.stringify(o)));
-  // Bug 1: website orders have no items array — fall back to o.product string
-  const items = (() => {
-    const arr = Array.isArray(o.items) ? o.items : [];
-    if(arr.length > 0){
-      return arr.map(i=>{
-        const parts = i.sku ? [i.sku, i.name||''] : [i.name||''];
-        if(i.size) parts.push(i.size);
-        parts.push(`x${i.qty||1}`);
-        return `<div style="font-size:7pt;">${parts.join(' · ')}</div>`;
-      }).join('');
-    }
-    const prod = (o.product||'').trim();
-    return prod ? `<div style="font-size:7pt;">${prod}</div>` : '';
-  })();
-  const dateStr = parseOrderDate(o.date||o.createdAt, 'short');
-  // Build shipping line; prefer shippingDetail (new orders), fall back to
-  // deliveryLocation parsing (old orders) or shipMethod (admin orders).
-  let addrInShipLine = false;
-  const shipLine = (() => {
-    const sd = (o.shippingDetail||'').trim();
-    if(sd) return sd;
-    const dl = (o.deliveryLocation||'').trim();
-    const sm = (o.shipMethod||'').trim();
-    if(dl){
-      // old website orders: "Knutsford Express - Gutters" → "Knutsford Express — Gutters"
-      let s = dl.replace(/\s*-\s*/, ' — ');
-      return s.replace('Kingston/St. Andrew —', 'Kingston/St. Andrew Delivery —');
-    }
-    if(sm){
-      const addr = (o.customerAddress||o.address||'').trim();
-      if(/kingston|direct/i.test(sm)) return 'Kingston/St. Andrew Delivery';
-      // Knutsford / Zipmail: customerAddress is the branch or pickup location
-      if(addr){ addrInShipLine = true; return sm + ' — ' + addr; }
-      return sm;
-    }
-    return '';
-  })();
-
-  // 1. Populate #print-zone with full label HTML
-  const zone = document.getElementById('print-zone');
-  zone.innerHTML = `
-    <div id="thermal-label" style="width:76mm;min-height:96mm;max-height:96mm;overflow:hidden;font-family:monospace;padding:2mm;box-sizing:border-box;">
-      <table width="100%"><tr>
-        <td style="font-size:14pt;font-weight:bold;">Nc</td>
-        <td align="right"><div id="qr-thermal"></div></td>
-      </tr></table>
-      <div style="text-align:center;font-size:8pt;font-weight:bold;">NAJAH CHEMIST</div>
-      <div style="text-align:center;font-size:6pt;">Kingston, Jamaica · start@najahchemistja.com</div>
-      <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
-      <div style="font-size:7pt;font-weight:bold;">SHIP TO:</div>
-      <div style="font-size:9pt;font-weight:bold;">${o.clientName||o.client||o.customerName||''}</div>
-      ${shipLine?`<div style="font-size:7pt;">${shipLine}</div>`:''}
-      ${addrInShipLine?'':(`<div style="font-size:7pt;">${o.customerAddress||o.address||o.deliveryAddress||''}</div>`)}
-      <div style="font-size:7pt;">WhatsApp: ${o.customerWhatsApp||o.phone||o.whatsapp||o.wa||'—'}</div>
-      <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
-      <div style="font-size:6pt;">Order: ${o.id||''} · ${dateStr}</div>
-      ${items}
-      <div style="border-top:1px dashed #000;margin:1mm 0;"></div>
-      <div style="font-size:8pt;font-weight:bold;text-align:right;">TOTAL: J$${(parseFloat(o.total)||0).toLocaleString()}</div>
-      <div style="font-size:5.5pt;">najahchemistja.com &nbsp;&nbsp;&nbsp; ★ HANDLE WITH CARE</div>
-    </div>
-  `;
-
-  // 2. Make #print-zone visible but off-screen so QR renders before printing
-  zone.style.cssText = 'display:block;position:fixed;left:-9999px;top:0;visibility:visible;';
-
-  // 7. Cleanup after print
-  function resetZone(){
-    zone.style.cssText = 'display:none;';
-    zone.innerHTML = '';
-  }
-  window.addEventListener('afterprint', resetZone, { once: true });
-
-  function doPrint(){
-    window.print();
-    // Fallback cleanup in case afterprint doesn't fire
-    setTimeout(resetZone, 2000);
-  }
-
-  // 3 & 4. Init QRCode, then 5. wait for canvas before printing
-  const qrEl = document.getElementById('qr-thermal');
-  if(typeof QRCode !== 'undefined' && qrEl){
-    new QRCode(qrEl, { text:'https://najahchemistja.com', width:45, height:45, correctLevel:QRCode.CorrectLevel.L });
-    if(qrEl.querySelector('canvas')){
-      // Canvas already present (sync render)
-      doPrint();
-    } else {
-      // 5. Wait for canvas via MutationObserver
-      const obs = new MutationObserver(()=>{
-        if(qrEl.querySelector('canvas')){ obs.disconnect(); doPrint(); }
-      });
-      obs.observe(qrEl, { childList: true, subtree: true });
-      // 6. Fallback after 1500ms regardless
-      setTimeout(()=>{ obs.disconnect(); doPrint(); }, 1500);
-    }
-  } else {
-    // No QR library — print after short delay
-    setTimeout(doPrint, 300);
-  }
+  const labelHtml = _buildLabel(o);
+  const win = window.open('','_blank','width=500,height=750');
+  if(!win){ alert('Please allow popups to print labels.'); return; }
+  win.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><style>'+_LABEL_CSS+'</style></head><body>'+labelHtml+'<script>setTimeout(function(){window.print();},400);<\/script></body></html>');
+  win.document.close();
+  win.onafterprint = ()=>win.close();
 };
 
 // ═══ FORMS ═══
