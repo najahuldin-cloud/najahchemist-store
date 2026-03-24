@@ -531,6 +531,8 @@ tr:hover td{background:var(--warm);}
   #sf-chat-box.open{display:flex;}
 }
 
+/* Staff/Admin buttons — hidden by default, revealed via ?staff=true */
+#sf-staff-btn, #nav-admin, #btn-admin-panel { display: none !important; }
 </style>
 </head>
 <body>
@@ -557,7 +559,7 @@ tr:hover td{background:var(--warm);}
     </div>
     <div style="display:flex;align-items:center;gap:0.6rem;">
       <a class="sf-nav-wa" href="https://wa.me/18768851099" target="_blank" rel="noopener">💬 WhatsApp Us</a>
-      <button class="sf-nav-link" style="font-size:0.7rem;color:#B45309;border:1px solid #B45309;padding:0.3rem 0.7rem;border-radius:6px;" onclick="document.getElementById('m-staff-login').classList.add('open')">Staff</button>
+      <button id="sf-staff-btn" class="sf-nav-link" style="font-size:0.7rem;color:#B45309;border:1px solid #B45309;padding:0.3rem 0.7rem;border-radius:6px;" onclick="document.getElementById('m-staff-login').classList.add('open')">Staff</button>
     </div>
   </nav>
 
@@ -664,6 +666,7 @@ tr:hover td{background:var(--warm);}
         <button class="sf-cat" onclick="sfFilter('haircare',this)">Hair Care</button>
         <button class="sf-cat" onclick="sfFilter('bundle',this)">Bundles</button>
         <button class="sf-cat" onclick="sfFilter('label',this)">Design</button>
+        <button class="sf-cat" onclick="sfFilter('containers',this)">Containers</button>
       </div>
       <div class="sf-grid" id="sf-products-grid"></div>
     </div>
@@ -1265,6 +1268,16 @@ tr:hover td{background:var(--warm);}
             Orders processed within <strong>2–3 business days</strong> after payment confirmed.
           </div>
         </div>
+      </div>
+
+      <!-- Discount code section -->
+      <div id="sf-discount-section" style="margin:0 1.4rem 0.75rem;">
+        <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#8A8480;margin-bottom:0.4rem;">Discount Code</div>
+        <div style="display:flex;gap:0.5rem;">
+          <input id="sf-discount-input" class="sf-fi" placeholder="Enter code" style="flex:1;margin-bottom:0;" autocomplete="off">
+          <button onclick="sfApplyDiscount()" style="padding:0.5rem 0.9rem;background:#0F0E0D;color:white;border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.78rem;font-weight:700;cursor:pointer;white-space:nowrap;">Apply</button>
+        </div>
+        <div id="sf-discount-msg" style="font-size:0.72rem;margin-top:0.35rem;display:none;"></div>
       </div>
 
       </div><!-- end sf-cart-body -->
@@ -3820,6 +3833,8 @@ let sfCurrentModalMint = null;
 let sfSelectedShip = null;
 let sfSelectedPayment = 'wa'; // 'wa' = bank/lynk, 'card' = Fygaro
 let sfTermsChecked = false;
+let sfDiscountApplied = false;
+let sfDiscountAmount = 0;
 let sfCartStep = 'cart';
 
 // ── Helpers ──────────────────────────────────────────
@@ -3836,8 +3851,8 @@ function sfGetPrice(p) {
   const moqLabel = isUnit&&p.unitDesc ? 'Per Unit · '+p.unitDesc : sfSizeLabel(k);
   return {price:'From J$'+(entry.price||0).toLocaleString(), moq:moqLabel};
 }
-const SF_IMG_CLASS = {yoni:'img-wash',skin:'img-cream',soap:'img-soap',hair:'img-serum',pl:'img-label'};
-const SF_CAT_LABEL = {yoni:'Yoni Care',skin:'Skin Care',soap:'Bar Soap',hair:'Hair Care',pl:'Private Label'};
+const SF_IMG_CLASS = {yoni:'img-wash',skin:'img-cream',soap:'img-soap',hair:'img-serum',pl:'img-label',containers:'img-cream'};
+const SF_CAT_LABEL = {yoni:'Yoni Care',skin:'Skin Care',soap:'Bar Soap',hair:'Hair Care',pl:'Private Label',containers:'Containers'};
 
 function sfScroll(id) {
   const el = document.getElementById(id);
@@ -4442,7 +4457,8 @@ function sfRenderCart() {
 function sfRenderCartFooter() {
   const footer = document.getElementById('sf-cart-footer');
   if (!footer) return;
-  const sub = sfCart.reduce((s,i)=>s+i.price*i.qty,0);
+  const rawSub = sfCart.reduce((s,i)=>s+i.price*i.qty,0);
+  const sub = rawSub - sfDiscountAmount;
   const shipFees = {knutsford:500, zipmail:1000, kingston:1000};
   const shipLabels = {knutsford:'Knutsford (+J$500)', zipmail:'Zipmail (+~J$1,000)', kingston:'Kingston Delivery (+~J$1,000)'};
   const fee = sfSelectedShip ? shipFees[sfSelectedShip] : 0;
@@ -4452,7 +4468,8 @@ function sfRenderCartFooter() {
   const isCard = sfSelectedPayment === 'card';
   footer.style.display = 'block';
   footer.innerHTML = `<div style="padding:0.75rem 1.4rem 1.2rem;border-top:1px solid #E8E4DE;">
-    <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#8A8480;margin-bottom:0.25rem;"><span>Subtotal</span><span>J$${sub.toLocaleString()}</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#8A8480;margin-bottom:0.25rem;"><span>Subtotal</span><span>J$${rawSub.toLocaleString()}</span></div>
+    ${sfDiscountAmount > 0 ? `<div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#059669;margin-bottom:0.25rem;"><span>Discount (START2026 −10%)</span><span>−J$${sfDiscountAmount.toLocaleString()}</span></div>` : ''}
     <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#8A8480;margin-bottom:0.45rem;padding-bottom:0.45rem;border-bottom:1px solid #E8E4DE;"><span>Shipping</span><span>${sfSelectedShip ? shipLabels[sfSelectedShip] : '— select shipping above'}</span></div>
     <div style="display:flex;justify-content:space-between;font-size:1.05rem;font-weight:800;margin-bottom:0.85rem;">
       <span>Total</span><span>${sfSelectedShip ? 'J$'+grandTotal.toLocaleString() : 'J$'+sub.toLocaleString()+' + shipping'}</span>
@@ -4490,6 +4507,42 @@ window.sfSetPayment = function(method) {
   sfRenderCartFooter();
 };
 
+window.sfApplyDiscount = function() {
+  const input = document.getElementById('sf-discount-input');
+  const msgEl = document.getElementById('sf-discount-msg');
+  if (!input || !msgEl) return;
+  const code = input.value.trim().toUpperCase();
+  msgEl.style.display = 'block';
+  if (code !== 'START2026') {
+    msgEl.style.color = '#DC2626';
+    msgEl.textContent = 'Invalid discount code.';
+    return;
+  }
+  if (localStorage.getItem('nc_discount_used')) {
+    msgEl.style.color = '#DC2626';
+    msgEl.textContent = 'This code has already been used.';
+    return;
+  }
+  if (sfDiscountApplied) {
+    msgEl.style.color = '#059669';
+    msgEl.textContent = 'Discount already applied — 10% off your order.';
+    return;
+  }
+  const cartSub = sfCart.reduce((s,i)=>s+i.price*i.qty,0);
+  if (cartSub === 0) {
+    msgEl.style.color = '#DC2626';
+    msgEl.textContent = 'Add items to your cart first.';
+    return;
+  }
+  sfDiscountApplied = true;
+  sfDiscountAmount = Math.round(cartSub * 0.10);
+  localStorage.setItem('nc_discount_used', '1');
+  msgEl.style.color = '#059669';
+  msgEl.textContent = 'START2026 applied — 10% off your order!';
+  input.disabled = true;
+  sfRenderCartFooter();
+};
+
 // ── Checkout ─────────────────────────────────────────
 window.sfCheckoutWA = function() {
   const name = (document.getElementById('sf-cust-name')?.value||'').trim();
@@ -4521,17 +4574,19 @@ window.sfCheckoutWA = function() {
   const { knutsfordBranch, zipmailLocation, deliveryAddress, shippingDetail, deliveryLocation, deliveryFee } = sfGetShippingInfo();
   const shipDetail = shippingDetail;
 
-  const sub = sfCart.reduce((s,i)=>s+i.price*i.qty,0);
+  const rawSub = sfCart.reduce((s,i)=>s+i.price*i.qty,0);
+  const sub = rawSub - sfDiscountAmount;
   const total = sub + deliveryFee;
   const orderId = 'NC-' + Math.floor(10000 + Math.random()*90000);
   const date = new Date().toLocaleString('en-JM');
   const productsStr = sfCart.map(i=>`${i.name} (${i.size} x${i.qty})`).join(' | ');
   const items = sfCart.map(i=>`  * ${i.name} (${i.size}) x${i.qty} = J$${(i.price*i.qty).toLocaleString()}`).join('\n');
   const cartSnapshot = [...sfCart];
+  const discountNote = sfDiscountAmount > 0 ? '\nDISCOUNT (START2026 -10%): -J$' + sfDiscountAmount.toLocaleString() : '';
 
   // 1. Open WhatsApp IMMEDIATELY - synchronous to avoid browser popup block
   const WA = window.WA_NUMBER || '18768851099';
-  const msg = 'Hi Najah Chemist! I would like to place an order.\n\nORDER ID: ' + orderId + '\n\nCUSTOMER\nName: ' + name + (phone?'\nPhone: '+phone:'') + '\n\nORDER\n' + items + '\n\nSUBTOTAL: J$' + sub.toLocaleString() + '\nSHIPPING: ' + shipDetail + '\n\nPAYMENT\nI understand payment is required upfront (no COD).\nI will pay via bank transfer, Fygaro, or Lynk.\n\nPlease confirm my order. Thank you!';
+  const msg = 'Hi Najah Chemist! I would like to place an order.\n\nORDER ID: ' + orderId + '\n\nCUSTOMER\nName: ' + name + (phone?'\nPhone: '+phone:'') + '\n\nORDER\n' + items + '\n\nSUBTOTAL: J$' + rawSub.toLocaleString() + discountNote + '\nSHIPPING: ' + shipDetail + '\nTOTAL: J$' + total.toLocaleString() + '\n\nPAYMENT\nI understand payment is required upfront (no COD).\nI will pay via bank transfer, Fygaro, or Lynk.\n\nPlease confirm my order. Thank you!';
   window.open('https://wa.me/' + WA + '?text=' + encodeURIComponent(msg), '_blank');
 
   // 2. Show confirmation modal immediately
@@ -4548,6 +4603,8 @@ window.sfCheckoutWA = function() {
   sfCart = [];
   sfTermsChecked = false;
   sfSelectedPayment = 'wa';
+  sfDiscountApplied = false;
+  sfDiscountAmount = 0;
   sfUpdateCartBtn();
   sfCloseCart();
 
@@ -4610,7 +4667,8 @@ window.sfCheckoutFygaro = function() {
   const { knutsfordBranch, zipmailLocation, deliveryAddress, shippingDetail, deliveryLocation, deliveryFee } = sfGetShippingInfo();
   const shipDetail = shippingDetail;
 
-  const sub = sfCart.reduce((s,i)=>s+i.price*i.qty,0);
+  const rawSub = sfCart.reduce((s,i)=>s+i.price*i.qty,0);
+  const sub = rawSub - sfDiscountAmount;
   const grandTotal = sub + deliveryFee;
   const cardFee = Math.round(grandTotal * 0.15);
   const cardTotal = grandTotal + cardFee;
@@ -4637,6 +4695,8 @@ window.sfCheckoutFygaro = function() {
   sfCart = [];
   sfTermsChecked = false;
   sfSelectedPayment = 'wa';
+  sfDiscountApplied = false;
+  sfDiscountAmount = 0;
   sfUpdateCartBtn();
   sfCloseCart();
 
@@ -4722,6 +4782,37 @@ function sfAddChatMsg(text, isUser, isTyping) {
   msgs.scrollTop = msgs.scrollHeight;
   if (!isTyping) sfChatHistory.push({role: isUser ? 'user' : 'assistant', content: text});
   return div;
+}
+
+// ── Container products (hardcoded — prices TBD) ───────────────────────────
+(function() {
+  const containers = [
+    /* PRICE NEEDED: set price per unit for 2oz Spray Bottle */
+    { id:'con1', cat:'containers', name:'2oz Spray Bottle', tagline:'Lightweight mist bottle for toners & sprays', emoji:'🧴', pricing:[{key:'unit',price:0}], unitDesc:'Each', tag:'Packaging', hidden:false },
+    /* PRICE NEEDED: set price per unit for 4oz Spray Bottle */
+    { id:'con2', cat:'containers', name:'4oz Spray Bottle', tagline:'Standard spray bottle for serums & toners', emoji:'🧴', pricing:[{key:'unit',price:0}], unitDesc:'Each', tag:'Packaging', hidden:false },
+    /* PRICE NEEDED: set price per unit for 2oz Dropper Bottle */
+    { id:'con3', cat:'containers', name:'2oz Dropper Bottle', tagline:'Precision dropper for face oils & serums', emoji:'💧', pricing:[{key:'unit',price:0}], unitDesc:'Each', tag:'Packaging', hidden:false },
+    /* PRICE NEEDED: set price per unit for 2oz Double Wall Jar */
+    { id:'con4', cat:'containers', name:'2oz Double Wall Jar', tagline:'Premium double wall jar for creams & balms', emoji:'🫙', pricing:[{key:'unit',price:0}], unitDesc:'Each', tag:'Packaging', hidden:false },
+    /* PRICE NEEDED: set price per unit for 4oz Double Wall Jar */
+    { id:'con5', cat:'containers', name:'4oz Double Wall Jar', tagline:'Larger double wall jar for body butters & creams', emoji:'🫙', pricing:[{key:'unit',price:0}], unitDesc:'Each', tag:'Packaging', hidden:false },
+  ];
+  window.PRODUCTS = window.PRODUCTS || [];
+  containers.forEach(function(c) {
+    if (!window.PRODUCTS.find(function(p){ return p.id === c.id; })) {
+      window.PRODUCTS.push(c);
+    }
+  });
+  sfRenderProducts('all');
+})();
+
+// ── Staff/Admin visibility — show buttons if ?staff=true in URL ───────────
+if (window.location.search.includes('staff=true')) {
+  ['sf-staff-btn','nav-admin','btn-admin-panel'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.setProperty('display', 'inline-flex', 'important');
+  });
 }
 
 </script>
