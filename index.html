@@ -642,8 +642,8 @@ tr:hover td{background:var(--warm);}
   <section id="sf-starter-kit" style="background:white;padding:4.5rem 2rem;border-top:1px solid #E8E4DE;">
     <div style="max-width:1200px;margin:0 auto;">
       <div class="sf-section-label">Save More</div>
-      <h2 class="sf-section-h2">Build your starter kit — <em>Select exactly 3 products to build your starter kit</em></h2>
-      <p class="sf-section-sub">Order 3 products together and save 10% on your total order automatically.</p>
+      <h2 class="sf-section-h2">Build your starter kit — <em>Select exactly 3 products</em></h2>
+      <p class="sf-section-sub">Choose exactly 3 products and save 10% on your total order</p>
       <button id="sk-toggle-btn" onclick="skTogglePanel()" style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.85rem 1.75rem;background:#0F0E0D;color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.9rem;font-weight:700;cursor:pointer;letter-spacing:0.02em;margin-bottom:1.25rem;">Choose Your 3 Products <span id="sk-toggle-arrow" style="font-size:0.75rem;transition:transform 0.2s;">▼</span></button>
       <div id="sk-panel" style="display:none;">
         <div id="sk-limit-msg" style="display:none;background:#FEF2F2;border:1.5px solid #FECACA;border-radius:10px;padding:0.65rem 1rem;font-size:0.82rem;color:#DC2626;font-weight:600;margin-bottom:0.75rem;">You can only select 3 products</div>
@@ -2400,7 +2400,8 @@ function renderBestSellers(){
   if(!prods.length){ section.style.display='none'; return; }
   section.style.display='block';
   grid.innerHTML = prods.map(p=>{
-    const firstKey=Object.keys(p.pricing)[0];
+    const _so={halfLb:0,lb1:1,lb2:2,lb8:3,lb40:4,bar:0,bars10:0,bars100:1,litre:0,gallon:1,'5gal':2,caps100:0,caps1000:1,unit:0,kit:0,design:0};
+    const firstKey=Object.keys(p.pricing).sort((a,b)=>((_so[a]??99)-(_so[b]??99)))[0];
     const price='J$'+p.pricing[firstKey].price.toLocaleString();
     const imgCls=BS_IMG_CLASS[p.cat]||'img-cream';
     const img=p.img?`<img src="${p.img}" style="width:100%;height:100%;object-fit:cover;">`:`<span style="font-size:3.5rem;">${p.emoji||'🧴'}</span>`;
@@ -2468,7 +2469,8 @@ function sizeLabel(k){const labels={litre:'1 Litre',gallon:'1 Gallon','5gal':'5 
 function getDisplayPrice(p){
   const keys=Object.keys(p.pricing);
   if(!keys.length) return {price:'Contact us',moq:''};
-  const f=keys[0];
+  const SO={halfLb:0,lb1:1,lb2:2,lb8:3,lb40:4,bar:0,bars10:0,bars100:1,litre:0,gallon:1,'5gal':2,caps100:0,caps1000:1,unit:0,kit:0,design:0};
+  const f=keys.sort((a,b)=>((SO[a]??99)-(SO[b]??99)))[0];
   return {price:'From J$'+p.pricing[f].price.toLocaleString(),moq:sizeLabel(f)};
 }
 
@@ -3860,10 +3862,17 @@ function sfSizeLabel(k) {
   const m = {litre:'1 Litre',gallon:'1 Gallon','5gal':'5 Gallon',lb2:'2 lbs',lb8:'8 lbs',lb40:'40 lbs',bars10:'10 Bars',bars100:'100 Bars',caps100:'100 Caps',caps1000:'1000 Caps',halfLb:'½ lb',lb1:'1 lb',kit:'Per Unit',unit:'Per Unit',design:'Per Design',bar:'Per Bar'};
   return m[k] || k.charAt(0).toUpperCase()+k.slice(1);
 }
+// Tier order — ensures cards always show the minimum (smallest) order price, not a bulk tier
+const SF_SIZE_ORDER = {halfLb:0,lb1:1,lb2:2,lb8:3,lb40:4,bar:0,bars10:0,bars100:1,litre:0,gallon:1,'5gal':2,caps100:0,caps1000:1,unit:0,kit:0,design:0};
+function sfMinKey(pricing) {
+  var keys = Object.keys(pricing || {});
+  if (!keys.length) return '';
+  return keys.sort(function(a,b){ return ((SF_SIZE_ORDER[a]??99)-(SF_SIZE_ORDER[b]??99)); })[0];
+}
 function sfGetPrice(p) {
   const keys = Object.keys(p.pricing);
   if (!keys.length) return {price:'Contact us',moq:''};
-  const k=keys[0];
+  const k = sfMinKey(p.pricing) || keys[0];
   const entry = p.pricing[k];
   const isUnit=['kit','unit','design'].includes(k);
   const moqLabel = isUnit&&p.unitDesc ? 'Per Unit · '+p.unitDesc : sfSizeLabel(k);
@@ -4030,7 +4039,7 @@ function skBuildChecklist() {
   var prods = skGetEligible();
   list.innerHTML = prods.map(function(p) {
     var keys = Object.keys(p.pricing || {});
-    var k = keys[0] || '';
+    var k = sfMinKey(p.pricing) || keys[0] || '';
     var price = k ? (p.pricing[k].price || 0) : 0;
     var sLabel = sfSizeLabel(k);
     var sel = skChecked[p.id];
@@ -4058,7 +4067,7 @@ window.skOnCheck = function(cb) {
     var p = (window.PRODUCTS || []).find(function(pr){ return pr.id === cb.value; });
     if (p) {
       var keys = Object.keys(p.pricing || {});
-      var k = keys[0] || '';
+      var k = sfMinKey(p.pricing) || keys[0] || '';
       var price = k ? (p.pricing[k].price || 0) : 0;
       skChecked[cb.value] = { p: p, k: k, price: price };
     }
