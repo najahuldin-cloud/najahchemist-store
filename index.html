@@ -643,7 +643,33 @@ tr:hover td{background:var(--warm);}
       <div class="sf-section-label">Save More</div>
       <h2 class="sf-section-h2">Build your starter kit — <em>pick any 3 products</em></h2>
       <p class="sf-section-sub">Order 3 or more products together and save 10% on your total order.</p>
-      <div id="sk-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-bottom:2rem;"></div>
+      <!-- Starter Kit dropdowns -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.25rem;margin-bottom:1.5rem;">
+        <div>
+          <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#8A8480;margin-bottom:0.45rem;">Product 1</div>
+          <select id="sk-sel-0" onchange="skOnChange()" style="width:100%;padding:0.6rem 0.75rem;border:1.5px solid #E8E4DE;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.82rem;color:#0F0E0D;background:white;cursor:pointer;"><option value="">— Choose a product —</option></select>
+          <div id="sk-size-0" style="display:none;margin-top:0.6rem;">
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#8A8480;margin-bottom:0.3rem;">Size</div>
+            <select id="sk-size-sel-0" onchange="skOnChange()" style="width:100%;padding:0.6rem 0.75rem;border:1.5px solid #E8E4DE;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.82rem;color:#0F0E0D;background:white;cursor:pointer;"></select>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#8A8480;margin-bottom:0.45rem;">Product 2</div>
+          <select id="sk-sel-1" onchange="skOnChange()" style="width:100%;padding:0.6rem 0.75rem;border:1.5px solid #E8E4DE;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.82rem;color:#0F0E0D;background:white;cursor:pointer;"><option value="">— Choose a product —</option></select>
+          <div id="sk-size-1" style="display:none;margin-top:0.6rem;">
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#8A8480;margin-bottom:0.3rem;">Size</div>
+            <select id="sk-size-sel-1" onchange="skOnChange()" style="width:100%;padding:0.6rem 0.75rem;border:1.5px solid #E8E4DE;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.82rem;color:#0F0E0D;background:white;cursor:pointer;"></select>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#8A8480;margin-bottom:0.45rem;">Product 3</div>
+          <select id="sk-sel-2" onchange="skOnChange()" style="width:100%;padding:0.6rem 0.75rem;border:1.5px solid #E8E4DE;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.82rem;color:#0F0E0D;background:white;cursor:pointer;"><option value="">— Choose a product —</option></select>
+          <div id="sk-size-2" style="display:none;margin-top:0.6rem;">
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#8A8480;margin-bottom:0.3rem;">Size</div>
+            <select id="sk-size-sel-2" onchange="skOnChange()" style="width:100%;padding:0.6rem 0.75rem;border:1.5px solid #E8E4DE;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.82rem;color:#0F0E0D;background:white;cursor:pointer;"></select>
+          </div>
+        </div>
+      </div>
       <div id="sk-summary" style="display:none;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:14px;padding:1.5rem 1.75rem;">
         <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#16a34a;margin-bottom:0.75rem;">Your Starter Kit</div>
         <div id="sk-summary-body"></div>
@@ -664,7 +690,6 @@ tr:hover td{background:var(--warm);}
         <button class="sf-cat" onclick="sfFilter('soap',this)">Bar Soaps</button>
         <button class="sf-cat" onclick="sfFilter('mencare',this)">Men Care</button>
         <button class="sf-cat" onclick="sfFilter('haircare',this)">Hair Care</button>
-        <button class="sf-cat" onclick="sfFilter('bundle',this)">Bundles</button>
         <button class="sf-cat" onclick="sfFilter('label',this)">Design</button>
         <button class="sf-cat" onclick="sfFilter('containers',this)">Containers</button>
       </div>
@@ -3835,6 +3860,7 @@ let sfSelectedPayment = 'wa'; // 'wa' = bank/lynk, 'card' = Fygaro
 let sfTermsChecked = false;
 let sfDiscountApplied = false;
 let sfDiscountAmount = 0;
+let sfDiscountLabel = 'START2026 −10%';
 let sfCartStep = 'cart';
 
 // ── Helpers ──────────────────────────────────────────
@@ -3876,7 +3902,7 @@ function sfRenderProducts(filter) {
   const grid = document.getElementById('sf-products-grid');
   if (!grid) return;
   const prods = window.PRODUCTS || [];
-  const list = filter === 'all' ? prods.filter(p => !p.hidden) : prods.filter(p => p.cat === filter && !p.hidden);
+  const list = filter === 'all' ? prods.filter(p => !p.hidden && p.cat !== 'bundle') : prods.filter(p => p.cat === filter && !p.hidden);
   grid.innerHTML = list.map(p => {
     const {price, moq} = sfGetPrice(p);
     const imgHtml = p.img ? `<img src="${p.img}" alt="${p.name}">` : `<span style="font-size:3rem;">${p.emoji}</span>`;
@@ -3982,87 +4008,136 @@ window.sfSubmitReview = async function() {
   sfShowToast('Review submitted — thank you!');
 };
 
-// ── Starter Kit selector ─────────────────────────────
-let _skSelected = [];
+// ── Starter Kit dropdown selector ────────────────────
+const SK_EXCLUDED = ['containers', 'soap', 'bundle'];
 
 function sfRenderStarterKit() {
-  const grid = document.getElementById('sk-grid');
-  if (!grid) return;
-  const prods = (window.PRODUCTS || []).filter(p => !p.hidden);
-  if (!prods.length) return;
-  grid.innerHTML = prods.map(p => {
-    const {price, moq} = sfGetPrice(p);
-    const imgInner = p.img
-      ? `<img src="${p.img}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;">`
-      : `<span style="font-size:2.2rem;line-height:90px;">${p.emoji||'🧴'}</span>`;
-    return `<div id="sk-card-${p.id}" onclick="skToggle('${p.id}')" style="position:relative;border:1.5px solid #E8E4DE;border-radius:14px;overflow:hidden;cursor:pointer;transition:all 0.2s;background:white;">
-      <div style="height:90px;background:#F5F2ED;display:flex;align-items:center;justify-content:center;overflow:hidden;">${imgInner}</div>
-      <div style="padding:0.65rem 0.75rem 0.8rem;">
-        <div style="font-size:0.8rem;font-weight:600;color:#0F0E0D;line-height:1.3;margin-bottom:0.2rem;">${p.name}</div>
-        <div style="font-size:0.71rem;font-weight:700;color:#16a34a;">${price}</div>
-        <div style="font-size:0.63rem;color:#8A8480;">${moq}</div>
-      </div>
-      <div id="sk-check-${p.id}" style="display:none;position:absolute;top:7px;right:7px;width:22px;height:22px;background:#16a34a;border-radius:50%;align-items:center;justify-content:center;color:white;font-size:0.75rem;font-weight:700;">✓</div>
-    </div>`;
-  }).join('');
-  skUpdateSummary();
+  skPopulateAll();
+  skOnChange();
 }
 window.sfRenderStarterKit = sfRenderStarterKit;
 
-window.skToggle = function(id) {
-  const idx = _skSelected.indexOf(id);
-  if (idx > -1) {
-    _skSelected.splice(idx, 1);
-  } else {
-    if (_skSelected.length >= 3) { sfShowToast('Maximum 3 products — deselect one first'); return; }
-    _skSelected.push(id);
-  }
+function skGetEligible() {
+  return (window.PRODUCTS || []).filter(p => !p.hidden && !SK_EXCLUDED.includes(p.cat));
+}
+
+function skPopulateAll() {
+  for (var i = 0; i < 3; i++) { skPopulateSelect(i); }
+}
+
+function skPopulateSelect(slot) {
+  var sel = document.getElementById('sk-sel-' + slot);
+  if (!sel) return;
+  var current = sel.value;
+  var prods = skGetEligible();
+  var others = [0,1,2].filter(function(j){ return j !== slot; }).map(function(j){
+    var s = document.getElementById('sk-sel-' + j);
+    return s ? s.value : '';
+  }).filter(Boolean);
+  sel.innerHTML = '<option value="">— Choose a product —</option>' +
+    prods.map(function(p) {
+      var keys = Object.keys(p.pricing || {});
+      var k = keys[0] || '';
+      var price = k ? (p.pricing[k].price || 0) : 0;
+      var sLabel = sfSizeLabel(k);
+      var label = p.name + ' \u2014 J$' + price.toLocaleString() + ' (' + sLabel + ')';
+      var disabled = others.includes(p.id) ? 'disabled' : '';
+      var selected = current === p.id ? 'selected' : '';
+      return '<option value="' + p.id + '" ' + disabled + ' ' + selected + '>' + label + '</option>';
+    }).join('');
+}
+
+window.skOnChange = function() {
+  skPopulateAll();
+  for (var i = 0; i < 3; i++) { skUpdateSizeSelector(i); }
   skUpdateSummary();
 };
 
-function skUpdateSummary() {
-  // Update card states
-  document.querySelectorAll('[id^="sk-card-"]').forEach(el => {
-    const id = el.id.replace('sk-card-', '');
-    const sel = _skSelected.includes(id);
-    el.style.borderColor = sel ? '#16a34a' : '#E8E4DE';
-    el.style.background = sel ? '#f0fdf4' : 'white';
-    el.style.transform = sel ? 'translateY(-3px)' : '';
-    el.style.boxShadow = sel ? '0 8px 20px rgba(22,163,74,0.15)' : '';
-    const chk = document.getElementById('sk-check-' + id);
-    if (chk) chk.style.display = sel ? 'flex' : 'none';
-  });
+function skUpdateSizeSelector(slot) {
+  var sel = document.getElementById('sk-sel-' + slot);
+  var wrap = document.getElementById('sk-size-' + slot);
+  var sizeSel = document.getElementById('sk-size-sel-' + slot);
+  if (!sel || !wrap || !sizeSel) return;
+  var pid = sel.value;
+  if (!pid) { wrap.style.display = 'none'; return; }
+  var p = (window.PRODUCTS || []).find(function(pr){ return pr.id === pid; });
+  if (!p) { wrap.style.display = 'none'; return; }
+  var keys = Object.keys(p.pricing || {});
+  if (keys.length <= 1) { wrap.style.display = 'none'; return; }
+  var prevVal = sizeSel.value;
+  sizeSel.innerHTML = keys.map(function(k) {
+    var price = p.pricing[k].price || 0;
+    return '<option value="' + k + '"' + (k === prevVal ? ' selected' : '') + '>' + sfSizeLabel(k) + ' \u2014 J$' + price.toLocaleString() + '</option>';
+  }).join('');
+  wrap.style.display = 'block';
+}
 
-  const summary = document.getElementById('sk-summary');
-  const body = document.getElementById('sk-summary-body');
+function skGetSlotSelection(slot) {
+  var sel = document.getElementById('sk-sel-' + slot);
+  if (!sel || !sel.value) return null;
+  var p = (window.PRODUCTS || []).find(function(pr){ return pr.id === sel.value; });
+  if (!p) return null;
+  var wrap = document.getElementById('sk-size-' + slot);
+  var sizeSel = document.getElementById('sk-size-sel-' + slot);
+  var keys = Object.keys(p.pricing || {});
+  var k = (wrap && wrap.style.display !== 'none' && sizeSel && sizeSel.value) ? sizeSel.value : (keys[0] || '');
+  var price = k ? (p.pricing[k].price || 0) : 0;
+  return { p: p, k: k, price: price };
+}
+
+function skUpdateSummary() {
+  var summary = document.getElementById('sk-summary');
+  var body = document.getElementById('sk-summary-body');
   if (!summary || !body) return;
 
-  if (_skSelected.length < 3) { summary.style.display = 'none'; return; }
+  var selections = [0,1,2].map(skGetSlotSelection).filter(Boolean);
+  if (!selections.length) { summary.style.display = 'none'; return; }
 
-  const prods = window.PRODUCTS || [];
-  const selected = _skSelected.map(id => prods.find(p => p.id === id)).filter(Boolean);
-  const total = selected.reduce((sum, p) => {
-    const keys = Object.keys(p.pricing || {});
-    return sum + (keys.length ? (p.pricing[keys[0]].price || 0) : 0);
-  }, 0);
-  const discounted = Math.round(total * 0.9);
-  const waMsg = encodeURIComponent(
-    'Hi! I\u2019d like to order the Najah Chemist Starter Kit (10% bundle discount):\n' +
-    selected.map((p, i) => { const {price} = sfGetPrice(p); return (i+1)+'. '+p.name+' \u2014 '+price; }).join('\n') +
-    '\n\nBundle total (10% off): J$' + discounted.toLocaleString() +
-    '\n\nPlease confirm availability and payment details. Thank you!'
-  );
-  body.innerHTML =
-    `<div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;">` +
-    selected.map(p => `<span style="background:white;border:1px solid #bbf7d0;border-radius:20px;padding:0.25rem 0.75rem;font-size:0.78rem;font-weight:600;color:#0F0E0D;">✓ ${p.name}</span>`).join('') +
-    `</div>` +
-    `<div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">` +
-    `<div><div style="font-size:0.72rem;color:#6B7280;margin-bottom:0.15rem;">Original total</div><div style="font-size:1rem;color:#9CA3AF;text-decoration:line-through;">J$${total.toLocaleString()}</div></div>` +
-    `<div><div style="font-size:0.72rem;color:#16a34a;margin-bottom:0.15rem;font-weight:600;">10% kit discount</div><div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:#0F0E0D;">J$${discounted.toLocaleString()}</div></div>` +
-    `<a href="https://wa.me/18768851099?text=${waMsg}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.8rem 1.6rem;background:#25D366;color:white;border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.9rem;font-weight:700;text-decoration:none;transition:background 0.2s;" onmouseover="this.style.background='#1ebe5a'" onmouseout="this.style.background='#25D366'">💬 Order on WhatsApp</a>` +
-    `</div>`;
+  var runningTotal = selections.reduce(function(s, x){ return s + x.price; }, 0);
+  var allPicked = selections.length === 3;
+  var discount = allPicked ? Math.round(runningTotal * 0.10) : 0;
+  var finalTotal = runningTotal - discount;
+
+  var rows = selections.map(function(x) {
+    return '<div style="display:flex;justify-content:space-between;font-size:0.82rem;color:#4B4846;margin-bottom:0.3rem;">' +
+      '<span>' + x.p.name + ' (' + sfSizeLabel(x.k) + ')</span>' +
+      '<span style="font-weight:600;">J$' + x.price.toLocaleString() + '</span></div>';
+  }).join('');
+
+  var discountRow = allPicked
+    ? '<div style="display:flex;justify-content:space-between;font-size:0.82rem;color:#059669;margin-bottom:0.3rem;"><span>Kit discount (10%)</span><span style="font-weight:600;">\u2212J$' + discount.toLocaleString() + '</span></div>'
+    : '';
+
+  var totalRow = '<div style="display:flex;justify-content:space-between;font-size:1rem;font-weight:800;border-top:1px solid #bbf7d0;padding-top:0.6rem;margin-top:0.4rem;">' +
+    '<span>' + (allPicked ? 'Total (after 10% off)' : 'Running total (' + selections.length + '/3)') + '</span>' +
+    '<span style="color:#0F0E0D;">J$' + finalTotal.toLocaleString() + '</span></div>';
+
+  var addBtn = allPicked
+    ? '<button onclick="skAddToCart()" style="margin-top:1rem;width:100%;padding:0.9rem;background:#0F0E0D;color:white;border:none;border-radius:10px;font-family:\'Outfit\',sans-serif;font-size:0.92rem;font-weight:700;cursor:pointer;letter-spacing:0.02em;">\uD83D\uDED2 Add Kit to Cart</button>'
+    : '';
+
+  body.innerHTML = rows + discountRow + totalRow + addBtn;
   summary.style.display = 'block';
 }
+
+window.skAddToCart = function() {
+  var selections = [0,1,2].map(skGetSlotSelection).filter(Boolean);
+  if (selections.length < 3) { sfShowToast('Please select all 3 products'); return; }
+  var kitTotal = selections.reduce(function(s, x){ return s + x.price; }, 0);
+  selections.forEach(function(x) {
+    var sizeLabel = sfSizeLabel(x.k);
+    var key = x.p.id + '|' + sizeLabel + '||';
+    var ex = sfCart.find(function(i){ return i._key === key; });
+    if (ex) { ex.qty += 1; }
+    else { sfCart.push({_key:key, id:x.p.id, name:x.p.name, size:sizeLabel, price:x.price, qty:1, emoji:x.p.emoji||'\uD83E\uDDF4', cat:x.p.cat}); }
+  });
+  sfDiscountApplied = true;
+  sfDiscountAmount = Math.round(kitTotal * 0.10);
+  sfDiscountLabel = 'Starter Kit \u221210%';
+  sfUpdateCartBtn();
+  sfOpenCart();
+  sfShowToast('\u2713 Starter kit added to cart');
+};
 
 function sfFilter(cat, btn) {
   document.querySelectorAll('.sf-cat').forEach(b => b.classList.remove('on'));
@@ -4469,7 +4544,7 @@ function sfRenderCartFooter() {
   footer.style.display = 'block';
   footer.innerHTML = `<div style="padding:0.75rem 1.4rem 1.2rem;border-top:1px solid #E8E4DE;">
     <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#8A8480;margin-bottom:0.25rem;"><span>Subtotal</span><span>J$${rawSub.toLocaleString()}</span></div>
-    ${sfDiscountAmount > 0 ? `<div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#059669;margin-bottom:0.25rem;"><span>Discount (START2026 −10%)</span><span>−J$${sfDiscountAmount.toLocaleString()}</span></div>` : ''}
+    ${sfDiscountAmount > 0 ? `<div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#059669;margin-bottom:0.25rem;"><span>Discount (${sfDiscountLabel})</span><span>−J$${sfDiscountAmount.toLocaleString()}</span></div>` : ''}
     <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#8A8480;margin-bottom:0.45rem;padding-bottom:0.45rem;border-bottom:1px solid #E8E4DE;"><span>Shipping</span><span>${sfSelectedShip ? shipLabels[sfSelectedShip] : '— select shipping above'}</span></div>
     <div style="display:flex;justify-content:space-between;font-size:1.05rem;font-weight:800;margin-bottom:0.85rem;">
       <span>Total</span><span>${sfSelectedShip ? 'J$'+grandTotal.toLocaleString() : 'J$'+sub.toLocaleString()+' + shipping'}</span>
@@ -4536,6 +4611,7 @@ window.sfApplyDiscount = function() {
   }
   sfDiscountApplied = true;
   sfDiscountAmount = Math.round(cartSub * 0.10);
+  sfDiscountLabel = 'START2026 −10%';
   localStorage.setItem('nc_discount_used', '1');
   msgEl.style.color = '#059669';
   msgEl.textContent = 'START2026 applied — 10% off your order!';
