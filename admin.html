@@ -1940,74 +1940,67 @@ window.batchPrintLabels = function(){
   markBatchPrinted(selected.map(o=>o.id||o.orderId||'').filter(Boolean),'labelPrinted');
 };
 
-// ── BULK PRINT RECEIPTS (FIXED) ──
+// ── BULK PRINT RECEIPTS ──
 window.batchPrintReceipts = function(){
   const selected = getSelectedOrders();
-  if (!selected.length) return;
-  const zone = document.getElementById('bulk-print-zone');
-  if (!zone) return;
+  if(!selected.length){ alert('No orders selected'); return; }
 
-  let html = '';
-  selected.forEach((order, i) => {
-    const isLast = i === selected.length - 1;
+  // Only print paid orders
+  const paid = selected.filter(o=>(o.paymentStatus||o.payStatus||o.payment||'').toLowerCase()==='paid');
+  if(!paid.length){ alert('No paid orders in selection. Only paid orders can be printed.'); return; }
+  const skipped = selected.length - paid.length;
 
-    // Correct field names matching Firestore order schema
-    const clientName = order.client || order.customerName || order.clientName || '—';
-    const whatsapp = order.customerWhatsApp || order.whatsapp || order.phone || '—';
-    const shipLine = order.deliveryLocation || order.shipMethod || order.shippingDetail || '—';
-    const payMethod = order.payMethod || order.paymentMethod || '—';
-    const payStatus = order.paymentStatus || order.payment || '—';
-    const dateStr = order.createdAt
-      ? new Date(order.createdAt.seconds * 1000).toLocaleString('en-JM')
-      : (order.date || '—');
+  const CSS = [
+    '*{margin:0;padding:0;box-sizing:border-box;}',
+    '@page{size:A4;margin:10mm;}',
+    'body{font-family:Arial,sans-serif;font-size:11pt;color:#000;background:white;}',
+    '.receipt{page-break-after:always;}',
+    '.receipt:last-child{page-break-after:avoid;}',
+    'h2{text-align:center;font-size:14pt;margin:0 0 2px;}',
+    '.sub{text-align:center;font-size:9pt;color:#555;margin-bottom:10px;}',
+    'table{width:100%;border-collapse:collapse;}',
+    'td{padding:3px 0;font-size:10pt;}',
+    'hr{border:none;border-top:1px dashed #000;margin:8px 0;}',
+    '.total{font-size:13pt;font-weight:bold;text-align:right;margin-top:6px;}',
+    '.footer{text-align:center;font-size:8pt;color:#888;margin-top:14px;}'
+  ].join('');
 
-    // Items: prefer items array, fall back to product string
-    const itemsHtml = (() => {
-      if (Array.isArray(order.items) && order.items.length) {
-        return order.items.map(it =>
-          `<div style="display:flex;justify-content:space-between;padding:1mm 0;border-bottom:1px solid #eee;">
-            <span>${it.name||''} ${it.size||''}</span>
-            <span>x${it.qty||1} — J$${((it.price||0)*(it.qty||1)).toLocaleString()}</span>
-          </div>`
-        ).join('');
-      }
-      return `<div style="padding:1mm 0;">${order.product || '—'}</div>`;
-    })();
-
-    html += `<div class="receipt-page" style="page-break-after:${isLast ? 'avoid' : 'always'};padding:10mm;box-sizing:border-box;font-family:Arial,sans-serif;font-size:9pt;margin-bottom:4mm;border:1px dashed #ccc;">
-      <div style="text-align:center;margin-bottom:4mm;">
-        <div style="font-size:16pt;font-weight:bold;">Najah Chemist</div>
-        <div style="font-size:8pt;color:#555;">Jamaica's Skincare Manufacturer · najahchemistja.com · @najahchemist</div>
-      </div>
-      <hr style="border:none;border-top:1px dashed #000;margin:2mm 0;">
-      <div style="display:flex;justify-content:space-between;padding:1mm 0;"><span>Order ID</span><strong>${order.id || order.orderId || '—'}</strong></div>
-      <div style="display:flex;justify-content:space-between;padding:1mm 0;"><span>Date</span><span>${dateStr}</span></div>
-      <div style="display:flex;justify-content:space-between;padding:1mm 0;"><span>Client</span><span>${clientName}</span></div>
-      <div style="display:flex;justify-content:space-between;padding:1mm 0;"><span>WhatsApp</span><span>${whatsapp}</span></div>
-      <div style="display:flex;justify-content:space-between;padding:1mm 0;"><span>Shipping</span><span>${shipLine}</span></div>
-      <div style="display:flex;justify-content:space-between;padding:1mm 0;"><span>Payment Method</span><span>${payMethod}</span></div>
-      <div style="display:flex;justify-content:space-between;padding:1mm 0;"><span>Payment Status</span><span>${payStatus}</span></div>
-      <hr style="border:none;border-top:1px dashed #000;margin:2mm 0;">
-      <div style="font-size:8pt;font-weight:bold;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1mm;">Order Details</div>
-      ${itemsHtml}
-      <hr style="border:none;border-top:1.5px solid #000;margin:2mm 0;">
-      <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:11pt;">
-        <span>Total</span><span>J$${(parseFloat(order.total)||0).toLocaleString()}</span>
-      </div>
-      <div style="text-align:center;margin-top:4mm;font-size:8pt;color:#888;">Thank you for choosing Najah Chemist! · najahchemistja.com</div>
+  const receiptsHtml = paid.map(order=>{
+    const clientName = order.clientName||order.client||order.customerName||'—';
+    const payMethod = order.payMethod||order.paymentMethod||'—';
+    const payStatus = order.paymentStatus||order.payStatus||order.payment||'—';
+    const dateStr = parseOrderDate(order.date||order.createdAt);
+    const itemsHtml = Array.isArray(order.items)&&order.items.length
+      ? order.items.map(i=>`<tr><td>${i.name||''} ${i.size||''}</td><td align="right">x${i.qty||1}</td></tr>`).join('')
+      : `<tr><td>${order.product||'—'}</td></tr>`;
+    return `<div class="receipt">
+      <h2>Najah Chemist</h2>
+      <div class="sub">Jamaica's Skincare Manufacturer<br>najahchemistja.com · @najahchemist</div>
+      <hr>
+      <table>
+        <tr><td>Order ID</td><td align="right"><b>${order.id||order.orderId||'—'}</b></td></tr>
+        <tr><td>Date</td><td align="right">${dateStr}</td></tr>
+        <tr><td>Client</td><td align="right">${clientName}</td></tr>
+        <tr><td>Payment Method</td><td align="right">${payMethod}</td></tr>
+        <tr><td>Payment Status</td><td align="right">${payStatus}</td></tr>
+      </table>
+      <hr>
+      <b>ORDER DETAILS</b>
+      <table style="margin-top:6px;">${itemsHtml}</table>
+      <hr>
+      <div class="total">Total: J$${(parseFloat(order.total)||0).toLocaleString()}</div>
+      <div class="footer">Thank you for choosing Najah Chemist! · najahchemistja.com</div>
     </div>`;
-  });
+  }).join('');
 
-  zone.innerHTML = `
-    <div class="bpz-toolbar" style="position:fixed;top:0;right:0;padding:10px;background:#1a3c2e;z-index:100000;">
-      <button onclick="(function(){var s=document.getElementById('bpr-style')||document.createElement('style');s.id='bpr-style';s.textContent='@media print{@page{size:A5;margin:10mm;}body.bulk-printing{width:auto!important;}}';document.head.appendChild(s);window.print();setTimeout(function(){var el=document.getElementById('bpr-style');if(el)el.remove();},500);})()" style="background:white;color:#1a3c2e;border:none;padding:8px 16px;font-weight:bold;cursor:pointer;margin-right:8px;">🖨 Print Now</button>
-      <button onclick="_bpClose()" style="background:#dc2626;color:white;border:none;padding:8px 16px;font-weight:bold;cursor:pointer;">✕ Close</button>
-    </div>
-    <div style="padding:40px 20px;">${html}</div>
-  `;
-  document.body.classList.add('bulk-printing');
-  zone.style.display = 'block';
-  markBatchPrinted(selected.map(o=>o.id||o.orderId||'').filter(Boolean),'receiptPrinted');
+  const win = window.open('','_blank','width=700,height=900');
+  if(!win){ alert('Please allow popups to print receipts.'); return; }
+  win.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receipts</title><style>'+CSS+'</style></head><body>'+receiptsHtml+'<script>setTimeout(function(){window.print();},400);<\/script></body></html>');
+  win.document.close();
+  win.onafterprint = ()=>win.close();
+
+  markBatchPrinted(paid.map(o=>o.id||o.orderId||'').filter(Boolean),'receiptPrinted');
+  if(skipped>0) toast(skipped+' unpaid order'+(skipped>1?'s':'')+' skipped — only paid orders are printed');
 };
 
 async function markBatchPrinted(ids, field){
@@ -2042,22 +2035,29 @@ window.openReceiptModal = function(order){
 window.editOrder = function(order){ openEditOrder(order); };
 window.printReceipt = function(order){
   if(!order){ alert('Order not found'); return; }
+  const payStatus = (order.paymentStatus||order.payStatus||order.payment||'').toLowerCase();
+  if(payStatus !== 'paid'){
+    alert('This order has not been paid. Only paid orders can be printed.');
+    return;
+  }
   const items = (order.items||[]).map(i=>
     `<tr><td>${i.name||''} ${i.size||''}</td><td align="right">x${i.qty||1}</td></tr>`
   ).join('');
   const dateStr = parseOrderDate(order.date||order.createdAt);
-  const win = window.open('','_blank','width=420,height=600');
-  win.document.write(`<!DOCTYPE html><html><head><title>Receipt ${order.id||''}</title>
+  const win = window.open('','_blank','width=620,height=800');
+  if(!win){ alert('Please allow popups to print receipts.'); return; }
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receipt ${order.id||''}</title>
   <style>
-    @page { size: A5; margin: 10mm; }
-    body { font-family: Arial, sans-serif; font-size: 11pt; color: #000; margin: 0; padding: 12px; }
-    h2 { text-align:center; font-size:14pt; margin:0 0 2px; }
-    .sub { text-align:center; font-size:9pt; color:#555; margin-bottom:10px; }
-    table { width:100%; border-collapse:collapse; }
-    td { padding:3px 0; font-size:10pt; }
-    hr { border:none; border-top:1px dashed #000; margin:8px 0; }
-    .total { font-size:13pt; font-weight:bold; text-align:right; margin-top:6px; }
-    .footer { text-align:center; font-size:8pt; color:#888; margin-top:14px; }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    @page{size:A4;margin:10mm;}
+    body{font-family:Arial,sans-serif;font-size:11pt;color:#000;background:white;padding:0;}
+    h2{text-align:center;font-size:14pt;margin:0 0 2px;}
+    .sub{text-align:center;font-size:9pt;color:#555;margin-bottom:10px;}
+    table{width:100%;border-collapse:collapse;}
+    td{padding:3px 0;font-size:10pt;}
+    hr{border:none;border-top:1px dashed #000;margin:8px 0;}
+    .total{font-size:13pt;font-weight:bold;text-align:right;margin-top:6px;}
+    .footer{text-align:center;font-size:8pt;color:#888;margin-top:14px;}
   </style></head><body>
   <h2>Najah Chemist</h2>
   <div class="sub">Jamaica's Skincare Manufacturer<br>najahchemistja.com · @najahchemist</div>
@@ -2077,7 +2077,8 @@ window.printReceipt = function(order){
   <div class="footer">Thank you for choosing Najah Chemist! · najahchemistja.com</div>
   </body></html>`);
   win.document.close();
-  setTimeout(()=>{ win.print(); },350);
+  win.onafterprint = ()=>win.close();
+  setTimeout(()=>win.print(), 350);
 };
 
 window.openEditOrder = function(order){
