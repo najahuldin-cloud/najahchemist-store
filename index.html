@@ -3827,6 +3827,8 @@ window.WA_NUMBER = WA_NUMBER;
 const MINT_SCENT_IDS = ['yw1','vm1','yo1','yop1'];
 // Products with SCENT ONLY (no mint)
 const SCENT_ONLY_IDS = ['yfs1','ybs1','bsc1','bbs1','bb1','bbb1','ybar1'];
+// Products that must NEVER show the scent selector (match by name, case-insensitive)
+const NO_SCENT_NAMES = ['Brightening Body Scrub','Dark Spot Remover','Skin Lightening Cream'];
 // Scent options
 const SCENTS = ['Unscented','Strawberry','Watermelon','Coconut','Lavender','Pineapple'];
 
@@ -4181,10 +4183,12 @@ function sfOpenProduct(id) {
   set('sf-modal-moq-note', sfSizeLabel(keys[0]));
   set('sf-modal-subtotal', 'J$'+firstEntry.price.toLocaleString());
 
-  // Scent pills — show for scent+mint products AND scent-only products
+  // Scent pills — show for scent+mint products AND scent-only products,
+  // but never for products explicitly listed in NO_SCENT_NAMES
   const hasScentMint = MINT_SCENT_IDS.includes(p.id);
   const hasScentOnly = SCENT_ONLY_IDS.includes(p.id);
-  const showScent = hasScentMint || hasScentOnly;
+  const scentBlocked = NO_SCENT_NAMES.some(n => (p.name||'').toLowerCase().includes(n.toLowerCase()));
+  const showScent = (hasScentMint || hasScentOnly) && !scentBlocked;
   const scentWrap = document.getElementById('sf-scent-wrap');
   if (scentWrap) {
     if (showScent) {
