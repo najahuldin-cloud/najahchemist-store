@@ -1635,9 +1635,11 @@ function _admBuildLabel(o){
   var name=o.clientName||o.client||o.customerName||'';
   var phone=o.customerWhatsApp||o.phone||o.whatsapp||o.wa||'';
   var orderId=o.id||o.orderId||'';
+  // Normalise: ensure exactly one NC- prefix regardless of what Firestore stores
+  var orderDisplay=orderId.startsWith('NC-')?orderId:('NC-'+(orderId||'ORDER'));
   var total=parseFloat(o.total)||0;
   var tier=total>=150000?'PREMIUM':total>=61000?'GROWTH':total>=3550?'STARTER':'';
-  var bc=_admMakeBarcode('NC-'+(orderId||'ORDER'));
+  var bc=_admMakeBarcode(orderDisplay);
 
   return '<div class="label">'
     +'<div class="lbl-hdr">'
@@ -1651,9 +1653,9 @@ function _admBuildLabel(o){
     +'<div class="lbl-dash"></div>'
     +'<div class="lbl-rcpt">RECEIPT</div>'
     +'<div class="lbl-bc">'+bc+'</div>'
-    +'<div class="lbl-oid">NC-'+orderId+'</div>'
+    +'<div class="lbl-oid">'+orderDisplay+'</div>'
     +'<div class="lbl-dash"></div>'
-    +'<div class="lbl-tagline"><em>Luxury Certified</em><em>Time 2 Shine &#9661;</em></div>'
+    +'<div class="lbl-tagline"><em>Luxury Certified</em><em>Time 2 Shine &#9733;</em></div>'
     +'<div class="lbl-cname">'+name+'</div>'
     +(tier?'<div class="lbl-tier">('+tier+')</div>':'')
     +'<div class="lbl-ship">'+shipLine+'</div>'
