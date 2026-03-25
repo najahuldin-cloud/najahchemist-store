@@ -4161,6 +4161,13 @@ function sfOpenProduct(id) {
   set('sf-modal-use', p.usage||'');
   setHTML('sf-modal-benefits', (Array.isArray(p.benefits)?p.benefits:[p.benefits||'']).map(b=>`<span class="sf-modal-benefit">${b}</span>`).join(''));
 
+  // Hide Best For / Key Ingredients for container products
+  const isContainer = p.cat === 'containers';
+  ['sf-modal-benefits','sf-modal-ing'].forEach(id => {
+    const sec = document.getElementById(id);
+    if(sec && sec.closest('.sf-modal-section')) sec.closest('.sf-modal-section').style.display = isContainer ? 'none' : '';
+  });
+
   // Size buttons
   const keys = Object.keys(p.pricing);
   sfCurrentSize = keys[0];
