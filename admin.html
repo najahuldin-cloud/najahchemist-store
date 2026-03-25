@@ -672,6 +672,7 @@ select.finp{cursor:pointer;}
           <option value="hair">Hair Care</option>
           <option value="bundle">Bundle / Kit</option>
           <option value="label">Private Label Design</option>
+          <option value="containers">Containers</option>
         </select>
       </div>
       <div class="frow">
@@ -850,12 +851,26 @@ async function initAdmin() {
   document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
   document.getElementById('dash-date-sub').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
+  let _foamBottlePatched = false;
   _productsUnsub = onSnapshot(collection(db,'products'), snap => {
     PRODUCTS = snap.docs.map(d => ({...d.data(), _docId: d.id}));
     renderProductsTable();
     updateDashStats();
     rebuildClientDatalist();
     renderBestSellersManager();
+    // One-time patch: fix 2oz Foam Bottle category and description
+    if(!_foamBottlePatched){
+      _foamBottlePatched = true;
+      const foamDoc = snap.docs.find(d => (d.data().sku||'').toUpperCase()==='NC-FB2326');
+      if(foamDoc && foamDoc.data().cat !== 'containers'){
+        updateDoc(doc(db,'products',foamDoc.id),{
+          cat: 'containers',
+          tagline: 'For foaming pump products only. Ideal for yoni washes and facial cleansers.',
+          ingredients: 'N/A',
+          benefits: 'N/A'
+        }).catch(e=>console.warn('[patch] foam bottle:', e.message));
+      }
+    }
   });
 
   _ordersUnsub = onSnapshot(
