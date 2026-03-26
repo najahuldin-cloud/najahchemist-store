@@ -964,7 +964,7 @@ window.ncChatSend = async function() {
     }
     nc.lead.email = msg;
     nc.collectStep = 'done';
-    sessionStorage.setItem('calculator_unlocked', 'true');
+    localStorage.setItem('calculator_unlocked', 'true');
     var unlockBanner = document.getElementById('nc-calc-unlock');
     if (unlockBanner) unlockBanner.style.display = 'block';
     ncHideInput();
@@ -1031,13 +1031,26 @@ window.ncChatSend = async function() {
       console.warn('[Chat] send-guide error:', e.message);
     }
 
-    // 3. Confirmation message
+    // 3. Send tools unlock email (fire-and-forget — only if email collected)
+    if (nc.lead.email) {
+      fetch('/.netlify/functions/send-tools-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: nc.lead.name, email: nc.lead.email })
+      }).then(function(r) {
+        console.log('[Chat] send-tools-email status:', r.status);
+      }).catch(function(e) {
+        console.warn('[Chat] send-tools-email error:', e.message);
+      });
+    }
+
+    // 4. Confirmation message
     var confirmMsg = guideSent
       ? '\u2705 Guide sent to ' + nc.lead.email + '! Check your inbox. \ud83d\udce5 You can also download it here: ' + pdfUrl + '. Our team will be in touch on WhatsApp shortly \ud83c\udf3f'
       : '\u2705 You\'re all set! Download your free guide here: ' + pdfUrl + '. Our team will be in touch on WhatsApp shortly \ud83c\udf3f';
     ncBotMsg(confirmMsg, 300);
 
-    // 5. Calculator unlock card
+    // 6. Calculator unlock card (in chat widget)
     setTimeout(function() {
       var msgs = document.getElementById('nc-ch-msgs');
       if (!msgs) return;
@@ -1051,7 +1064,7 @@ window.ncChatSend = async function() {
       msgs.scrollTop = msgs.scrollHeight;
     }, 1800);
 
-    // 4. WhatsApp notification to owner
+    // 5. WhatsApp notification to owner
     var waMsg = 'New lead \u2014 Name: ' + (nc.lead.name || '\u2014') +
       ' | WhatsApp: ' + (nc.lead.whatsapp || '\u2014') +
       ' | Email: ' + (nc.lead.email || '\u2014') +

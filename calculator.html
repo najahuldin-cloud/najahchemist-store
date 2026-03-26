@@ -111,7 +111,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);line-
       <span class="nav-logo-nc">Nc</span>
       <span class="nav-logo-name">Najah Chemist</span>
     </a>
-    <a href="https://najahchemistja.com" class="nav-shop">Shop Wholesale</a>
+    <div style="display:flex;align-items:center;gap:0.75rem;">
+      <div id="nc-tools-nav" style="display:none;position:relative;">
+        <button id="nc-tools-btn" onclick="toggleToolsMenu()" style="font-size:0.85rem;font-weight:600;color:var(--gold-dark);background:none;border:1.5px solid var(--gold);border-radius:8px;padding:0.5rem 1rem;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:0.35rem;">My Tools <span id="nc-tools-caret">▾</span></button>
+        <div id="nc-tools-dropdown" style="display:none;position:absolute;top:calc(100% + 6px);right:0;background:white;border:1.5px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.1);min-width:210px;overflow:hidden;z-index:1000;">
+          <a href="/calculator" style="display:block;padding:0.75rem 1rem;font-size:0.85rem;font-weight:600;color:var(--dark);text-decoration:none;border-bottom:1px solid var(--border);background:var(--gold-bg);">📊 Profit Calculator</a>
+          <a href="/generator" style="display:block;padding:0.75rem 1rem;font-size:0.85rem;font-weight:600;color:var(--dark);text-decoration:none;" onmouseover="this.style.background='var(--gold-bg)'" onmouseout="this.style.background=''">✍️ Content Generator</a>
+        </div>
+      </div>
+      <a href="https://najahchemistja.com" class="nav-shop">Shop Wholesale</a>
+    </div>
   </div>
 </nav>
 
@@ -324,15 +333,39 @@ document.getElementById('calc-product').addEventListener('change', function() {
   calcSelectProduct(parseInt(this.value, 10));
 });
 
-// ── Check session lock ──
+// ── Magic link unlock ──
+(function() {
+  var p = new URLSearchParams(window.location.search);
+  if (p.get('unlock') === 'true') {
+    localStorage.setItem('calculator_unlocked', 'true');
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+})();
+
+// ── Init ──
 (function init() {
-  var unlocked = sessionStorage.getItem('calculator_unlocked') === 'true';
+  var unlocked = localStorage.getItem('calculator_unlocked') === 'true';
   document.getElementById('locked-state').style.display = unlocked ? 'none' : 'block';
   document.getElementById('calc-state').style.display   = unlocked ? 'block' : 'none';
   if (unlocked) {
+    document.getElementById('nc-tools-nav').style.display = 'block';
     calcSelectProduct(0);
   }
 })();
+
+function toggleToolsMenu() {
+  var dd = document.getElementById('nc-tools-dropdown');
+  var open = dd.style.display === 'block';
+  dd.style.display = open ? 'none' : 'block';
+  document.getElementById('nc-tools-caret').textContent = open ? '▾' : '▴';
+}
+document.addEventListener('click', function(e) {
+  var nav = document.getElementById('nc-tools-nav');
+  if (nav && !nav.contains(e.target)) {
+    document.getElementById('nc-tools-dropdown').style.display = 'none';
+    document.getElementById('nc-tools-caret').textContent = '▾';
+  }
+});
 </script>
 </body>
 </html>
