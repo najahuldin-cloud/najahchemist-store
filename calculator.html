@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profit Calculator | Najah Chemist</title>
+<meta name="description" content="See exactly how much profit you can make from each Najah Chemist product before you order.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="canonical" href="https://najahchemistja.com/calculator">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Tokens ── */
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --gold:#c9a96e;
+  --gold-dark:#a07840;
+  --gold-bg:#fdf8ef;
+  --dark:#1a1a1a;
+  --bg:#ffffff;
+  --green:#25d366;
+  --border:#e8e2d9;
+  --mid:#6b7280;
+  --text:#1a1a1a;
+  --cream:#fafaf8;
+}
+html{scroll-behavior:smooth;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;}
+
+/* ── Nav ── */
+#nc-nav{position:sticky;top:0;z-index:900;background:white;border-bottom:1px solid var(--border);padding:0.9rem 0;}
+.nav-inner{max-width:1120px;margin:0 auto;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;}
+.nav-logo{display:flex;align-items:center;gap:0.6rem;text-decoration:none;color:var(--dark);}
+.nav-logo-nc{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;line-height:1;}
+.nav-logo-name{font-size:0.85rem;font-weight:600;letter-spacing:0.02em;}
+.nav-shop{font-size:0.85rem;font-weight:600;color:var(--gold-dark);text-decoration:none;padding:0.5rem 1.1rem;border:1.5px solid var(--gold);border-radius:8px;transition:all 0.2s;}
+.nav-shop:hover{background:var(--gold);color:white;}
+
+/* ── Container ── */
+.container{max-width:760px;margin:0 auto;padding:0 1.5rem;}
+
+/* ── Locked State ── */
+#locked-state{padding:5rem 0;text-align:center;}
+.lock-icon{font-size:3rem;margin-bottom:1.5rem;}
+.lock-title{font-family:'Playfair Display',serif;font-size:clamp(1.6rem,4vw,2.2rem);font-weight:700;margin-bottom:1rem;color:var(--dark);}
+.lock-sub{font-size:1rem;color:var(--mid);max-width:420px;margin:0 auto 2rem;line-height:1.7;}
+.btn-gold{display:inline-flex;align-items:center;justify-content:center;padding:0.85rem 2rem;border-radius:10px;font-family:'Inter',sans-serif;font-size:0.95rem;font-weight:700;cursor:pointer;text-decoration:none;border:none;background:var(--gold);color:white;transition:all 0.2s;}
+.btn-gold:hover{background:var(--gold-dark);transform:translateY(-1px);box-shadow:0 6px 20px rgba(160,120,64,0.3);}
+
+/* ── Calculator State ── */
+#calc-state{padding:4rem 0 5rem;}
+.page-label{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--gold-dark);margin-bottom:0.75rem;}
+.page-title{font-family:'Playfair Display',serif;font-size:clamp(1.75rem,4vw,2.4rem);font-weight:700;line-height:1.2;margin-bottom:0.75rem;}
+.page-sub{font-size:1rem;color:var(--mid);line-height:1.7;margin-bottom:2.5rem;}
+
+/* ── Card ── */
+.calc-card{background:var(--gold-bg);border:1.5px solid var(--border);border-radius:16px;padding:2rem;}
+
+/* ── Form fields ── */
+.field{margin-bottom:1.4rem;}
+.field-label{font-size:0.82rem;font-weight:700;color:var(--dark);margin-bottom:0.4rem;display:block;}
+.field-sub{font-size:0.75rem;color:var(--mid);margin-top:0.3rem;}
+.finp{width:100%;padding:0.65rem 0.9rem;border:1.5px solid var(--border);border-radius:8px;font-family:'Inter',sans-serif;font-size:0.92rem;color:var(--dark);background:white;outline:none;transition:border-color 0.2s;}
+.finp:focus{border-color:var(--gold);}
+
+/* ── Checkbox toggle ── */
+.toggle-row{display:flex;align-items:flex-start;gap:0.75rem;cursor:pointer;}
+.toggle-row input[type="checkbox"]{width:18px;height:18px;accent-color:var(--gold-dark);margin-top:2px;flex-shrink:0;cursor:pointer;}
+.toggle-label-text{font-size:0.92rem;font-weight:600;color:var(--dark);}
+#container-cost-wrap{margin-top:0.9rem;display:none;}
+.container-note{font-size:0.75rem;color:var(--mid);margin-bottom:0.5rem;background:white;border-radius:6px;padding:0.55rem 0.75rem;border:1px solid var(--border);}
+
+/* ── Results ── */
+.results-card{background:white;border:1.5px solid var(--border);border-radius:14px;margin-top:1.75rem;overflow:hidden;}
+.results-header{background:var(--gold-dark);padding:0.9rem 1.25rem;}
+.results-header span{font-size:0.82rem;font-weight:700;color:white;text-transform:uppercase;letter-spacing:0.08em;}
+.result-row{display:flex;justify-content:space-between;align-items:center;padding:0.7rem 1.25rem;border-bottom:1px solid var(--border);font-size:0.9rem;}
+.result-row:last-child{border-bottom:none;}
+.result-label{color:var(--mid);}
+.result-val{font-weight:700;color:var(--dark);}
+.result-row.highlight{background:var(--gold-bg);}
+.result-row.highlight .result-label{color:var(--gold-dark);font-weight:700;}
+.result-row.highlight .result-val{color:var(--gold-dark);font-size:1.05rem;}
+.margin-badge{display:inline-block;background:var(--gold);color:white;font-size:0.78rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:20px;margin-left:0.5rem;}
+
+/* ── CTA ── */
+.calc-cta{margin-top:2rem;text-align:center;}
+.calc-disclaimer{margin-top:1rem;font-size:0.72rem;color:var(--mid);line-height:1.6;}
+
+/* ── Footer ── */
+#nc-footer{background:var(--dark);color:white;padding:2.5rem 0;}
+.footer-inner{display:flex;flex-direction:column;align-items:center;text-align:center;gap:0.75rem;}
+.footer-links{display:flex;flex-wrap:wrap;justify-content:center;gap:1rem;margin-top:0.25rem;}
+.footer-links a{color:rgba(255,255,255,0.55);font-size:0.78rem;text-decoration:none;transition:color 0.2s;}
+.footer-links a:hover{color:white;}
+.footer-copy{font-size:0.78rem;color:rgba(255,255,255,0.45);}
+.footer-info{font-size:0.78rem;color:rgba(255,255,255,0.55);}
+
+@media(max-width:600px){
+  .calc-card{padding:1.25rem;}
+  #calc-state{padding:2.5rem 0 4rem;}
+}
+</style>
+</head>
+<body>
+
+<!-- ── Nav ── -->
+<nav id="nc-nav">
+  <div class="nav-inner">
+    <a href="https://najahchemistja.com" class="nav-logo">
+      <span class="nav-logo-nc">Nc</span>
+      <span class="nav-logo-name">Najah Chemist</span>
+    </a>
+    <a href="https://najahchemistja.com" class="nav-shop">Shop Wholesale</a>
+  </div>
+</nav>
+
+<!-- ── Locked State ── -->
+<div id="locked-state" style="display:none;">
+  <div class="container">
+    <div class="lock-icon">🔒</div>
+    <h1 class="lock-title">Your Profit Calculator is locked</h1>
+    <p class="lock-sub">Complete the brand builder to unlock your free profit calculator.</p>
+    <a href="/start" class="btn-gold">Start the brand builder →</a>
+  </div>
+</div>
+
+<!-- ── Calculator State ── -->
+<div id="calc-state" style="display:none;">
+  <div class="container">
+    <div class="page-label">Brand Builder Tools</div>
+    <h1 class="page-title">Your Profit Calculator</h1>
+    <p class="page-sub">See exactly how much you can make from each Najah Chemist product before you order.</p>
+
+    <div class="calc-card">
+
+      <!-- Product -->
+      <div class="field">
+        <label class="field-label" for="calc-product">Product</label>
+        <select class="finp" id="calc-product" onchange="calcUpdate()">
+          <option value="0">Yoni Foaming Wash — J$3,550 / litre</option>
+          <option value="1">Hyaluronic Acid Serum — J$13,000 / litre</option>
+          <option value="2">Body Butter — J$4,000 / 2 lbs</option>
+          <option value="3">Body Scrub — J$4,000 / 2 lbs</option>
+          <option value="4">Beard Oil — J$6,750 / litre</option>
+          <option value="5">Brightening Body Scrub — J$5,500 / 2 lbs</option>
+          <option value="6">Boric Acid Capsules — J$3,750 / 100 units</option>
+          <option value="7">Brightening Body Butter — J$6,500 / 2 lbs</option>
+          <option value="8">Yoni Steam Herbs — J$9,800 / lb</option>
+          <option value="9">Turmeric &amp; Kojic Soap — J$6,500 / 10 bars</option>
+        </select>
+      </div>
+
+      <!-- Quantity -->
+      <div class="field">
+        <label class="field-label" for="calc-qty">Number of minimum orders (batches)</label>
+        <input class="finp" id="calc-qty" type="number" min="1" max="50" value="1" oninput="calcUpdate()">
+        <span class="field-sub" id="calc-units-preview"></span>
+      </div>
+
+      <!-- Selling price -->
+      <div class="field">
+        <label class="field-label" for="calc-price">Your selling price per unit (J$)</label>
+        <input class="finp" id="calc-price" type="number" min="1" value="" oninput="calcUpdate()">
+        <span class="field-sub" id="calc-price-hint"></span>
+      </div>
+
+      <!-- Container cost toggle -->
+      <div class="field">
+        <label class="toggle-row">
+          <input type="checkbox" id="calc-container-toggle" onchange="calcToggleContainer()">
+          <span>
+            <span class="toggle-label-text">Include container cost</span>
+            <span class="field-sub" style="display:block;margin-top:0.2rem;">Toggle on to factor in container costs. Containers are available from Najah Chemist or any supplier — you are not required to buy from us.</span>
+          </span>
+        </label>
+        <div id="container-cost-wrap">
+          <p class="container-note">We have pre-filled the Najah Chemist container price. If sourcing your own, update to your supplier's price.</p>
+          <label class="field-label" for="calc-container-cost" style="margin-bottom:0.4rem;">Container cost per unit (J$)</label>
+          <input class="finp" id="calc-container-cost" type="number" min="0" value="" oninput="calcUpdate()">
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div class="results-card" id="calc-results">
+        <div class="results-header"><span>Your Profit Breakdown</span></div>
+        <div class="result-row">
+          <span class="result-label">Total units</span>
+          <span class="result-val" id="r-units">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">Formula cost</span>
+          <span class="result-val" id="r-formula-cost">—</span>
+        </div>
+        <div class="result-row" id="r-container-row" style="display:none;">
+          <span class="result-label">Container cost</span>
+          <span class="result-val" id="r-container-cost">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">Total cost</span>
+          <span class="result-val" id="r-total-cost">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">Total revenue</span>
+          <span class="result-val" id="r-revenue">—</span>
+        </div>
+        <div class="result-row highlight">
+          <span class="result-label">Gross profit</span>
+          <span class="result-val" id="r-profit">—</span>
+        </div>
+        <div class="result-row highlight">
+          <span class="result-label">Profit margin</span>
+          <span class="result-val" id="r-margin">—</span>
+        </div>
+      </div>
+
+    </div><!-- /calc-card -->
+
+    <div class="calc-cta">
+      <a href="/start" class="btn-gold">Ready to order? Start your brand →</a>
+      <p class="calc-disclaimer">Calculations are estimates. Actual profit depends on your full cost of goods, selling price, labels, and delivery.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Footer ── -->
+<footer id="nc-footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div style="font-family:'Playfair Display',serif;font-size:1.5rem;color:white;font-weight:700;">Nc</div>
+      <p class="footer-copy">© 2026 Najah Chemist · najahchemistja.com</p>
+      <p class="footer-info">start@najahchemistja.com · +1876-885-1099 · @najahchemist</p>
+      <div class="footer-links">
+        <a href="https://najahchemistja.com">Shop Wholesale</a>
+        <a href="/start">Start Your Brand</a>
+        <a href="https://wa.me/18768851099" target="_blank" rel="noopener">WhatsApp Us</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ── Product data ──
+var CALC_PRODUCTS = [
+  { name:'Yoni Foaming Wash',       cost:3550,  units:16, unitLabel:'2oz bottles', suggestMin:1300, suggestMax:1500, containerCost:170  },
+  { name:'Hyaluronic Acid Serum',   cost:13000, units:16, unitLabel:'2oz bottles', suggestMin:2000, suggestMax:2500, containerCost:270  },
+  { name:'Body Butter',             cost:4000,  units:8,  unitLabel:'4oz jars',    suggestMin:1500, suggestMax:1500, containerCost:300  },
+  { name:'Body Scrub',              cost:4000,  units:8,  unitLabel:'4oz jars',    suggestMin:1500, suggestMax:1500, containerCost:300  },
+  { name:'Beard Oil',               cost:6750,  units:16, unitLabel:'2oz bottles', suggestMin:1500, suggestMax:2000, containerCost:270  },
+  { name:'Brightening Body Scrub',  cost:5500,  units:8,  unitLabel:'4oz jars',    suggestMin:1800, suggestMax:2000, containerCost:300  },
+  { name:'Boric Acid Capsules',     cost:3750,  units:14, unitLabel:'sets of 7',   suggestMin:1000, suggestMax:1000, containerCost:65   },
+  { name:'Brightening Body Butter', cost:6500,  units:8,  unitLabel:'4oz jars',    suggestMin:1800, suggestMax:2200, containerCost:300  },
+  { name:'Yoni Steam Herbs',        cost:9800,  units:10, unitLabel:'pouches',     suggestMin:900,  suggestMax:1200, containerCost:85   },
+  { name:'Turmeric & Kojic Soap',   cost:6500,  units:10, unitLabel:'bars',        suggestMin:1200, suggestMax:1500, containerCost:65   }
+];
+
+function fmtJMD(n) {
+  return 'J$' + Math.round(n).toLocaleString('en-JM');
+}
+
+function calcToggleContainer() {
+  var on = document.getElementById('calc-container-toggle').checked;
+  document.getElementById('container-cost-wrap').style.display = on ? 'block' : 'none';
+  document.getElementById('r-container-row').style.display = on ? 'flex' : 'none';
+  calcUpdate();
+}
+
+function calcUpdate() {
+  var idx = parseInt(document.getElementById('calc-product').value, 10);
+  var p = CALC_PRODUCTS[idx];
+  var qty = Math.max(1, parseInt(document.getElementById('calc-qty').value, 10) || 1);
+  var priceInput = parseFloat(document.getElementById('calc-price').value) || 0;
+
+  // Units preview
+  var totalUnits = p.units * qty;
+  document.getElementById('calc-units-preview').textContent = totalUnits + ' ' + p.unitLabel + ' (' + p.units + ' per batch × ' + qty + ' batch' + (qty > 1 ? 'es' : '') + ')';
+
+  // Price hint
+  var hint = p.suggestMin === p.suggestMax
+    ? 'Suggested retail: J$' + p.suggestMin.toLocaleString()
+    : 'Suggested retail: J$' + p.suggestMin.toLocaleString() + ' – J$' + p.suggestMax.toLocaleString();
+  document.getElementById('calc-price-hint').textContent = hint;
+
+  // Container
+  var includeContainer = document.getElementById('calc-container-toggle').checked;
+  var containerPerUnit = parseFloat(document.getElementById('calc-container-cost').value) || 0;
+
+  if (!priceInput) {
+    ['r-units','r-formula-cost','r-container-cost','r-total-cost','r-revenue','r-profit','r-margin'].forEach(function(id){
+      document.getElementById(id).textContent = '—';
+    });
+    document.getElementById('r-units').textContent = totalUnits + ' ' + p.unitLabel;
+    return;
+  }
+
+  var formulaCost   = p.cost * qty;
+  var containerCost = includeContainer ? (containerPerUnit * totalUnits) : 0;
+  var totalCost     = formulaCost + containerCost;
+  var revenue       = priceInput * totalUnits;
+  var profit        = revenue - totalCost;
+  var margin        = revenue > 0 ? (profit / revenue * 100) : 0;
+
+  document.getElementById('r-units').textContent        = totalUnits + ' ' + p.unitLabel;
+  document.getElementById('r-formula-cost').textContent = fmtJMD(formulaCost);
+  document.getElementById('r-container-cost').textContent = fmtJMD(containerCost);
+  document.getElementById('r-total-cost').textContent   = fmtJMD(totalCost);
+  document.getElementById('r-revenue').textContent      = fmtJMD(revenue);
+  document.getElementById('r-profit').textContent       = fmtJMD(profit);
+  document.getElementById('r-margin').textContent       = margin.toFixed(1) + '%';
+}
+
+function calcSelectProduct(idx) {
+  var p = CALC_PRODUCTS[idx];
+  // Pre-fill selling price with suggested minimum
+  document.getElementById('calc-price').value = p.suggestMin;
+  // Pre-fill container cost
+  document.getElementById('calc-container-cost').value = p.containerCost;
+  calcUpdate();
+}
+
+// On product change, re-seed fields
+document.getElementById('calc-product').addEventListener('change', function() {
+  calcSelectProduct(parseInt(this.value, 10));
+});
+
+// ── Check session lock ──
+(function init() {
+  var unlocked = sessionStorage.getItem('calculator_unlocked') === 'true';
+  document.getElementById('locked-state').style.display = unlocked ? 'none' : 'block';
+  document.getElementById('calc-state').style.display   = unlocked ? 'block' : 'none';
+  if (unlocked) {
+    calcSelectProduct(0);
+  }
+})();
+</script>
+</body>
+</html>
