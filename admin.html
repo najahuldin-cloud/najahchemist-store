@@ -1589,38 +1589,38 @@ window.saveAdminTracking = async function(){
 // ── Shared label helpers (admin) ─────────────────────────────────────────────
 var _ADM_LABEL_CSS = [
   '*{margin:0;padding:0;box-sizing:border-box;}',
-  'body{background:#e8e8e8;display:flex;flex-direction:column;align-items:center;padding:10mm;}',
-  '@page{size:A4;margin:0;}',
-  '@media print{body{background:white;padding:10mm;}}',
-  '.label{width:80mm;height:150mm;border:1.5px solid #000;padding:3mm 5mm;background:white;',
+  'body{background:#e8e8e8;display:flex;flex-direction:column;align-items:center;padding:6mm;}',
+  '@page{size:76mm 127mm;margin:3mm;}',
+  '@media print{body{background:white;padding:0;}}',
+  '.label{width:70mm;min-height:121mm;border:1.5px solid #000;padding:2mm 4mm;background:white;',
     'overflow:hidden;font-family:Arial,Helvetica,sans-serif;font-size:7pt;line-height:1.4;',
     'page-break-after:always;}',
   '.label:last-child{page-break-after:avoid;}',
   '.lbl-hdr{text-align:center;margin-bottom:1mm;}',
-  '.lbl-box{border:1.5px solid #000;width:12mm;height:12mm;display:flex;flex-direction:column;',
+  '.lbl-box{border:1.5px solid #000;width:10mm;height:10mm;display:flex;flex-direction:column;',
     'align-items:center;justify-content:center;margin:0 auto 1mm;}',
-  '.lbl-box-nc{font-family:Georgia,"Times New Roman",serif;font-size:12pt;font-weight:bold;line-height:1;}',
-  '.lbl-co-name{font-family:Georgia,"Times New Roman",serif;font-weight:bold;font-size:9.5pt;margin-bottom:0.5mm;}',
-  '.lbl-co-line{font-size:6pt;color:#000;line-height:1.55;}',
-  '.lbl-dash{border:none;border-top:1px dashed #000;margin:1.5mm 0;}',
-  '.lbl-rcpt{text-align:center;font-size:12pt;font-weight:bold;letter-spacing:3px;margin-bottom:1.5mm;}',
+  '.lbl-box-nc{font-family:Georgia,"Times New Roman",serif;font-size:10pt;font-weight:bold;line-height:1;}',
+  '.lbl-co-name{font-family:Georgia,"Times New Roman",serif;font-weight:bold;font-size:9pt;margin-bottom:0.5mm;}',
+  '.lbl-co-line{font-size:7pt;color:#000;line-height:1.5;}',
+  '.lbl-dash{border:none;border-top:1px dashed #000;margin:1mm 0;}',
+  '.lbl-rcpt{text-align:center;font-size:10pt;font-weight:bold;letter-spacing:3px;margin-bottom:1mm;}',
   '.lbl-bc{width:100%;margin-bottom:0.5mm;}',
-  '.lbl-bc svg{display:block;width:100%;height:8mm;}',
-  '.lbl-oid{text-align:center;font-family:monospace;font-size:7pt;font-weight:bold;letter-spacing:1px;}',
-  '.lbl-tagline{display:flex;justify-content:space-between;font-style:italic;font-size:5.5pt;margin-bottom:1.5mm;}',
+  '.lbl-bc svg{display:block;width:100%;height:25px;}',
+  '.lbl-oid{text-align:center;font-family:monospace;font-size:8pt;font-weight:bold;letter-spacing:1px;}',
+  '.lbl-tagline{display:flex;justify-content:space-between;font-style:italic;font-size:5.5pt;margin-bottom:1mm;}',
   '.lbl-cname{font-family:Georgia,"Times New Roman",serif;font-size:13pt;font-weight:bold;',
     'line-height:1.2;margin-bottom:0.5mm;text-align:center;}',
-  '.lbl-tier{font-weight:bold;font-size:8pt;text-align:center;margin-bottom:1.5mm;}',
+  '.lbl-tier{font-weight:bold;font-size:8pt;text-align:center;margin-bottom:1mm;}',
   '.lbl-ship{font-size:9pt;font-weight:bold;margin-bottom:0.5mm;}',
   '.lbl-contact{font-size:9pt;font-weight:bold;}',
-  '.lbl-gap{height:3mm;}',
+  '.lbl-gap{height:2mm;}',
   '.lbl-from-row{display:flex;justify-content:space-between;align-items:center;',
     'font-size:7pt;font-weight:bold;line-height:1.5;}',
-  '.lbl-from-addr{font-size:6.5pt;line-height:1.5;}',
+  '.lbl-from-addr{font-size:7pt;line-height:1.5;}',
   '.lbl-foot{text-align:center;margin-top:1mm;}',
   '.lbl-foot-logo{border:1px solid #000;font-family:Georgia,"Times New Roman",serif;font-weight:bold;',
     'font-size:7pt;padding:0.5mm 2mm;display:inline-block;margin-bottom:0.5mm;}',
-  '.lbl-foot-txt{font-size:5pt;color:#333;line-height:1.6;}'
+  '.lbl-foot-txt{font-size:6pt;color:#333;line-height:1.6;}'
 ].join('');
 
 function _admMakeBarcode(str){
@@ -1632,10 +1632,10 @@ function _admMakeBarcode(str){
   u.push(2,1,2);
   var x=0,rects='';
   u.forEach(function(w,i){
-    if(i%2===0) rects+='<rect x="'+x+'" y="0" width="'+w+'" height="28" fill="#000"/>';
+    if(i%2===0) rects+='<rect x="'+x+'" y="0" width="'+w+'" height="25" fill="#000"/>';
     x+=w;
   });
-  return '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="8mm" viewBox="0 0 '+x+' 28" preserveAspectRatio="none">'+rects+'</svg>';
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="25px" viewBox="0 0 '+x+' 25" preserveAspectRatio="none">'+rects+'</svg>';
 }
 
 function _admBuildLabel(o){
