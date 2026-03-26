@@ -1044,34 +1044,60 @@ window.ncChatSend = async function() {
       });
     }
 
-    // 4. Confirmation message
-    var confirmMsg = guideSent
-      ? '\u2705 Guide sent to ' + nc.lead.email + '! Check your inbox. \ud83d\udce5 You can also download it here: ' + pdfUrl + '. Our team will be in touch on WhatsApp shortly \ud83c\udf3f'
-      : '\u2705 You\'re all set! Download your free guide here: ' + pdfUrl + '. Our team will be in touch on WhatsApp shortly \ud83c\udf3f';
-    ncBotMsg(confirmMsg, 300);
-
-    // 6. Calculator unlock card (in chat widget)
-    setTimeout(function() {
-      var msgs = document.getElementById('nc-ch-msgs');
-      if (!msgs) return;
-      var card = document.createElement('div');
-      card.style.cssText = 'background:linear-gradient(135deg,#c9a96e,#a07840);border-radius:12px;padding:1rem;margin-top:0.25rem;';
-      card.innerHTML = '<div style="font-size:1rem;margin-bottom:0.3rem;">🔓</div>'
-        + '<div style="font-size:0.82rem;font-weight:700;color:white;margin-bottom:0.25rem;">Your free Profit Calculator is now unlocked</div>'
-        + '<div style="font-size:0.73rem;color:rgba(255,255,255,0.85);margin-bottom:0.75rem;line-height:1.5;">See exactly how much profit you can make from each product before you order.</div>'
-        + '<a href="/calculator" style="display:inline-block;background:white;color:#a07840;font-size:0.78rem;font-weight:700;padding:0.45rem 1rem;border-radius:7px;text-decoration:none;">Open Profit Calculator →</a>';
-      msgs.appendChild(card);
-      msgs.scrollTop = msgs.scrollHeight;
-    }, 1800);
-
-    // 5. WhatsApp notification to owner
+    // 4. Completion screen in chat widget
     var waMsg = 'New lead \u2014 Name: ' + (nc.lead.name || '\u2014') +
       ' | WhatsApp: ' + (nc.lead.whatsapp || '\u2014') +
       ' | Email: ' + (nc.lead.email || '\u2014') +
       ' | Brand: ' + brandType +
       ' | Budget: ' + budget +
       ' | Guide sent automatically';
-    window.open('https://wa.me/18768851099?text=' + encodeURIComponent(waMsg), '_blank');
+    var waUrl = 'https://wa.me/18768851099?text=' + encodeURIComponent(waMsg);
+
+    var guideNote = guideSent
+      ? 'Your brand guide has been sent to ' + nc.lead.email + '. '
+      : '';
+
+    setTimeout(function() {
+      var msgs = document.getElementById('nc-ch-msgs');
+      if (!msgs) return;
+
+      var card = document.createElement('div');
+      card.style.cssText = 'background:white;border:1.5px solid #E8E4DE;border-radius:12px;padding:1rem;margin-top:0.25rem;';
+
+      // Header
+      var hdr = document.createElement('div');
+      hdr.style.cssText = 'font-size:0.88rem;font-weight:700;color:#1C1A18;margin-bottom:0.3rem;';
+      hdr.textContent = '\u2705 Your brand plan is ready';
+      card.appendChild(hdr);
+
+      // Subtext
+      var sub = document.createElement('div');
+      sub.style.cssText = 'font-size:0.75rem;color:#6B7280;margin-bottom:0.85rem;line-height:1.5;';
+      sub.textContent = guideNote + 'We received your details and will be in touch shortly.';
+      card.appendChild(sub);
+
+      // Unlock box
+      var box = document.createElement('div');
+      box.style.cssText = 'border:1.5px solid #c9a96e;border-radius:8px;padding:0.75rem;margin-bottom:0.75rem;background:#fdf8ef;';
+      box.innerHTML = '<div style="font-size:0.72rem;font-weight:700;color:#a07840;margin-bottom:0.5rem;">\ud83d\udd13 Your free brand tools are now unlocked</div>'
+        + '<div style="display:flex;gap:0.4rem;">'
+        + '<a href="/calculator?unlock=true" style="flex:1;display:block;background:#c9a96e;color:white;font-size:0.7rem;font-weight:700;padding:0.4rem 0.35rem;border-radius:6px;text-decoration:none;text-align:center;">Profit Calculator \u2192</a>'
+        + '<a href="/generator?unlock=true" style="flex:1;display:block;background:#1C1A18;color:white;font-size:0.7rem;font-weight:700;padding:0.4rem 0.35rem;border-radius:6px;text-decoration:none;text-align:center;">Content Generator \u2192</a>'
+        + '</div>';
+      card.appendChild(box);
+
+      // WhatsApp button (href set via JS — no URL in innerHTML)
+      var waBtn = document.createElement('a');
+      waBtn.href = waUrl;
+      waBtn.target = '_blank';
+      waBtn.rel = 'noopener';
+      waBtn.style.cssText = 'display:block;background:var(--green);color:white;font-size:0.78rem;font-weight:700;padding:0.55rem 0.75rem;border-radius:8px;text-decoration:none;text-align:center;';
+      waBtn.textContent = 'Chat with us on WhatsApp \u2192';
+      card.appendChild(waBtn);
+
+      msgs.appendChild(card);
+      msgs.scrollTop = msgs.scrollHeight;
+    }, 600);
     return;
   }
 
