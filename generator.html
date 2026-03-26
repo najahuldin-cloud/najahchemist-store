@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Description Generator | Najah Chemist</title>
+<meta name="description" content="Generate professional marketing copy for your skincare brand in seconds.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="canonical" href="https://najahchemistja.com/generator">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --gold:#c9a96e;
+  --gold-dark:#a07840;
+  --gold-bg:#fdf8ef;
+  --dark:#1a1a1a;
+  --bg:#ffffff;
+  --border:#e8e2d9;
+  --mid:#6b7280;
+  --text:#1a1a1a;
+  --cream:#fafaf8;
+}
+html{scroll-behavior:smooth;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;}
+
+/* ── Nav ── */
+#nc-nav{position:sticky;top:0;z-index:900;background:white;border-bottom:1px solid var(--border);padding:0.9rem 0;}
+.nav-inner{max-width:1120px;margin:0 auto;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;}
+.nav-logo{display:flex;align-items:center;gap:0.6rem;text-decoration:none;color:var(--dark);}
+.nav-logo-nc{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;line-height:1;}
+.nav-logo-name{font-size:0.85rem;font-weight:600;letter-spacing:0.02em;}
+.nav-shop{font-size:0.85rem;font-weight:600;color:var(--gold-dark);text-decoration:none;padding:0.5rem 1.1rem;border:1.5px solid var(--gold);border-radius:8px;transition:all 0.2s;}
+.nav-shop:hover{background:var(--gold);color:white;}
+
+/* ── Layout ── */
+.container{max-width:760px;margin:0 auto;padding:0 1.5rem;}
+
+/* ── Locked ── */
+#locked-state{padding:5rem 0;text-align:center;}
+.lock-icon{font-size:3rem;margin-bottom:1.5rem;}
+.lock-title{font-family:'Playfair Display',serif;font-size:clamp(1.6rem,4vw,2.2rem);font-weight:700;margin-bottom:1rem;}
+.lock-sub{font-size:1rem;color:var(--mid);max-width:420px;margin:0 auto 2rem;line-height:1.7;}
+
+/* ── Generator ── */
+#gen-state{padding:4rem 0 5rem;}
+.page-label{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--gold-dark);margin-bottom:0.75rem;}
+.page-title{font-family:'Playfair Display',serif;font-size:clamp(1.75rem,4vw,2.4rem);font-weight:700;line-height:1.2;margin-bottom:0.75rem;}
+.page-sub{font-size:1rem;color:var(--mid);line-height:1.7;margin-bottom:2.5rem;}
+
+/* ── Card ── */
+.gen-card{background:var(--gold-bg);border:1.5px solid var(--border);border-radius:16px;padding:2rem;}
+
+/* ── Fields ── */
+.field{margin-bottom:1.25rem;}
+.field-label{font-size:0.82rem;font-weight:700;color:var(--dark);margin-bottom:0.4rem;display:block;}
+.finp{width:100%;padding:0.65rem 0.9rem;border:1.5px solid var(--border);border-radius:8px;font-family:'Inter',sans-serif;font-size:0.92rem;color:var(--dark);background:white;outline:none;transition:border-color 0.2s;resize:vertical;}
+.finp:focus{border-color:var(--gold);}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+
+/* ── Buttons ── */
+.btn-gold{display:inline-flex;align-items:center;justify-content:center;padding:0.85rem 2rem;border-radius:10px;font-family:'Inter',sans-serif;font-size:0.95rem;font-weight:700;cursor:pointer;text-decoration:none;border:none;background:var(--gold);color:white;transition:all 0.2s;width:100%;}
+.btn-gold:hover:not(:disabled){background:var(--gold-dark);}
+.btn-gold:disabled{opacity:0.6;cursor:not-allowed;}
+.btn-outline-dark{display:inline-flex;align-items:center;justify-content:center;gap:0.4rem;padding:0.6rem 1.1rem;border-radius:8px;font-family:'Inter',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;text-decoration:none;border:1.5px solid var(--border);background:white;color:var(--dark);transition:all 0.2s;}
+.btn-outline-dark:hover{border-color:var(--dark);background:var(--cream);}
+
+/* ── Output ── */
+#gen-output{display:none;margin-top:1.75rem;}
+.output-card{background:white;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}
+.output-header{background:var(--gold-dark);padding:0.9rem 1.25rem;display:flex;align-items:center;justify-content:space-between;}
+.output-header span{font-size:0.82rem;font-weight:700;color:white;text-transform:uppercase;letter-spacing:0.08em;}
+.output-section{padding:1.1rem 1.25rem;border-bottom:1px solid var(--border);}
+.output-section:last-child{border-bottom:none;}
+.output-section-label{font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--gold-dark);margin-bottom:0.5rem;}
+.output-text{font-size:0.92rem;color:var(--dark);line-height:1.7;}
+.output-headline{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--dark);line-height:1.3;}
+.benefit-tag{display:inline-block;background:var(--gold-bg);border:1px solid var(--border);border-radius:20px;padding:0.25rem 0.75rem;font-size:0.8rem;font-weight:600;color:var(--gold-dark);margin:0.2rem 0.2rem 0.2rem 0;}
+.insta-box{background:#f8f4ff;border-radius:8px;padding:0.85rem 1rem;font-size:0.88rem;color:#374151;line-height:1.7;white-space:pre-wrap;}
+
+/* ── Spinner ── */
+.spinner{display:inline-block;width:18px;height:18px;border:2.5px solid rgba(255,255,255,0.4);border-top-color:white;border-radius:50%;animation:spin 0.7s linear infinite;margin-right:0.5rem;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── Error ── */
+.gen-error{background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:0.85rem 1rem;font-size:0.88rem;color:#dc2626;margin-top:1rem;display:none;}
+
+/* ── Footer ── */
+#nc-footer{background:var(--dark);color:white;padding:2.5rem 0;}
+.footer-inner{display:flex;flex-direction:column;align-items:center;text-align:center;gap:0.75rem;}
+.footer-links{display:flex;flex-wrap:wrap;justify-content:center;gap:1rem;margin-top:0.25rem;}
+.footer-links a{color:rgba(255,255,255,0.55);font-size:0.78rem;text-decoration:none;transition:color 0.2s;}
+.footer-links a:hover{color:white;}
+.footer-copy{font-size:0.78rem;color:rgba(255,255,255,0.45);}
+.footer-info{font-size:0.78rem;color:rgba(255,255,255,0.55);}
+
+@media(max-width:600px){
+  .gen-card{padding:1.25rem;}
+  .field-row{grid-template-columns:1fr;}
+  #gen-state{padding:2.5rem 0 4rem;}
+}
+</style>
+</head>
+<body>
+
+<!-- ── Nav ── -->
+<nav id="nc-nav">
+  <div class="nav-inner">
+    <a href="https://najahchemistja.com" class="nav-logo">
+      <span class="nav-logo-nc">Nc</span>
+      <span class="nav-logo-name">Najah Chemist</span>
+    </a>
+    <a href="https://najahchemistja.com" class="nav-shop">Shop Wholesale</a>
+  </div>
+</nav>
+
+<!-- ── Locked State ── -->
+<div id="locked-state" style="display:none;">
+  <div class="container">
+    <div class="lock-icon">🔒</div>
+    <h1 class="lock-title">This tool is locked</h1>
+    <p class="lock-sub">Complete the brand builder to unlock your free product description generator.</p>
+    <a href="/start" class="btn-gold" style="max-width:320px;margin:0 auto;">Start the brand builder →</a>
+  </div>
+</div>
+
+<!-- ── Generator State ── -->
+<div id="gen-state" style="display:none;">
+  <div class="container">
+    <div class="page-label">Brand Builder Tools</div>
+    <h1 class="page-title">Product Description Generator</h1>
+    <p class="page-sub">Generate professional marketing copy for your brand in seconds — product headline, description, benefits, and an Instagram caption, ready to use.</p>
+
+    <div class="gen-card">
+
+      <div class="field-row">
+        <div class="field">
+          <label class="field-label" for="gen-product-name">Product name</label>
+          <input class="finp" id="gen-product-name" type="text" placeholder="e.g. Glow Serum">
+        </div>
+        <div class="field">
+          <label class="field-label" for="gen-brand-name">Your brand name</label>
+          <input class="finp" id="gen-brand-name" type="text" placeholder="e.g. Aura Skin Co.">
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="field-label" for="gen-product-type">Product type</label>
+          <select class="finp" id="gen-product-type">
+            <option value="facial serum">Facial Serum</option>
+            <option value="body butter">Body Butter</option>
+            <option value="body scrub">Body Scrub</option>
+            <option value="yoni wash">Yoni Wash</option>
+            <option value="beard oil">Beard Oil</option>
+            <option value="hair oil">Hair Oil</option>
+            <option value="bar soap">Bar Soap</option>
+            <option value="body lotion">Body Lotion</option>
+            <option value="face wash">Face Wash</option>
+            <option value="toner">Toner / Mist</option>
+            <option value="eye cream">Eye Cream</option>
+            <option value="lip balm">Lip Balm</option>
+            <option value="boric acid capsules">Boric Acid Capsules</option>
+            <option value="yoni steam herbs">Yoni Steam Herbs</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" for="gen-target">Target customer</label>
+          <input class="finp" id="gen-target" type="text" placeholder="e.g. Women 25–40 with hyperpigmentation">
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="gen-benefits">Key benefits or ingredients <span style="font-weight:400;color:var(--mid);">(one per line or comma-separated)</span></label>
+        <textarea class="finp" id="gen-benefits" rows="3" placeholder="e.g. Kojic acid, Vitamin C, brightens dark spots, evens skin tone, lightweight formula"></textarea>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="gen-tone">Copy tone</label>
+        <select class="finp" id="gen-tone">
+          <option value="luxurious and aspirational">Luxurious &amp; aspirational</option>
+          <option value="clean and clinical">Clean &amp; clinical</option>
+          <option value="warm and friendly">Warm &amp; friendly</option>
+          <option value="bold and confident">Bold &amp; confident</option>
+          <option value="natural and earthy">Natural &amp; earthy</option>
+        </select>
+      </div>
+
+      <button class="btn-gold" id="gen-btn" onclick="generateCopy()">
+        Generate copy
+      </button>
+
+      <div class="gen-error" id="gen-error"></div>
+
+    </div><!-- /gen-card -->
+
+    <!-- Output -->
+    <div id="gen-output">
+      <div class="output-card">
+        <div class="output-header">
+          <span>Generated Copy</span>
+          <button class="btn-outline-dark" onclick="copyAll()" id="copy-btn">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            Copy all
+          </button>
+        </div>
+        <div class="output-section">
+          <div class="output-section-label">Headline</div>
+          <div class="output-headline" id="out-headline"></div>
+        </div>
+        <div class="output-section">
+          <div class="output-section-label">Product Description</div>
+          <div class="output-text" id="out-description"></div>
+        </div>
+        <div class="output-section">
+          <div class="output-section-label">Key Benefits</div>
+          <div id="out-benefits"></div>
+        </div>
+        <div class="output-section">
+          <div class="output-section-label">Instagram Caption</div>
+          <div class="insta-box" id="out-instagram"></div>
+        </div>
+      </div>
+
+      <p style="margin-top:1rem;font-size:0.75rem;color:var(--mid);line-height:1.6;">Generated copy is a starting point — review and personalise before publishing. Najah Chemist is not responsible for how this copy is used.</p>
+
+      <div style="margin-top:1.5rem;text-align:center;">
+        <a href="/start" style="font-size:0.88rem;font-weight:600;color:var(--gold-dark);text-decoration:none;">Ready to order? Start your brand →</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Footer ── -->
+<footer id="nc-footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div style="font-family:'Playfair Display',serif;font-size:1.5rem;color:white;font-weight:700;">Nc</div>
+      <p class="footer-copy">© 2026 Najah Chemist · najahchemistja.com</p>
+      <p class="footer-info">start@najahchemistja.com · +1876-885-1099 · @najahchemist</p>
+      <div class="footer-links">
+        <a href="https://najahchemistja.com">Shop Wholesale</a>
+        <a href="/start">Start Your Brand</a>
+        <a href="/calculator">Profit Calculator</a>
+        <a href="https://wa.me/18768851099" target="_blank" rel="noopener">WhatsApp Us</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ── Session check ──
+(function init() {
+  var unlocked = sessionStorage.getItem('calculator_unlocked') === 'true';
+  document.getElementById('locked-state').style.display = unlocked ? 'none'  : 'block';
+  document.getElementById('gen-state').style.display    = unlocked ? 'block' : 'none';
+})();
+
+// ── Generate ──
+async function generateCopy() {
+  var productName  = document.getElementById('gen-product-name').value.trim();
+  var brandName    = document.getElementById('gen-brand-name').value.trim();
+  var productType  = document.getElementById('gen-product-type').value;
+  var target       = document.getElementById('gen-target').value.trim();
+  var benefits     = document.getElementById('gen-benefits').value.trim();
+  var tone         = document.getElementById('gen-tone').value;
+
+  var errEl = document.getElementById('gen-error');
+  errEl.style.display = 'none';
+
+  if (!productName) { showError('Please enter a product name.'); return; }
+  if (!brandName)   { showError('Please enter your brand name.'); return; }
+  if (!benefits)    { showError('Please enter at least one key benefit or ingredient.'); return; }
+
+  var btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Generating…';
+
+  var systemCtx = 'You are a professional beauty brand copywriter specialising in skincare and personal care products. Write compelling, results-focused marketing copy in a ' + tone + ' tone. Respond with valid JSON only — no markdown fences, no explanation, just the raw JSON object.';
+
+  var userMsg = 'Generate marketing copy for this product:\n'
+    + 'Product name: ' + productName + '\n'
+    + 'Brand: ' + brandName + '\n'
+    + 'Type: ' + productType + '\n'
+    + (target   ? 'Target customer: ' + target + '\n' : '')
+    + 'Key benefits / ingredients: ' + benefits + '\n\n'
+    + 'Return this exact JSON structure:\n'
+    + '{"headline":"<short punchy headline, max 10 words>","description":"<2-3 sentence marketing description>","benefits":["<benefit 1>","<benefit 2>","<benefit 3>","<benefit 4>"],"instagram":"<instagram caption with relevant emojis and 5-8 hashtags>"}';
+
+  try {
+    var res = await fetch('/.netlify/functions/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: userMsg, history: [], context: systemCtx })
+    });
+
+    if (!res.ok) throw new Error('Server error ' + res.status);
+    var data = await res.json();
+    var replyText = (data.reply || '').trim();
+
+    // Strip markdown fences if model adds them anyway
+    replyText = replyText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+
+    var parsed;
+    try {
+      parsed = JSON.parse(replyText);
+    } catch(e) {
+      throw new Error('Could not parse response. Please try again.');
+    }
+
+    renderOutput(parsed);
+
+  } catch(err) {
+    showError(err.message || 'Something went wrong. Please try again.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Generate copy';
+  }
+}
+
+function renderOutput(d) {
+  document.getElementById('out-headline').textContent    = d.headline    || '';
+  document.getElementById('out-description').textContent = d.description || '';
+  document.getElementById('out-instagram').textContent   = d.instagram   || '';
+
+  var benefitsEl = document.getElementById('out-benefits');
+  var bens = Array.isArray(d.benefits) ? d.benefits : [];
+  benefitsEl.innerHTML = bens.map(function(b) {
+    return '<span class="benefit-tag">' + escHtml(b) + '</span>';
+  }).join('');
+
+  var outputEl = document.getElementById('gen-output');
+  outputEl.style.display = 'block';
+  outputEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showError(msg) {
+  var el = document.getElementById('gen-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function copyAll() {
+  var headline    = document.getElementById('out-headline').textContent;
+  var description = document.getElementById('out-description').textContent;
+  var benefits    = Array.from(document.querySelectorAll('#out-benefits .benefit-tag')).map(function(el){ return '• ' + el.textContent; }).join('\n');
+  var instagram   = document.getElementById('out-instagram').textContent;
+
+  var full = '── HEADLINE ──\n' + headline
+    + '\n\n── DESCRIPTION ──\n' + description
+    + '\n\n── KEY BENEFITS ──\n' + benefits
+    + '\n\n── INSTAGRAM CAPTION ──\n' + instagram;
+
+  navigator.clipboard.writeText(full).then(function() {
+    var btn = document.getElementById('copy-btn');
+    btn.textContent = '✓ Copied!';
+    setTimeout(function() {
+      btn.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy all';
+    }, 2000);
+  });
+}
+</script>
+</body>
+</html>
