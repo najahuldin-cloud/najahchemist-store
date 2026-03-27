@@ -66,6 +66,11 @@
   status = 200
 
 [[redirects]]
+  from = "/products/lightening-cream-jamaica"
+  to = "/lightening-cream-jamaica.html"
+  status = 200
+
+[[redirects]]
   from = "/calculator"
   to = "/calculator.html"
   status = 200
