@@ -1,7 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "WebSearch"
+      "WebSearch",
+      "Bash(firebase:*)",
+      "Bash(npm install:*)",
+      "Bash(winget upgrade:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(netlify:*)",
+      "WebFetch(domain:najahchemistja.com)",
+      "Bash(node:*)",
+      "Bash(ADMIN_PASSWORD=\"Nbmartin123!\" node:*)",
+      "Bash(ADMIN_PASSWORD=\"Najah123!\" node:*)"
     ]
   }
 }

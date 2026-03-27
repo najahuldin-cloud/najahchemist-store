@@ -1,5 +1,8 @@
 {
   "name": "najah-chemist-functions",
   "version": "1.0.0",
-  "description": "Netlify functions — no external packages needed"
+  "description": "Netlify functions — no external packages needed",
+  "devDependencies": {
+    "firebase": "^12.10.0"
+  }
 }
