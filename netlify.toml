@@ -56,6 +56,11 @@
   status = 200
 
 [[redirects]]
+  from = "/products/turmeric-kojic-soap-jamaica"
+  to = "/turmeric-kojic-soap-jamaica.html"
+  status = 200
+
+[[redirects]]
   from = "/calculator"
   to = "/calculator.html"
   status = 200
