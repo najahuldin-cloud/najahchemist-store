@@ -668,6 +668,13 @@ tr:hover td{background:var(--warm);}
       <div class="sf-section-label">Our Products</div>
       <h2 class="sf-section-h2">Effective formulas <em>that deliver results</em></h2>
       <p class="sf-section-sub">All products available wholesale. Liquids sold in Litre, Gallon & 5 Gallon sizes.</p>
+      <div style="position:relative;margin-bottom:1.1rem;">
+        <span style="position:absolute;left:0.85rem;top:50%;transform:translateY(-50%);color:#8A8480;font-size:0.85rem;pointer-events:none;">🔍</span>
+        <input type="text" id="sf-search" placeholder="Search products…" oninput="sfSearch(this.value)"
+          style="width:100%;padding:0.58rem 2.4rem 0.58rem 2.4rem;border:1.5px solid #E8E4DE;border-radius:25px;font-family:'Outfit',sans-serif;font-size:0.82rem;color:#1C1A18;background:white;outline:none;box-sizing:border-box;transition:border-color 0.15s;"
+          onfocus="this.style.borderColor='#0F0E0D'" onblur="this.style.borderColor='#E8E4DE'">
+        <button id="sf-search-clear" onclick="sfSearchClear()" style="display:none;position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#8A8480;font-size:1.1rem;line-height:1;padding:0 0.2rem;font-family:'Outfit',sans-serif;">×</button>
+      </div>
       <div class="sf-cats" id="sf-cat-btns">
         <button class="sf-cat on" onclick="sfFilter('all',this)">All</button>
         <button class="sf-cat" onclick="sfFilter('yoni',this)">Yoni Care</button>
@@ -3865,6 +3872,7 @@ let sfDiscountApplied = false;
 let sfDiscountAmount = 0;
 let sfDiscountLabel = 'START2026 −10%';
 let sfCartStep = 'cart';
+let sfSearchQuery = '';
 
 // ── Helpers ──────────────────────────────────────────
 function sfSizeLabel(k) {
@@ -3912,7 +3920,15 @@ function sfRenderProducts(filter) {
   const grid = document.getElementById('sf-products-grid');
   if (!grid) return;
   const prods = window.PRODUCTS || [];
-  const list = filter === 'all' ? prods.filter(p => !p.hidden && p.cat !== 'bundle') : prods.filter(p => p.cat === filter && !p.hidden);
+  let list = filter === 'all' ? prods.filter(p => !p.hidden && p.cat !== 'bundle') : prods.filter(p => p.cat === filter && !p.hidden);
+  if (sfSearchQuery) {
+    const q = sfSearchQuery.toLowerCase();
+    list = list.filter(p => (p.name||'').toLowerCase().includes(q) || (p.tagline||'').toLowerCase().includes(q));
+  }
+  if (!list.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:3rem 1rem;color:#8A8480;font-size:0.88rem;">${sfSearchQuery ? `No products found for "<strong style="color:#1C1A18;">${sfSearchQuery}</strong>".` : 'No products found.'}</div>`;
+    return;
+  }
   grid.innerHTML = list.map(p => {
     const {price, moq} = sfGetPrice(p);
     const imgHtml = p.img ? `<img src="${p.img}" alt="${p.name}">` : `<span style="font-size:3rem;">${p.emoji}</span>`;
@@ -4145,11 +4161,37 @@ window.skAddToCart = function() {
 };
 
 function sfFilter(cat, btn) {
+  // Clear search when a category tab is clicked
+  sfSearchQuery = '';
+  const inp = document.getElementById('sf-search');
+  if (inp) inp.value = '';
+  const clr = document.getElementById('sf-search-clear');
+  if (clr) clr.style.display = 'none';
   document.querySelectorAll('.sf-cat').forEach(b => b.classList.remove('on'));
   if (btn) btn.classList.add('on');
   sfRenderProducts(cat);
 }
 window.sfFilter = sfFilter;
+
+window.sfSearch = function(val) {
+  sfSearchQuery = val.trim();
+  const clr = document.getElementById('sf-search-clear');
+  if (clr) clr.style.display = sfSearchQuery ? 'block' : 'none';
+  // Activate All tab so search runs across every category
+  document.querySelectorAll('.sf-cat').forEach(b => b.classList.remove('on'));
+  const allBtn = document.querySelector('#sf-cat-btns .sf-cat');
+  if (allBtn) allBtn.classList.add('on');
+  sfRenderProducts('all');
+};
+
+window.sfSearchClear = function() {
+  sfSearchQuery = '';
+  const inp = document.getElementById('sf-search');
+  if (inp) inp.value = '';
+  const clr = document.getElementById('sf-search-clear');
+  if (clr) clr.style.display = 'none';
+  sfRenderProducts('all');
+};
 
 // ── Product modal ────────────────────────────────────
 function sfOpenProduct(id) {
