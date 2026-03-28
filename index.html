@@ -4456,6 +4456,41 @@ function sfGetShippingInfo() {
   return { knutsfordBranch, zipmailLocation, deliveryAddress, shippingDetail, deliveryLocation, deliveryFee };
 }
 
+// ── Upsell: "You might also like" ────────────────────────────────────
+function sfRenderUpsell() {
+  const prods = window.PRODUCTS || [];
+  const cartCats = [...new Set(sfCart.map(i => i.cat))];
+  const cartIds  = new Set(sfCart.map(i => i.id));
+  // Collect matching products from the same categories, excluding cart items
+  const seen = new Set();
+  const suggestions = [];
+  for (const cat of cartCats) {
+    for (const p of prods) {
+      if (p.cat === cat && !p.hidden && !cartIds.has(p.id) && !seen.has(p.id)) {
+        seen.add(p.id);
+        suggestions.push(p);
+        if (suggestions.length === 3) break;
+      }
+    }
+    if (suggestions.length === 3) break;
+  }
+  if (!suggestions.length) return '';
+  const rows = suggestions.map(p => {
+    const {price} = sfGetPrice(p);
+    return `<div style="display:flex;align-items:center;gap:0.65rem;padding:0.5rem 0;border-bottom:1px solid #F0EDE8;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:0.8rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.emoji||'🧴'} ${p.name}</div>
+        <div style="font-size:0.7rem;color:#8A8480;">${price}</div>
+      </div>
+      <button onclick="sfCloseCart();sfOpenProduct('${p.id}')" style="flex-shrink:0;padding:0.35rem 0.8rem;background:#0F0E0D;color:white;border:none;border-radius:6px;font-family:'Outfit',sans-serif;font-size:0.7rem;font-weight:600;cursor:pointer;">Add</button>
+    </div>`;
+  }).join('');
+  return `<div style="padding:0.65rem 1.4rem 0.5rem;border-top:1px solid #E8E4DE;">
+    <div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#8A8480;margin-bottom:0.45rem;">You might also like</div>
+    ${rows}
+  </div>`;
+}
+
 function sfRenderCart() {
   const el = document.getElementById('sf-cart-items');
   const footer = document.getElementById('sf-cart-footer');
@@ -4491,7 +4526,7 @@ function sfRenderCart() {
           </div>
         </div>
         <div class="sf-cart-item-price">J$${(item.price*item.qty).toLocaleString()}</div>
-      </div>`).join('');
+      </div>`).join('') + sfRenderUpsell();
     const sub = sfCart.reduce((s,i)=>s+i.price*i.qty,0);
     const count = sfCart.reduce((s,i)=>s+i.qty,0);
     if (footer) {
