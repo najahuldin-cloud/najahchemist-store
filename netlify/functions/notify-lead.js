@@ -2,14 +2,24 @@
 // Sends an internal email notification when a new lead is captured on /start
 // Required env var: RESEND_API_KEY
 
-const WA_NUMBER = '18768851099';
+// Exact labels from NC_STEPS in start.html
+const SEGMENT_MAP = {
+  'skincare':        'skincare',
+  'body care':       'body',
+  'hair care':       'body',
+  'feminine care':   'feminine',
+  "men's grooming":  'mens',
+};
 
 function detectSegment(brandType, journey) {
-  const t = ((brandType || '') + ' ' + (journey || '')).toLowerCase();
-  if (/skin|glow|bright|facial|face|serum|toner|moistur|vitamin c|kojic|turmeric|dark spot/.test(t)) return 'skincare';
-  if (/body|butter|scrub|lotion|oil|hair/.test(t)) return 'body';
-  if (/yoni|feminine|intimate|boric|probiotic|vaginal/.test(t)) return 'feminine';
-  if (/men|beard|grooming|barber/.test(t)) return 'mens';
+  const key = (brandType || '').toLowerCase().trim();
+  if (SEGMENT_MAP[key]) return SEGMENT_MAP[key];
+  // Fallback regex for edge cases / existing-seller path
+  const t = (key + ' ' + (journey || '').toLowerCase());
+  if (/skin|serum|kojic|turmeric|brightening|dark.?spot/.test(t)) return 'skincare';
+  if (/body|butter|scrub|lotion|hair/.test(t)) return 'body';
+  if (/yoni|feminine|boric|probiotic/.test(t)) return 'feminine';
+  if (/men|beard|grooming/.test(t)) return 'mens';
   return 'general';
 }
 
@@ -65,8 +75,12 @@ exports.handler = async (event) => {
     const segment   = detectSegment(displayBrand, displayJourney);
     const templates = getTemplates(segment, name);
     const waDigits  = (whatsapp || '').replace(/\D/g, '');
-    const waMainLink     = waDigits ? `https://wa.me/${waDigits}?text=${encodeURIComponent(templates.main)}` : null;
-    const waFollowupLink = waDigits ? `https://wa.me/${waDigits}?text=${encodeURIComponent(templates.followup)}` : null;
+
+    console.log(`notify-lead: name="${displayName}" brand="${displayBrand}" journey="${displayJourney}" → segment="${segment}" waDigits="${waDigits}"`);
+    console.log(`notify-lead: main message preview: ${templates.main.slice(0, 80)}...`);
+
+    const waMainLink     = waDigits ? 'https://wa.me/' + waDigits + '?text=' + encodeURIComponent(templates.main) : null;
+    const waFollowupLink = waDigits ? 'https://wa.me/' + waDigits + '?text=' + encodeURIComponent(templates.followup) : null;
 
     const subject = `New Lead — ${displayName} (${segment}) — ${displayDate}`;
 
