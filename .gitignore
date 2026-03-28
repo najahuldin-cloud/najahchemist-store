@@ -3,3 +3,5 @@
 migrate-products.js
 migrate-products-browser.js
 add-bo2.html
+add-bo2.mjs
+update-bo2-cat.mjs
