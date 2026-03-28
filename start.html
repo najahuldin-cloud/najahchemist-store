@@ -710,6 +710,7 @@ window._ncSaveLead = async function(data) {
       email:       payload.email,
       branch:      payload.branch,
       brandType:   displayBrand,
+      journey:     payload.journey,
       budget:      payload.budget,
       hearAboutUs: payload.hearAboutUs,
       answers:     payload.answers
@@ -851,10 +852,10 @@ function ncClearQR() {
   if (qr) { qr.innerHTML = ''; qr.style.display = 'none'; }
 }
 
-function ncShowInput(placeholder) {
+function ncShowInput(placeholder, val) {
   var wrap = document.getElementById('nc-ch-inp-wrap');
   var inp  = document.getElementById('nc-ch-in');
-  if (inp)  inp.placeholder = placeholder || 'Type here...';
+  if (inp)  { inp.placeholder = placeholder || 'Type here...'; inp.value = val || ''; }
   if (wrap) { wrap.style.display = 'flex'; if (inp) inp.focus(); }
 }
 
@@ -914,9 +915,9 @@ function ncPickOption(label) {
   }
 }
 
-// ── Detect WhatsApp number in free text ──
+// ── Detect WhatsApp number — must start with + and include country code ──
 function ncLooksLikeWA(text) {
-  return /^[\+\d][\d\s\-\(\)]{5,}$/.test(text.trim());
+  return /^\+\d{8,}$/.test(text.trim().replace(/[\s\-\(\)\.]/g, ''));
 }
 
 function ncValidEmail(email) {
@@ -937,15 +938,15 @@ window.ncChatSend = async function() {
     nc.lead.name = msg;
     nc.collectStep = 'whatsapp';
     ncBotMsg("What's your WhatsApp number?", 500);
-    setTimeout(function() { ncShowInput('e.g. +18761234567'); }, 700);
+    setTimeout(function() { ncShowInput('e.g. +1876XXXXXXX', '+'); }, 700);
     return;
   }
 
   // ── Step 2: WhatsApp ──
   if (nc.collectStep === 'whatsapp') {
     if (!ncLooksLikeWA(msg)) {
-      ncBotMsg('Please enter a valid WhatsApp number (e.g. +18761234567).', 300);
-      setTimeout(function() { ncShowInput('e.g. +18761234567'); }, 500);
+      ncBotMsg('Include your country code e.g. +1876XXXXXXX — your number must start with +', 300);
+      setTimeout(function() { ncShowInput('e.g. +1876XXXXXXX', '+'); }, 500);
       return;
     }
     nc.lead.whatsapp = msg;
