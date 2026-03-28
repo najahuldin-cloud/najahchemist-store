@@ -328,10 +328,11 @@ select.finp{cursor:pointer;}
       <div id="v-clients-list">
         <div class="filter-bar">
           <input class="search-inp" placeholder="🔍 Search clients…" oninput="searchClients(this.value)" style="min-width:260px;">
+          <button class="btn btn-ol btn-sm" onclick="backfillClientIds()" title="Link all existing orders to client records">🔄 Backfill Orders</button>
         </div>
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>Client ID</th><th>Name</th><th>Business</th><th>WhatsApp</th><th>Orders</th><th>Total Spent</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Client ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Orders</th><th>Total Spent</th><th>Actions</th></tr></thead>
             <tbody id="clients-tbody"><tr><td colspan="7" class="empty-state">Loading clients…</td></tr></tbody>
           </table>
         </div>
@@ -1069,9 +1070,11 @@ window.saveOrder = async function() {
     if(editId) {
       await updateDoc(doc(db,'orders',editId), order);
       toast('Order updated ✓');
+      ensureClientLink(editId, order).catch(e=>console.error('[client-link]',e.message));
     } else {
-      await addDoc(collection(db,'orders'), {...order, createdAt: serverTimestamp()});
+      const orderRef = await addDoc(collection(db,'orders'), {...order, createdAt: serverTimestamp()});
       toast('Order saved ✓');
+      ensureClientLink(orderRef.id, order).catch(e=>console.error('[client-link]',e.message));
     }
     closeM('m-new-order');
     resetOrderForm();
@@ -1153,21 +1156,22 @@ function resetOrderForm(){
 function renderClientsTable(){
   const tbody = document.getElementById('clients-tbody');
   let list = [...CLIENTS];
-  if(_clientSearch){ const s=_clientSearch.toLowerCase(); list=list.filter(c=>(c.name||'').toLowerCase().includes(s)||(c.businessName||'').toLowerCase().includes(s)||(c.whatsapp||'').includes(s)); }
+  if(_clientSearch){ const s=_clientSearch.toLowerCase(); list=list.filter(c=>(c.name||'').toLowerCase().includes(s)||(c.email||'').toLowerCase().includes(s)||(c.phone||c.whatsapp||'').includes(s)); }
   if(!list.length){ tbody.innerHTML='<tr><td colspan="7" class="empty-state">No clients yet</td></tr>'; return; }
   tbody.innerHTML = list.map(c=>{
-    const clientOrders = ORDERS.filter(o=>(o.client||o.customerName||'').toLowerCase()===(c.name||'').toLowerCase());
-    const spent = clientOrders.filter(o=>o.payment==='Paid').reduce((s,o)=>s+(parseFloat(o.total)||0),0);
+    const orderCount = (c.orders != null) ? c.orders : ORDERS.filter(o=>o.client_id===c._docId).length;
+    const spent = (c.totalSpent != null) ? parseFloat(c.totalSpent) : 0;
+    const phone = c.phone||c.whatsapp||'—';
     return `<tr>
       <td><strong>${c.clientId||'—'}</strong></td>
       <td>${c.name||'—'}</td>
-      <td>${c.businessName||'—'}</td>
-      <td>${c.whatsapp||'—'}</td>
-      <td>${clientOrders.length}</td>
+      <td>${c.email||'—'}</td>
+      <td>${phone}</td>
+      <td>${orderCount}</td>
       <td>${spent?'J$'+spent.toLocaleString():'J$0'}</td>
       <td class="btn-group">
         <button class="btn btn-sm btn-ol" onclick="viewClientProfile('${c._docId}')">View</button>
-        <button class="btn btn-sm btn-wa" onclick="reorderWA('${c.clientId||''}','${c.name||''}','${c.whatsapp||''}')">↩ Reorder</button>
+        <button class="btn btn-sm btn-wa" onclick="reorderWA('${c.clientId||''}','${c.name||''}','${c.phone||c.whatsapp||''}')">↩ Reorder</button>
         <button class="btn btn-sm btn-rd" onclick="deleteClient('${c._docId}')">🗑</button>
       </td>
     </tr>`;
@@ -1295,6 +1299,79 @@ function rebuildClientDatalist(){
   if(!dl) return;
   dl.innerHTML = CLIENTS.map(c=>`<option value="${c.name||''}">${c.name||''} ${c.businessName?'('+c.businessName+')':''}</option>`).join('');
 }
+
+// ── CLIENT AUTO-LINK ──
+async function findOrCreateClient(orderData) {
+  const name = (orderData.client||orderData.customerName||'').trim();
+  const email = (orderData.email||orderData.customerEmail||'').trim().toLowerCase();
+  const phone = (orderData.phone||orderData.customerWhatsApp||orderData.wa||'').replace(/\D/g,'');
+  // 1. Match by email
+  if (email) {
+    const q = await getDocs(query(collection(db,'clients'), where('email','==',email)));
+    if (!q.empty) return q.docs[0].id;
+  }
+  // 2. Match by phone
+  if (phone) {
+    const q = await getDocs(query(collection(db,'clients'), where('phone','==',phone)));
+    if (!q.empty) return q.docs[0].id;
+  }
+  // 3. Create new client — use max of current CLIENTS array for sequential ID
+  const maxId = CLIENTS.reduce((m,c)=>{ const n=parseInt((c.clientId||'NC-000').replace(/\D/g,'')); return isNaN(n)?m:Math.max(m,n); }, 0);
+  const clientId = 'NC-'+String(maxId+1).padStart(3,'0');
+  const incomplete = !email && !phone;
+  const ref = await addDoc(collection(db,'clients'), {
+    clientId, name,
+    email: email||'',
+    phone: phone||'',
+    whatsapp: phone||'',
+    orders: 0,
+    totalSpent: 0,
+    createdAt: serverTimestamp(),
+    ...(incomplete?{incomplete:true}:{})
+  });
+  return ref.id;
+}
+
+async function ensureClientLink(orderDocId, orderData) {
+  try {
+    const clientDocId = await findOrCreateClient(orderData);
+    const total = parseFloat(orderData.total)||0;
+    await Promise.all([
+      updateDoc(doc(db,'orders',orderDocId), {client_id: clientDocId}),
+      updateDoc(doc(db,'clients',clientDocId), {orders: increment(1), totalSpent: increment(total)})
+    ]);
+  } catch(e){ console.error('[ensureClientLink]', e.message); }
+}
+
+window.backfillClientIds = async function(){
+  if(!confirm('This will create client records for all orders that don\'t have one yet and link them. Continue?')) return;
+  toast('Backfilling…');
+  try {
+    const snap = await getDocs(query(collection(db,'orders'), orderBy('createdAt','desc')));
+    const pending = snap.docs.filter(d => !d.data().client_id);
+    if (!pending.length) { toast('All orders already linked ✓'); return; }
+    // Local cache to avoid duplicate clients within this run
+    const emailMap = {};
+    const phoneMap = {};
+    let done = 0;
+    for (const d of pending) {
+      const data = d.data();
+      const email = (data.email||data.customerEmail||'').trim().toLowerCase();
+      const phone = (data.phone||data.customerWhatsApp||data.wa||'').replace(/\D/g,'');
+      let clientDocId = (email && emailMap[email]) || (phone && phoneMap[phone]) || null;
+      if (!clientDocId) {
+        clientDocId = await findOrCreateClient(data);
+        if (email) emailMap[email] = clientDocId;
+        if (phone) phoneMap[phone] = clientDocId;
+      }
+      const total = parseFloat(data.total)||0;
+      await updateDoc(doc(db,'orders',d.id), {client_id: clientDocId});
+      await updateDoc(doc(db,'clients',clientDocId), {orders: increment(1), totalSpent: increment(total)});
+      done++;
+    }
+    toast(`Backfill complete — ${done} orders linked ✓`);
+  } catch(e){ toast('Backfill error: '+e.message); console.error(e); }
+};
 
 // ── PRODUCTS ──
 function renderProductsTable(){

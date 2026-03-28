@@ -2055,7 +2055,7 @@ Add anything else you want the chatbot to know..."></textarea>
 // ════════════════════════════════════════════════════
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot, where, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -2394,10 +2394,50 @@ async function loadFromDB() {
 
 // Expose for storefront script to save orders to Firestore silently
 async function saveOrderSilent(order) {
-  try { await addDoc(collection(db,'orders'),{...order,createdAt:serverTimestamp()}); }
+  try {
+    const orderRef = await addDoc(collection(db,'orders'),{...order,createdAt:serverTimestamp()});
+    linkOrderToClient(orderRef.id, order).catch(e=>console.error('[client-link]',e.message));
+  }
   catch(e){ console.error('[Najah] Firestore order save:', e.message); }
 }
 window.saveOrderSilent = saveOrderSilent;
+
+async function linkOrderToClient(orderDocId, orderData) {
+  const name = (orderData.client||orderData.customerName||'').trim();
+  const email = (orderData.email||orderData.customerEmail||'').trim().toLowerCase();
+  const phone = (orderData.phone||orderData.customerWhatsApp||orderData.wa||'').replace(/\D/g,'');
+  let clientDocId = null;
+  if (email) {
+    const q = await getDocs(query(collection(db,'clients'), where('email','==',email)));
+    if (!q.empty) clientDocId = q.docs[0].id;
+  }
+  if (!clientDocId && phone) {
+    const q = await getDocs(query(collection(db,'clients'), where('phone','==',phone)));
+    if (!q.empty) clientDocId = q.docs[0].id;
+  }
+  if (!clientDocId) {
+    const allClients = await getDocs(collection(db,'clients'));
+    const maxId = allClients.docs.reduce((m,d)=>{ const n=parseInt((d.data().clientId||'NC-000').replace(/\D/g,'')); return isNaN(n)?m:Math.max(m,n); },0);
+    const clientId = 'NC-'+String(maxId+1).padStart(3,'0');
+    const incomplete = !email && !phone;
+    const ref = await addDoc(collection(db,'clients'),{
+      clientId, name,
+      email: email||'',
+      phone: phone||'',
+      whatsapp: phone||'',
+      orders: 0,
+      totalSpent: 0,
+      createdAt: serverTimestamp(),
+      ...(incomplete?{incomplete:true}:{})
+    });
+    clientDocId = ref.id;
+  }
+  const total = parseFloat(orderData.total)||0;
+  await Promise.all([
+    updateDoc(doc(db,'orders',orderDocId), {client_id: clientDocId}),
+    updateDoc(doc(db,'clients',clientDocId), {orders: increment(1), totalSpent: increment(total)})
+  ]);
+}
 
 // ═══ BEST SELLERS ═══
 const BS_IMG_CLASS={soap:'img-soap',yoni:'img-wash',skincare:'img-cream',mencare:'img-soap',haircare:'img-cream',bundle:'img-label',label:'img-label',cream:'img-cream',serum:'img-serum',wash:'img-wash',hair:'img-cream'};
