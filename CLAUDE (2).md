@@ -67,7 +67,7 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
 
 ## Key Credentials
 - Firebase project: `najah-chemist-362ad`
-- Firebase API key: `AIzaSyDYdt_0wJNcfGl2WbIKPiESdVcmc-cqZgM`
+- Firebase API key: stored in Netlify env var `FIREBASE_API_KEY`
 - Admin email: `start@najahchemist.com`
 - WhatsApp number: `18768851099`
 - Google Place ID: `ChIJJ5oDKN4_244RKugRQdtw6Lc`
