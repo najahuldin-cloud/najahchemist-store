@@ -283,6 +283,7 @@ select.finp{cursor:pointer;}
             <button class="btn btn-ol" style="justify-content:center;" onclick="nav('labels',document.querySelector('#sidebar .nb:nth-child(5)'))">🏷 Print Labels</button>
             <button class="btn btn-ol" style="justify-content:center;" onclick="nav('products',document.querySelector('#sidebar .nb:nth-child(4)'));setTimeout(()=>openM('m-edit-product'),100)">🧴 Add Product</button>
             <a href="/" target="_blank" class="btn btn-ol" style="justify-content:center;text-decoration:none;">🌐 View Public Site</a>
+            <button class="btn btn-ol" style="justify-content:center;border-color:#f59e0b;color:#92400E;" onclick="runBackfillNow()">🔄 Run Backfill</button>
           </div>
         </div>
       </div>
@@ -911,6 +912,7 @@ async function initAdmin() {
 
   loadConsultations();
   loadKnowledge();
+  runBackfillOnce();
   loadStartPageImages();
 }
 
@@ -1314,7 +1316,7 @@ async function upsertClient(clientId, orderData) {
   const incomplete = !email && !phone;
   const clientRef = doc(db,'clients',clientId);
   const existing = await getDoc(clientRef);
-  const base = existing.exists() ? {} : {created_at: serverTimestamp()};
+  const base = existing.exists() ? {} : {createdAt: serverTimestamp()};
   await setDoc(clientRef, {
     ...base,
     name, email: email||'', phone: phone||'', whatsapp: phone||'',
@@ -1335,13 +1337,11 @@ async function ensureClientLink(orderDocId, orderData) {
   } catch(e){ console.error('[ensureClientLink]', e.message); }
 }
 
-window.backfillClientIds = async function(){
-  if(!confirm('Link all unlinked orders to client records? This increments order counts for each matched order.')) return;
-  toast('Backfilling…');
+async function _runBackfill(silent) {
   try {
     const snap = await getDocs(query(collection(db,'orders'), orderBy('createdAt','desc')));
     const pending = snap.docs.filter(d => !d.data().client_id);
-    if (!pending.length) { toast('All orders already linked ✓'); return; }
+    if (!pending.length) { if(!silent) toast('All orders already linked ✓'); return; }
     let done = 0;
     for (const d of pending) {
       const data = d.data();
@@ -1353,9 +1353,27 @@ window.backfillClientIds = async function(){
       await updateDoc(doc(db,'orders',d.id), {client_id: clientId});
       done++;
     }
-    toast(`Backfill complete — ${done} orders linked ✓`);
-  } catch(e){ toast('Backfill error: '+e.message); console.error(e); }
+    if(!silent) toast(`Backfill complete — ${done} orders linked ✓`);
+    else console.log(`[backfill] linked ${done} orders`);
+  } catch(e){ if(!silent) toast('Backfill error: '+e.message); console.error('[backfill]', e); }
+}
+
+window.backfillClientIds = async function(){
+  if(!confirm('Link all unlinked orders to client records? This increments order counts for each matched order.')) return;
+  toast('Backfilling…');
+  await _runBackfill(false);
 };
+
+window.runBackfillNow = async function(){
+  toast('Running backfill…');
+  await _runBackfill(false);
+};
+
+async function runBackfillOnce() {
+  if (sessionStorage.getItem('_bf_done')) return;
+  sessionStorage.setItem('_bf_done','1');
+  await _runBackfill(true);
+}
 
 // ── PRODUCTS ──
 function renderProductsTable(){
