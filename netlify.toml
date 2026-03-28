@@ -81,6 +81,51 @@
   status = 200
 
 [[redirects]]
+  from = "/products/probiotic-yoni-wash-jamaica"
+  to = "/probiotic-yoni-wash-jamaica.html"
+  status = 200
+
+[[redirects]]
+  from = "/products/yoni-pops-boric-acid-jamaica"
+  to = "/yoni-pops-boric-acid-jamaica.html"
+  status = 200
+
+[[redirects]]
+  from = "/products/papaya-brightening-serum-jamaica"
+  to = "/papaya-brightening-serum-jamaica.html"
+  status = 200
+
+[[redirects]]
+  from = "/products/salicylic-acid-soap-jamaica"
+  to = "/salicylic-acid-soap-jamaica.html"
+  status = 200
+
+[[redirects]]
+  from = "/products/vitamin-c-soap-jamaica"
+  to = "/vitamin-c-soap-jamaica.html"
+  status = 200
+
+[[redirects]]
+  from = "/products/garlic-lavender-soap-jamaica"
+  to = "/garlic-lavender-soap-jamaica.html"
+  status = 200
+
+[[redirects]]
+  from = "/products/turmeric-kojic-scrub-jamaica"
+  to = "/turmeric-kojic-scrub-jamaica.html"
+  status = 200
+
+[[redirects]]
+  from = "/products/body-butter-wholesale-jamaica"
+  to = "/body-butter-wholesale-jamaica.html"
+  status = 200
+
+[[redirects]]
+  from = "/products/ayurvedic-hair-growth-oil-jamaica"
+  to = "/ayurvedic-hair-growth-oil-jamaica.html"
+  status = 200
+
+[[redirects]]
   from = "/calculator"
   to = "/calculator.html"
   status = 200
