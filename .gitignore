@@ -2,3 +2,4 @@
 # Local migration/dev scripts — contain hardcoded Firebase config
 migrate-products.js
 migrate-products-browser.js
+add-bo2.html
