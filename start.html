@@ -699,21 +699,57 @@ window._ncSaveLead = async function(data) {
     return false;
   }
 
-  // Internal email notification — fire-and-forget, don't block
+  // ── Build segmented WA message on the frontend ──
   const displayBrand = payload.brandType || (Array.isArray(payload.answers) && payload.answers[0]) || '—';
+  const _waName = (payload.name || 'there').split(' ')[0];
+  const _segmentMap = {
+    'skincare':       'skincare',
+    'body care':      'body',
+    'hair care':      'body',
+    'feminine care':  'feminine',
+    "men's grooming": 'mens'
+  };
+  const _waSegment = _segmentMap[(displayBrand || '').toLowerCase().trim()] || 'general';
+  const _waMsgs = {
+    skincare: 'Hi ' + _waName + '! \uD83D\uDC4B I\'m Najah from Najah Chemist. I saw you\'re interested in starting a skincare brand \u2014 congrats on taking that step! \uD83C\uDF3F\n\nWe manufacture private-label skincare here in Jamaica: brightening serums, Vitamin C soaps, Kojic + Turmeric bars, dark spot correctors and more.\n\nWhat product are you most interested in starting with?',
+    body:     'Hi ' + _waName + '! \uD83D\uDC4B I\'m Najah from Najah Chemist. I saw you want to start a body care brand \u2014 exciting! \uD83E\uDDF4\n\nWe make private-label body butters, whipped scrubs, body oils and more right here in Jamaica. Small batches welcome \u2014 MOQ from 2 lbs.\n\nWhat body care product are you thinking of starting with?',
+    feminine: 'Hi ' + _waName + '! \uD83D\uDC4B I\'m Najah from Najah Chemist. I saw you\'re interested in feminine care products \u2014 great niche! \uD83C\uDF38\n\nWe manufacture Yoni Washes, Boric Acid Suppositories, Probiotic Foaming Washes and more. Private label, made in Jamaica.\n\nAre you looking to brand an existing formula or create something custom?',
+    mens:     'Hi ' + _waName + '! \uD83D\uDC4B I\'m Najah from Najah Chemist. I saw you\'re interested in men\'s grooming products \u2014 smart move! \uD83D\uDCAA\n\nWe can private-label beard oils, body washes, skin soaps and more. Made in Jamaica, small MOQs.\n\nWhat men\'s product are you looking to launch?',
+    general:  'Hi ' + _waName + '! \uD83D\uDC4B I\'m Najah from Najah Chemist. I saw you\'re interested in starting your own product brand \u2014 congrats! \uD83C\uDF3F\n\nWe manufacture private-label natural skincare and body care products here in Jamaica. Low MOQs, fast turnaround (2\u20133 days).\n\nWhat type of product are you thinking of starting with?'
+  };
+  const _waFollowups = {
+    skincare: 'Hi ' + _waName + ', just following up! We have low MOQs (from 1 litre / 2 lbs) so you can start small and scale up. Happy to send you a product list and pricing. Still interested? \uD83D\uDE0A',
+    body:     'Hi ' + _waName + ', just checking in! If you\'d like to see our body care product catalogue with wholesale pricing, I can send it over now. Still interested? \uD83D\uDE0A',
+    feminine: 'Hi ' + _waName + ', just following up! The feminine care market is growing fast in Jamaica. We can have your branded product ready in 2\u20133 business days. Still want to chat? \uD83D\uDE0A',
+    mens:     'Hi ' + _waName + ', just checking in! Men\'s grooming is one of the fastest-growing categories right now. We can help you get started quickly. Still keen? \uD83D\uDE0A',
+    general:  'Hi ' + _waName + ', just following up! Whether it\'s skincare, body care or feminine wellness \u2014 we can help you launch your brand. Still interested in chatting? \uD83D\uDE0A'
+  };
+  const _waMessage      = _waMsgs[_waSegment]     || _waMsgs.general;
+  const _waFollowupMsg  = _waFollowups[_waSegment] || _waFollowups.general;
+  const _waDigits       = (payload.whatsapp || '').replace(/\D/g, '');
+  const _waLink         = _waDigits ? 'https://wa.me/' + _waDigits + '?text=' + encodeURIComponent(_waMessage)     : '';
+  const _waFollowupLink = _waDigits ? 'https://wa.me/' + _waDigits + '?text=' + encodeURIComponent(_waFollowupMsg) : '';
+  console.log('[StartPage] WA segment:', _waSegment, '| msg preview:', _waMessage.slice(0, 200));
+
+  // Internal email notification — fire-and-forget, don't block
   fetch('/.netlify/functions/notify-lead', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      name:        payload.name,
-      whatsapp:    payload.whatsapp,
-      email:       payload.email,
-      branch:      payload.branch,
-      brandType:   displayBrand,
-      journey:     payload.journey,
-      budget:      payload.budget,
-      hearAboutUs: payload.hearAboutUs,
-      answers:     payload.answers
+      name:              payload.name,
+      whatsapp:          payload.whatsapp,
+      email:             payload.email,
+      branch:            payload.branch,
+      brandType:         displayBrand,
+      journey:           payload.journey,
+      budget:            payload.budget,
+      hearAboutUs:       payload.hearAboutUs,
+      answers:           payload.answers,
+      waSegment:         _waSegment,
+      waMessage:         _waMessage,
+      waFollowupMessage: _waFollowupMsg,
+      waLink:            _waLink,
+      waFollowupLink:    _waFollowupLink
     })
   }).then(function(r) {
     console.log('[StartPage] notify-lead status:', r.status);

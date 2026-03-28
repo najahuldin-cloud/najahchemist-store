@@ -1,56 +1,8 @@
 // netlify/functions/notify-lead.js
-// Sends an internal email notification when a new lead is captured on /start
-// Required env var: RESEND_API_KEY
-
-// Exact labels from NC_STEPS in start.html
-const SEGMENT_MAP = {
-  'skincare':        'skincare',
-  'body care':       'body',
-  'hair care':       'body',
-  'feminine care':   'feminine',
-  "men's grooming":  'mens',
-};
-
-function detectSegment(brandType, journey) {
-  const key = (brandType || '').toLowerCase().trim();
-  if (SEGMENT_MAP[key]) return SEGMENT_MAP[key];
-  // Fallback regex for edge cases / existing-seller path
-  const t = (key + ' ' + (journey || '').toLowerCase());
-  if (/skin|serum|kojic|turmeric|brightening|dark.?spot/.test(t)) return 'skincare';
-  if (/body|butter|scrub|lotion|hair/.test(t)) return 'body';
-  if (/yoni|feminine|boric|probiotic/.test(t)) return 'feminine';
-  if (/men|beard|grooming/.test(t)) return 'mens';
-  return 'general';
-}
-
-function getTemplates(segment, name) {
-  const n = (name || 'there').split(' ')[0];
-
-  const templates = {
-    skincare: {
-      main: `Hi ${n}! 👋 I'm Najah from Najah Chemist. I saw you're interested in starting a skincare brand — congrats on taking that step! 🌿\n\nWe manufacture private-label skincare here in Jamaica: brightening serums, Vitamin C soaps, Kojic + Turmeric bars, dark spot correctors and more.\n\nWhat product are you most interested in starting with?`,
-      followup: `Hi ${n}, just following up! We have low MOQs (from 1 litre / 2 lbs) so you can start small and scale up. Happy to send you a product list and pricing. Still interested? 😊`
-    },
-    body: {
-      main: `Hi ${n}! 👋 I'm Najah from Najah Chemist. I saw you want to start a body care brand — exciting! 🧴\n\nWe make private-label body butters, whipped scrubs, body oils and more right here in Jamaica. Small batches welcome — MOQ from 2 lbs.\n\nWhat body care product are you thinking of starting with?`,
-      followup: `Hi ${n}, just checking in! If you'd like to see our body care product catalogue with wholesale pricing, I can send it over now. Still interested? 😊`
-    },
-    feminine: {
-      main: `Hi ${n}! 👋 I'm Najah from Najah Chemist. I saw you're interested in feminine care products — great niche! 🌸\n\nWe manufacture Yoni Washes, Boric Acid Suppositories, Probiotic Foaming Washes and more. Private label, made in Jamaica.\n\nAre you looking to brand an existing formula or create something custom?`,
-      followup: `Hi ${n}, just following up! The feminine care market is growing fast in Jamaica. We can have your branded product ready in 2–3 business days. Still want to chat? 😊`
-    },
-    mens: {
-      main: `Hi ${n}! 👋 I'm Najah from Najah Chemist. I saw you're interested in men's grooming products — smart move! 💪\n\nWe can private-label beard oils, body washes, skin soaps and more. Made in Jamaica, small MOQs.\n\nWhat men's product are you looking to launch?`,
-      followup: `Hi ${n}, just checking in! Men's grooming is one of the fastest-growing categories right now. We can help you get started quickly. Still keen? 😊`
-    },
-    general: {
-      main: `Hi ${n}! 👋 I'm Najah from Najah Chemist. I saw you're interested in starting your own product brand — congrats! 🌿\n\nWe manufacture private-label natural skincare and body care products here in Jamaica. Low MOQs, fast turnaround (2–3 days).\n\nWhat type of product are you thinking of starting with?`,
-      followup: `Hi ${n}, just following up! Whether it's skincare, body care or feminine wellness — we can help you launch your brand. Still interested in chatting? 😊`
-    }
-  };
-
-  return templates[segment] || templates.general;
-}
+// Sends an internal email notification when a new lead is captured on /start.
+// The frontend (start.html) builds all WA links and message text before calling
+// this function — the fields waMessage, waFollowupMessage, waLink, waFollowupLink
+// are pre-built and passed in the payload so segment logic lives in the static file.
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -59,53 +11,55 @@ exports.handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body);
-    const { name, whatsapp, email, branch, brandType, journey, budget, hearAboutUs, answers } = body;
+    const {
+      name, whatsapp, email, branch,
+      brandType, journey, budget, hearAboutUs, answers,
+      waSegment, waMessage, waFollowupMessage, waLink, waFollowupLink
+    } = body;
 
-    const displayName     = name        || '—';
-    const displayWA       = whatsapp    || '—';
-    const displayEmail    = email       || '—';
-    const displayBrand    = brandType   || (Array.isArray(answers) && answers[0]) || (branch === 'existing' ? 'Existing seller' : '—');
-    const displayJourney  = journey     || '—';
-    const displayBudget   = budget      || '—';
-    const displaySource   = hearAboutUs || '—';
-    const displayBranch   = branch      || '—';
-    const displayAnswers  = Array.isArray(answers) && answers.length ? answers.join(' → ') : '—';
-    const displayDate     = new Date().toLocaleString('en-US', { timeZone: 'America/Jamaica', dateStyle: 'medium', timeStyle: 'short' });
+    const displayName    = name        || '—';
+    const displayWA      = whatsapp    || '—';
+    const displayEmail   = email       || '—';
+    const displayBrand   = brandType   || (Array.isArray(answers) && answers[0]) || '—';
+    const displayJourney = journey     || '—';
+    const displayBudget  = budget      || '—';
+    const displaySource  = hearAboutUs || '—';
+    const displayBranch  = branch      || '—';
+    const displayAnswers = Array.isArray(answers) && answers.length ? answers.join(' → ') : '—';
+    const displayDate    = new Date().toLocaleString('en-US', { timeZone: 'America/Jamaica', dateStyle: 'medium', timeStyle: 'short' });
+    const segment        = waSegment   || 'unknown';
 
-    const segment   = detectSegment(displayBrand, displayJourney);
-    const templates = getTemplates(segment, name);
-    const waDigits  = (whatsapp || '').replace(/\D/g, '');
-
-    console.log(`notify-lead: name="${displayName}" brand="${displayBrand}" journey="${displayJourney}" → segment="${segment}" waDigits="${waDigits}"`);
-    console.log(`notify-lead: main message preview: ${templates.main.slice(0, 80)}...`);
-
-    const waMainLink     = waDigits ? 'https://wa.me/' + waDigits + '?text=' + encodeURIComponent(templates.main) : null;
-    const waFollowupLink = waDigits ? 'https://wa.me/' + waDigits + '?text=' + encodeURIComponent(templates.followup) : null;
+    // Log for debugging in Netlify function logs
+    console.log(`notify-lead: name="${displayName}" brand="${displayBrand}" segment="${segment}"`);
+    console.log(`notify-lead: waMessage preview (200 chars): ${(waMessage || '').slice(0, 200)}`);
+    console.log(`notify-lead: waLink: ${waLink || '(none)'}`);
 
     const subject = `New Lead — ${displayName} (${segment}) — ${displayDate}`;
 
-    const waSection = waDigits ? `
-          <div style="margin-top:28px;background:#dcfce7;border-radius:10px;padding:20px 24px;">
-            <p style="margin:0 0 6px;font-size:0.95rem;font-weight:700;color:#14532d;">⚡ Reply within 30 minutes for best conversion</p>
-            <p style="margin:0 0 16px;font-size:0.82rem;color:#166534;">Segment detected: <strong>${segment.toUpperCase()}</strong> · WhatsApp: <strong>${displayWA}</strong></p>
+    const waDigits = (whatsapp || '').replace(/\D/g, '');
 
-            <p style="margin:0 0 8px;font-size:0.88rem;font-weight:700;color:#1a1a1a;">WHATSAPP REPLY — SEND THIS NOW:</p>
-            <div style="background:#fff;border-radius:8px;padding:14px 16px;font-size:0.85rem;color:#374151;white-space:pre-wrap;line-height:1.65;border:1px solid #bbf7d0;margin-bottom:12px;">${templates.main.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
-            <a href="${waMainLink}" style="display:inline-block;background:#166534;color:white;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:700;font-size:0.88rem;">
-              📲 Tap to open in WhatsApp
-            </a>
+    const waSection = waDigits && waMessage ? `
+      <div style="margin-top:28px;background:#dcfce7;border-radius:10px;padding:20px 24px;">
+        <p style="margin:0 0 6px;font-size:0.95rem;font-weight:700;color:#14532d;">⚡ Reply within 30 minutes for best conversion</p>
+        <p style="margin:0 0 16px;font-size:0.82rem;color:#166534;">Segment: <strong>${segment.toUpperCase()}</strong> · WhatsApp: <strong>${displayWA}</strong></p>
 
-            <div style="margin-top:24px;border-top:1px solid #bbf7d0;padding-top:20px;">
-              <p style="margin:0 0 8px;font-size:0.88rem;font-weight:700;color:#1a1a1a;">FOLLOW-UP — send if no reply in 30 mins:</p>
-              <div style="background:#fff;border-radius:8px;padding:14px 16px;font-size:0.85rem;color:#374151;white-space:pre-wrap;line-height:1.65;border:1px solid #bbf7d0;margin-bottom:12px;">${templates.followup.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
-              <a href="${waFollowupLink}" style="display:inline-block;background:#4b5563;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:0.85rem;">
-                📲 Send Follow-up
-              </a>
-            </div>
-          </div>` : `
-          <div style="margin-top:28px;background:#fef9c3;border-radius:10px;padding:16px 20px;">
-            <p style="margin:0;font-size:0.88rem;color:#92400e;">⚠️ No WhatsApp number captured — cannot send message.</p>
-          </div>`;
+        <p style="margin:0 0 8px;font-size:0.88rem;font-weight:700;color:#1a1a1a;">WHATSAPP REPLY — SEND THIS NOW:</p>
+        <div style="background:#fff;border-radius:8px;padding:14px 16px;font-size:0.85rem;color:#374151;white-space:pre-wrap;line-height:1.65;border:1px solid #bbf7d0;margin-bottom:12px;">${waMessage.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+        <a href="${waLink}" style="display:inline-block;background:#166534;color:white;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:700;font-size:0.88rem;">
+          📲 Tap to open in WhatsApp
+        </a>
+
+        <div style="margin-top:24px;border-top:1px solid #bbf7d0;padding-top:20px;">
+          <p style="margin:0 0 8px;font-size:0.88rem;font-weight:700;color:#1a1a1a;">FOLLOW-UP — send if no reply in 30 mins:</p>
+          <div style="background:#fff;border-radius:8px;padding:14px 16px;font-size:0.85rem;color:#374151;white-space:pre-wrap;line-height:1.65;border:1px solid #bbf7d0;margin-bottom:12px;">${(waFollowupMessage || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+          <a href="${waFollowupLink || ''}" style="display:inline-block;background:#4b5563;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:0.85rem;">
+            📲 Send Follow-up
+          </a>
+        </div>
+      </div>` : `
+      <div style="margin-top:28px;background:#fef9c3;border-radius:10px;padding:16px 20px;">
+        <p style="margin:0;font-size:0.88rem;color:#92400e;">⚠️ No WhatsApp number or message captured — cannot generate link.</p>
+      </div>`;
 
     const html = `<!DOCTYPE html>
 <html>
