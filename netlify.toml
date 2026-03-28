@@ -76,6 +76,11 @@
   status = 200
 
 [[redirects]]
+  from = "/products/foaming-scrub-jamaica"
+  to = "/foaming-scrub-jamaica.html"
+  status = 200
+
+[[redirects]]
   from = "/calculator"
   to = "/calculator.html"
   status = 200
