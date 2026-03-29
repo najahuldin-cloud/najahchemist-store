@@ -150,12 +150,7 @@
             </div>
             <div class="fg"><label class="fl">Product</label>
               <select class="fs" id="sfcp-po-prod">
-                <option>Bar Soap</option>
-                <option>Cream / Lotion</option>
-                <option>Serum</option>
-                <option>Feminine Wash</option>
-                <option>Hair Product</option>
-                <option>Custom Formula</option>
+                <option value="">Loading products…</option>
               </select>
             </div>
             <div class="g2">
@@ -311,6 +306,42 @@
       var subj = document.getElementById('sfcp-pm-subj').value || '';
       var msg = 'Hi Najah Chemist!\n\n*Subject:* ' + subj + '\n*From:* ' + n + '\n\n' + b;
       window.open('https://wa.me/18768851099?text=' + encodeURIComponent(msg), '_blank');
+    }
+  </script>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+    import { getFirestore, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+    const app = initializeApp({
+      apiKey: 'AIzaSyDYdt_0wJNcfGl2WbIKPiESdVcmc-cqZgM',
+      authDomain: 'najahchemistja.com',
+      projectId: 'najah-chemist',
+      storageBucket: 'najah-chemist.firebasestorage.app',
+      messagingSenderId: '89819999556',
+      appId: '1:89819999556:web:4e6eb5c0c881da5e763b11'
+    });
+    const db = getFirestore(app);
+
+    try {
+      const snap = await getDocs(collection(db, 'products'));
+      const names = [];
+      snap.forEach(function(d) {
+        var p = d.data();
+        if (!p.hidden && p.name) names.push(p.name);
+      });
+      names.sort(function(a, b) { return a.localeCompare(b); });
+
+      var sel = document.getElementById('sfcp-po-prod');
+      sel.innerHTML = names.map(function(n) {
+        return '<option value="' + n.replace(/"/g, '&quot;') + '">' + n + '</option>';
+      }).join('') + '<option value="Custom Formula">Custom Formula</option>';
+    } catch (e) {
+      // Fall back to static options if Firestore is unavailable
+      var sel = document.getElementById('sfcp-po-prod');
+      sel.innerHTML = [
+        'Bar Soap','Cream / Lotion','Serum','Feminine Wash','Hair Product','Custom Formula'
+      ].map(function(n) { return '<option>' + n + '</option>'; }).join('');
     }
   </script>
 
