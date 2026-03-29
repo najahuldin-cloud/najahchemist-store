@@ -1494,7 +1494,7 @@ tr:hover td{background:var(--warm);}
       <div class="tc" id="tc-portal-track">
         <div class="card">
           <div class="clbl">Track Your Order</div>
-          <div class="fg"><label class="fl">Order ID or Email</label><div style="display:flex;gap:0.5rem;"><input class="fi" id="trk-in" placeholder="NC-0041 or email"><button class="btn btn-dk btn-sm" onclick="doTrack()">Track</button></div></div>
+          <div class="fg"><label class="fl">Order ID or Email</label><div style="display:flex;gap:0.5rem;"><input class="fi" id="trk-in" placeholder="Order ID or email"><button class="btn btn-dk btn-sm" onclick="doTrack()">Track</button></div></div>
           <div id="trk-out">
             <p style="font-size:0.8rem;color:var(--mid);margin-top:0.75rem;">Enter your Order ID or email above to track your order.</p>
           </div>
@@ -1527,7 +1527,7 @@ tr:hover td{background:var(--warm);}
           <div class="info-row" style="border-color:#333;"><span>Min Order</span><span style="color:white;font-weight:600;">1 Litre / 2 lbs</span></div>
           <div class="info-row" style="border-color:#333;"><span>Lead Time</span><span style="color:white;font-weight:600;">7–14 business days</span></div>
           <div class="info-row" style="border-color:#333;"><span>Sizes</span><span style="color:white;font-weight:600;">Litre · Gallon · 5 Gallon</span></div>
-          <div class="info-row" style="border-color:#333;"><span>Shipping</span><span style="color:white;font-weight:600;">Free in Jamaica</span></div>
+          <div class="info-row" style="border-color:#333;"><span>Shipping</span><span style="color:white;font-weight:600;">Island-wide via Knutsford &amp; Zipmail</span></div>
           <div class="info-row" style="border-color:transparent;"><span>Payment</span><span style="color:white;font-weight:600;">50% deposit, 50% on delivery</span></div>
         </div>
       </div>
@@ -2087,12 +2087,7 @@ let REVIEWS = {
 };
 window.REVIEWS = REVIEWS;
 
-let DB_ORDERS = [
-  {id:'NC-0041',client:'Marcia Brown',product:'Turmeric Kojic Bar Soap',size:'—',qty:50,source:'Website',payment:'Paid',status:'Shipped',date:'Feb 25',total:125,payMethod:'Fygaro'},
-  {id:'NC-0040',client:'ShineBox JA',product:'Private Label Serum',size:'1L',qty:200,source:'Instagram',payment:'Paid',status:'Processing',date:'Feb 24',total:880,payMethod:'Bank Transfer'},
-  {id:'NC-0039',client:'Kezia McKenzie',product:'Vitamin C Bar Soap',size:'—',qty:24,source:'WhatsApp',payment:'Unpaid',status:'Pending',date:'Feb 24',total:60,payMethod:'Pending'},
-  {id:'NC-0038',client:'Regal Skin Co.',product:'Yoni Foaming Wash',size:'Gallon',qty:10,source:'Website',payment:'Paid',status:'Complete',date:'Feb 20',total:525,payMethod:'Fygaro'}
-];
+let DB_ORDERS = [];
 
 let DB_MESSAGES = [];
 
@@ -2102,6 +2097,8 @@ const IMG_CLASS = {soap:'img-soap',cream:'img-cream',serum:'img-serum',wash:'img
 function showDashboard() {
   document.getElementById('storefront').style.display = 'none';
   document.getElementById('app').style.display = 'block';
+  updateProductStat();
+  updateBadges();
 }
 function showStorefront() {
   document.getElementById('storefront').style.display = '';
