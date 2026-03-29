@@ -12,10 +12,15 @@
 
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onDocumentUpdated, onDocumentCreated } = require('firebase-functions/v2/firestore');
+const functionsV1 = require('firebase-functions/v1');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue, Timestamp } = require('firebase-admin/firestore');
 
 initializeApp();
+
+// Predictable v1 URL — available immediately after deploy
+const UNSUBSCRIBE_BASE =
+  `https://us-central1-${process.env.GCLOUD_PROJECT || 'najah-chemist'}.cloudfunctions.net/unsubscribe`;
 
 // Keywords that identify packaging/containers — not formula products
 const CONTAINER_KEYWORDS = [
@@ -353,7 +358,10 @@ async function sendResendEmail(to, subject, html) {
 }
 
 // Shared HTML wrapper for all sequence emails
-function wrapEmail(subtitle, bodyHtml) {
+function wrapEmail(subtitle, bodyHtml, unsubscribeUrl) {
+  const unsubLine = unsubscribeUrl
+    ? `<br><a href="${unsubscribeUrl}" style="color:#bbb;font-size:0.72rem;text-decoration:underline;">Unsubscribe from these emails</a>`
+    : '';
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -372,7 +380,7 @@ function wrapEmail(subtitle, bodyHtml) {
         <tr><td style="background:#f5f1ec;padding:20px 32px;text-align:center;">
           <div style="font-size:0.78rem;color:#999;">
             Najah Chemist &nbsp;|&nbsp; najahchemistja.com<br>
-            WhatsApp: +1 (876) 885-1099
+            WhatsApp: +1 (876) 885-1099${unsubLine}
           </div>
         </td></tr>
       </table>
@@ -384,7 +392,7 @@ function wrapEmail(subtitle, bodyHtml) {
 
 // ── Subscriber email bodies ───────────────────────────────────────────────────
 
-function subEmail1Html() {
+function subEmail1Html(unsubscribeUrl) {
   return wrapEmail('Your Free Brand Guide', `
     <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">Welcome to Najah Chemist 🌿</h2>
     <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
@@ -401,10 +409,10 @@ function subEmail1Html() {
     <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
       Inside you'll find the exact products, pricing, and process our brand owners use to go from idea to their first sale.
     </p>
-    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah Chemist Team</p>`);
+    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah Chemist Team</p>`, unsubscribeUrl);
 }
 
-function subEmail2Html() {
+function subEmail2Html(unsubscribeUrl) {
   return wrapEmail('A Few Things Worth Knowing', `
     <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">Did you get a chance to read it? 👀</h2>
     <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
@@ -423,10 +431,10 @@ function subEmail2Html() {
         Start Your Brand →
       </a>
     </div>
-    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah Chemist Team</p>`);
+    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah Chemist Team</p>`, unsubscribeUrl);
 }
 
-function subEmail3Html() {
+function subEmail3Html(unsubscribeUrl) {
   return wrapEmail('Last Nudge', `
     <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">Ready when you are 🌿</h2>
     <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
@@ -443,12 +451,12 @@ function subEmail3Html() {
         Get Started Today →
       </a>
     </div>
-    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah Chemist Team</p>`);
+    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah Chemist Team</p>`, unsubscribeUrl);
 }
 
 // ── Lead email bodies ─────────────────────────────────────────────────────────
 
-function leadEmail1Html(name) {
+function leadEmail1Html(name, unsubscribeUrl) {
   const first = (name || 'there').split(' ')[0];
   return wrapEmail('Next Steps', `
     <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">You're one step closer, ${first} 🌿</h2>
@@ -467,10 +475,10 @@ function leadEmail1Html(name) {
         Browse Products →
       </a>
     </div>
-    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah Chemist Team</p>`);
+    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah Chemist Team</p>`, unsubscribeUrl);
 }
 
-function leadEmail2Html(name) {
+function leadEmail2Html(name, unsubscribeUrl) {
   const first = (name || 'there').split(' ')[0];
   return wrapEmail('Quick Check-In', `
     <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">How's the guide, ${first}?</h2>
@@ -488,10 +496,10 @@ function leadEmail2Html(name) {
         View the Full Catalogue →
       </a>
     </div>
-    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah Chemist Team</p>`);
+    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah Chemist Team</p>`, unsubscribeUrl);
 }
 
-function leadEmail3Html(name) {
+function leadEmail3Html(name, unsubscribeUrl) {
   const first = (name || 'there').split(' ')[0];
   return wrapEmail('Your Brand Is Waiting', `
     <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">Don't let it sit, ${first} 🌿</h2>
@@ -513,16 +521,19 @@ function leadEmail3Html(name) {
         Place Your First Order →
       </a>
     </div>
-    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah Chemist Team</p>`);
+    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah Chemist Team</p>`, unsubscribeUrl);
 }
 
 // Build the HTML for a scheduled email based on its sequence/emailNumber
 function buildScheduledEmailHtml(d) {
+  const unsubUrl = (d.sourceCollection && d.sourceDocId)
+    ? `${UNSUBSCRIBE_BASE}?col=${encodeURIComponent(d.sourceCollection)}&id=${encodeURIComponent(d.sourceDocId)}`
+    : null;
   if (d.sequence === 'subscriber') {
-    return d.emailNumber === 2 ? subEmail2Html() : subEmail3Html();
+    return d.emailNumber === 2 ? subEmail2Html(unsubUrl) : subEmail3Html(unsubUrl);
   }
   if (d.sequence === 'lead') {
-    return d.emailNumber === 2 ? leadEmail2Html(d.recipientName) : leadEmail3Html(d.recipientName);
+    return d.emailNumber === 2 ? leadEmail2Html(d.recipientName, unsubUrl) : leadEmail3Html(d.recipientName, unsubUrl);
   }
   throw new Error(`Unknown sequence: ${d.sequence}`);
 }
@@ -537,13 +548,15 @@ exports.onSubscriberCreated = onDocumentCreated('subscribers/{id}', async (event
     return;
   }
 
-  const db     = getFirestore();
-  const now    = Date.now();
-  const DAY_MS = 24 * 60 * 60 * 1000;
+  const db      = getFirestore();
+  const now     = Date.now();
+  const DAY_MS  = 24 * 60 * 60 * 1000;
+  const docId   = event.params.id;
+  const unsubUrl = `${UNSUBSCRIBE_BASE}?col=subscribers&id=${encodeURIComponent(docId)}`;
 
   // Email 1: send immediately
   try {
-    await sendResendEmail(email, 'Your free skincare brand guide is here 🌿', subEmail1Html());
+    await sendResendEmail(email, 'Your free skincare brand guide is here 🌿', subEmail1Html(unsubUrl));
     console.log(`[onSubscriberCreated] Email 1 sent to ${email}`);
   } catch (err) {
     console.error(`[onSubscriberCreated] Email 1 failed for ${email}:`, err.message);
@@ -556,14 +569,16 @@ exports.onSubscriberCreated = onDocumentCreated('subscribers/{id}', async (event
   ];
   for (const s of toSchedule) {
     await db.collection('scheduledEmails').add({
-      sequence:       'subscriber',
-      recipientEmail: email,
-      recipientName:  '',
-      emailNumber:    s.emailNumber,
-      subject:        s.subject,
-      scheduledAt:    Timestamp.fromMillis(now + s.delayMs),
-      sent:           false,
-      createdAt:      FieldValue.serverTimestamp()
+      sequence:         'subscriber',
+      recipientEmail:   email,
+      recipientName:    '',
+      emailNumber:      s.emailNumber,
+      subject:          s.subject,
+      scheduledAt:      Timestamp.fromMillis(now + s.delayMs),
+      sent:             false,
+      createdAt:        FieldValue.serverTimestamp(),
+      sourceCollection: 'subscribers',
+      sourceDocId:      docId
     });
   }
   console.log(`[onSubscriberCreated] Scheduled emails 2 & 3 for ${email}`);
@@ -580,14 +595,16 @@ exports.onLeadCreated = onDocumentCreated('leads/{id}', async (event) => {
     return;
   }
 
-  const db     = getFirestore();
-  const now    = Date.now();
-  const DAY_MS = 24 * 60 * 60 * 1000;
-  const first  = (name || 'friend').split(' ')[0];
+  const db       = getFirestore();
+  const now      = Date.now();
+  const DAY_MS   = 24 * 60 * 60 * 1000;
+  const first    = (name || 'friend').split(' ')[0];
+  const docId    = event.params.id;
+  const unsubUrl = `${UNSUBSCRIBE_BASE}?col=leads&id=${encodeURIComponent(docId)}`;
 
   // Email 1: send immediately (separate from send-guide.js PDF email)
   try {
-    await sendResendEmail(email, `You're one step closer, ${first} 🌿`, leadEmail1Html(name));
+    await sendResendEmail(email, `You're one step closer, ${first} 🌿`, leadEmail1Html(name, unsubUrl));
     console.log(`[onLeadCreated] Email 1 sent to ${email}`);
   } catch (err) {
     console.error(`[onLeadCreated] Email 1 failed for ${email}:`, err.message);
@@ -600,14 +617,16 @@ exports.onLeadCreated = onDocumentCreated('leads/{id}', async (event) => {
   ];
   for (const s of toSchedule) {
     await db.collection('scheduledEmails').add({
-      sequence:       'lead',
-      recipientEmail: email,
-      recipientName:  name,
-      emailNumber:    s.emailNumber,
-      subject:        s.subject,
-      scheduledAt:    Timestamp.fromMillis(now + s.delayMs),
-      sent:           false,
-      createdAt:      FieldValue.serverTimestamp()
+      sequence:         'lead',
+      recipientEmail:   email,
+      recipientName:    name,
+      emailNumber:      s.emailNumber,
+      subject:          s.subject,
+      scheduledAt:      Timestamp.fromMillis(now + s.delayMs),
+      sent:             false,
+      createdAt:        FieldValue.serverTimestamp(),
+      sourceCollection: 'leads',
+      sourceDocId:      docId
     });
   }
   console.log(`[onLeadCreated] Scheduled emails 2 & 3 for ${email}`);
@@ -633,6 +652,17 @@ exports.sendScheduledEmails = onSchedule(
     for (const doc of due) {
       const d = doc.data();
       try {
+        // Skip if recipient has unsubscribed
+        if (d.sourceCollection && d.sourceDocId) {
+          const sourceSnap = await getFirestore()
+            .collection(d.sourceCollection).doc(d.sourceDocId).get();
+          if (sourceSnap.exists && sourceSnap.data().unsubscribed === true) {
+            await doc.ref.update({ sent: true, skippedReason: 'unsubscribed', sentAt: FieldValue.serverTimestamp() });
+            console.log(`[sendScheduledEmails] Skipped (unsubscribed) ${d.sequence} #${d.emailNumber} → ${d.recipientEmail}`);
+            continue;
+          }
+        }
+
         // Mark sent FIRST — prevents duplicate send if function retries after partial failure
         await doc.ref.update({ sent: true, sentAt: FieldValue.serverTimestamp() });
 
@@ -650,3 +680,56 @@ exports.sendScheduledEmails = onSchedule(
     console.log('[sendScheduledEmails] Done.');
   }
 );
+
+// ── HTTP: unsubscribe ─────────────────────────────────────────────────────────
+// URL: https://us-central1-{PROJECT_ID}.cloudfunctions.net/unsubscribe
+// Query params: col (subscribers|leads), id (Firestore doc ID)
+
+exports.unsubscribe = functionsV1.https.onRequest(async (req, res) => {
+  const col = req.query.col;
+  const id  = req.query.id;
+
+  if (!['subscribers', 'leads'].includes(col) || !id) {
+    res.status(400).send('Invalid unsubscribe link.');
+    return;
+  }
+
+  try {
+    const db = getFirestore();
+    await db.collection(col).doc(id).update({
+      unsubscribed:    true,
+      unsubscribedAt:  FieldValue.serverTimestamp()
+    });
+    console.log(`[unsubscribe] ${col}/${id} marked unsubscribed`);
+  } catch (err) {
+    console.error('[unsubscribe] Error:', err.message);
+    res.status(500).send('Something went wrong. Please try again or reply to the email to unsubscribe.');
+    return;
+  }
+
+  res.set('Content-Type', 'text/html');
+  res.send(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Unsubscribed — Najah Chemist</title>
+  <style>
+    body { margin: 0; padding: 0; background: #faf8f5; font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .box { text-align: center; padding: 2.5rem 2rem; max-width: 420px; }
+    .check { font-size: 2.5rem; margin-bottom: 1rem; }
+    h2 { margin: 0 0 0.6rem; font-size: 1.3rem; color: #1a1a1a; }
+    p { color: #666; font-size: 0.88rem; line-height: 1.6; margin: 0 0 1.5rem; }
+    a { color: #1a1a1a; font-size: 0.82rem; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="check">✓</div>
+    <h2>You've been unsubscribed</h2>
+    <p>You won't receive any more emails from Najah Chemist.<br>If this was a mistake, reply to any of our emails and we'll re-add you.</p>
+    <a href="https://najahchemistja.com">← Back to Najah Chemist</a>
+  </div>
+</body>
+</html>`);
+});
