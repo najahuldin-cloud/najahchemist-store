@@ -844,8 +844,87 @@ tr:hover td{background:var(--warm);}
   };
   </script>
 
-  <!-- Footer -->
-  
+<!-- CLIENT PORTAL (Public) -->
+<section id="sf-portal" style="background:white;padding:4.5rem 2rem;border-top:1px solid #E8E4DE;">
+  <div style="max-width:1200px;margin:0 auto;">
+    <div class="sf-section-label">Client Portal</div>
+    <h2 class="sf-section-h2">Submit orders · Track status · <em>Message us</em></h2>
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:2rem;align-items:start;">
+      <div>
+        <div class="tabs">
+          <button class="tab on" id="sfcp-btn-submit" onclick="sfCpTab('submit',this)">Submit Order</button>
+          <button class="tab" id="sfcp-btn-track" onclick="sfCpTab('track',this)">Track</button>
+          <button class="tab" id="sfcp-btn-docs" onclick="sfCpTab('docs',this)">Documents</button>
+          <button class="tab" id="sfcp-btn-msg" onclick="sfCpTab('msg',this)">Message</button>
+        </div>
+        <!-- Submit Order -->
+        <div class="tc on" id="sfcp-submit">
+          <div class="card">
+            <div class="clbl">Custom / Private Label Order</div>
+            <div class="fg"><label class="fl">Brand / Your Name</label><input class="fi" id="sfcp-po-name" placeholder="e.g. Regal Skin Co."></div>
+            <div class="fg"><label class="fl">Email</label><input class="fi" id="sfcp-po-email" type="email" placeholder="your@email.com"></div>
+            <div class="fg"><label class="fl">WhatsApp</label><input class="fi" id="sfcp-po-phone" placeholder="Include country code — e.g. 18768851099"><div style="font-size:0.72rem;color:#8A8480;margin-top:0.2rem;">Include country code — example: 18768851099 or 16582019466</div></div>
+            <div class="fg"><label class="fl">Product</label><select class="fs" id="sfcp-po-prod"><option>Bar Soap</option><option>Cream / Lotion</option><option>Serum</option><option>Feminine Wash</option><option>Hair Product</option><option>Custom Formula</option></select></div>
+            <div class="g2">
+              <div class="fg"><label class="fl">Size</label><select class="fs" id="sfcp-po-size"><option>Bar Soap (no sizes)</option><option>Litre</option><option>Gallon</option><option>5 Gallon</option></select></div>
+              <div class="fg"><label class="fl">Quantity</label><input class="fi" id="sfcp-po-qty" type="number" placeholder="e.g. 50"></div>
+            </div>
+            <div class="fg"><label class="fl">Scent / Variant</label><input class="fi" id="sfcp-po-scent" placeholder="e.g. Lavender"></div>
+            <div class="fg"><label class="fl">Instructions</label><textarea class="ft" id="sfcp-po-notes" placeholder="Label design, ingredients, skin concerns..."></textarea></div>
+            <button class="sf-btn-wa" style="width:100%;border-radius:10px;margin-top:0.5rem;" onclick="sfCpSubPO()">Submit Order Request via WhatsApp →</button>
+          </div>
+        </div>
+        <!-- Track -->
+        <div class="tc" id="sfcp-track">
+          <div class="card">
+            <div class="clbl">Track Your Order</div>
+            <div class="fg"><label class="fl">Order ID or Email</label><div style="display:flex;gap:0.5rem;"><input class="fi" id="sfcp-trk-in" placeholder="Order ID or email"><button class="btn btn-dk btn-sm" onclick="sfCpDoTrack()">Track</button></div></div>
+            <div id="sfcp-trk-out"><p style="font-size:0.8rem;color:#8A8480;margin-top:0.75rem;">Enter your Order ID or email above to track your order.</p></div>
+          </div>
+        </div>
+        <!-- Documents -->
+        <div class="tc" id="sfcp-docs">
+          <div class="card">
+            <div class="clbl">Your Documents</div>
+            <table><thead><tr><th>Document</th><th>Date</th><th></th></tr></thead><tbody>
+              <tr><td>Invoice NC-0038</td><td>Feb 20</td><td><button class="btn btn-ol btn-sm" onclick="alert('Downloading...')">Download</button></td></tr>
+              <tr><td>Private Label Agreement</td><td>Jan 15</td><td><button class="btn btn-ol btn-sm" onclick="alert('Downloading...')">Download</button></td></tr>
+            </tbody></table>
+          </div>
+        </div>
+        <!-- Message -->
+        <div class="tc" id="sfcp-msg">
+          <div class="card">
+            <div class="clbl">Send a Message</div>
+            <div class="fg"><label class="fl">Name</label><input class="fi" id="sfcp-pm-name" placeholder="Name or brand"></div>
+            <div class="fg"><label class="fl">Email</label><input class="fi" id="sfcp-pm-email" type="email" placeholder="your@email.com"></div>
+            <div class="fg"><label class="fl">Subject</label><select class="fs" id="sfcp-pm-subj"><option>Private Label Question</option><option>Order Issue</option><option>Formulation Inquiry</option><option>Pricing / Quote</option><option>Other</option></select></div>
+            <div class="fg"><label class="fl">Message</label><textarea class="ft" id="sfcp-pm-body" placeholder="How can we help?"></textarea></div>
+            <button class="sf-btn-wa" style="width:100%;border-radius:10px;margin-top:0.5rem;" onclick="sfCpSendMsg()">Send Message via WhatsApp →</button>
+          </div>
+        </div>
+      </div>
+      <!-- Sidebar -->
+      <div>
+        <div class="card" style="background:#0F0E0D;color:white;border-color:#0F0E0D;margin-bottom:1.25rem;">
+          <div class="clbl" style="color:#9CA3AF;">Private Label Info</div>
+          <div style="font-size:0.82rem;line-height:1.9;color:#D1D5DB;">
+            <div class="info-row" style="border-color:#333;"><span>Min Order</span><span style="color:white;font-weight:600;">1 Litre / 2 lbs</span></div>
+            <div class="info-row" style="border-color:#333;"><span>Lead Time</span><span style="color:white;font-weight:600;">2–3 business days</span></div>
+            <div class="info-row" style="border-color:#333;"><span>Sizes</span><span style="color:white;font-weight:600;">Litre · Gallon · 5 Gallon</span></div>
+            <div class="info-row" style="border-color:#333;"><span>Shipping</span><span style="color:white;font-weight:600;">Island-wide via Knutsford &amp; Zipmail</span></div>
+            <div class="info-row" style="border-color:transparent;"><span>Payment</span><span style="color:white;font-weight:600;">NCB · Lynk · Card</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="clbl">We Accept</div>
+          <div style="font-size:0.81rem;color:#8A8480;line-height:2.2;">🌐 Online card payments (Fygaro)<br>🏦 Bank Transfer (NCB)<br>📱 Lynk mobile wallet<br>🚫 No COD — payment required before processing</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- Email Popup -->
 <div class="sf-overlay" id="sf-email-popup" style="z-index:600;">
   <div class="sf-modal" style="max-width:420px;border-radius:20px;">
@@ -882,8 +961,17 @@ tr:hover td{background:var(--warm);}
 </div>
 
 <footer class="sf-footer">
-    <p>© 2026 Najah Chemist · Jamaica's Professional-Grade Skincare Manufacturer · <a href="/cdn-cgi/l/email-protection#394a4d584b4d7957585358515a515c54504a4d175a5654"><span class="__cf_email__" data-cfemail="790a0d180b0d3917181318111a111c14100a0d571a1614">[email&#160;protected]</span></a></p>
-  </footer>
+  <p>© 2026 Najah Chemist · Jamaica's Professional-Grade Skincare Manufacturer</p>
+  <p style="margin-top:0.4rem;">
+    <a href="mailto:start@najahchemistja.com">start@najahchemistja.com</a>
+    &nbsp;·&nbsp;
+    <a href="https://instagram.com/najahchemist" target="_blank" rel="noopener">Instagram</a>
+    &nbsp;·&nbsp;
+    <a href="https://tiktok.com/@najahchemist" target="_blank" rel="noopener">TikTok</a>
+    &nbsp;·&nbsp;
+    @najahchemist
+  </p>
+</footer>
 
   <!-- Product detail modal -->
   <div class="sf-overlay" id="sf-modal" onclick="if(event.target===this)closeSfModal()">
@@ -3839,6 +3927,77 @@ function waOrder(productName) {
 window.waOrder = waOrder;
 window.SYS = SYS;
 window.WA_NUMBER = WA_NUMBER;
+
+// ── Public Client Portal ──────────────────────────────────────────────────────
+
+window.sfCpTab = function(tab, btn) {
+  ['submit','track','docs','msg'].forEach(function(t) {
+    var panel = document.getElementById('sfcp-' + t);
+    var b = document.getElementById('sfcp-btn-' + t);
+    if (panel) panel.classList.toggle('on', t === tab);
+    if (b) b.classList.toggle('on', t === tab);
+  });
+};
+
+window.sfCpSubPO = function() {
+  var n    = (document.getElementById('sfcp-po-name')?.value  || '').trim();
+  var e    = (document.getElementById('sfcp-po-email')?.value || '').trim();
+  var ph   = (document.getElementById('sfcp-po-phone')?.value || '').trim();
+  var prod = document.getElementById('sfcp-po-prod')?.value   || '';
+  var size = document.getElementById('sfcp-po-size')?.value   || '';
+  var qty  = (document.getElementById('sfcp-po-qty')?.value   || '').trim();
+  var scent= (document.getElementById('sfcp-po-scent')?.value || '').trim();
+  var notes= (document.getElementById('sfcp-po-notes')?.value || '').trim();
+  if (!n || !e) { alert('Please fill in your name and email.'); return; }
+  var msg = "Hi Najah Chemist! I'd like to submit an order request.\n\n"
+    + '*Brand / Name:* ' + n + '\n'
+    + '*Email:* ' + e + '\n'
+    + (ph    ? '*WhatsApp:* ' + ph + '\n'            : '')
+    + '*Product:* ' + prod + '\n'
+    + '*Size:* ' + size + '\n'
+    + (qty   ? '*Quantity:* ' + qty + '\n'           : '')
+    + (scent ? '*Scent / Variant:* ' + scent + '\n'  : '')
+    + (notes ? '*Instructions:* ' + notes             : '');
+  window.open('https://wa.me/18768851099?text=' + encodeURIComponent(msg), '_blank');
+};
+
+window.sfCpDoTrack = function() {
+  var q   = (document.getElementById('sfcp-trk-in')?.value || '').trim().toLowerCase();
+  var out = document.getElementById('sfcp-trk-out');
+  if (!q) {
+    if (out) out.innerHTML = '<p style="font-size:0.8rem;color:#8A8480;margin-top:0.75rem;">Enter your Order ID or email above to track your order.</p>';
+    return;
+  }
+  var map = window.ordersMap || {};
+  var order = map[q] || Object.values(map).find(function(o) {
+    return (o.email || o.customerEmail || '').toLowerCase() === q;
+  });
+  if (!order) {
+    if (out) out.innerHTML = '<p style="font-size:0.8rem;color:#991B1B;margin-top:0.75rem;">No order found for <strong>' + q + '</strong>. Double-check your Order ID or email, or <a href="https://wa.me/18768851099" style="color:#0F0E0D;font-weight:600;">contact us on WhatsApp</a>.</p>';
+    return;
+  }
+  var statusColor = {Pending:'#B45309',Processing:'#1D4ED8',Shipped:'#7C3AED',Complete:'#065F46'}[order.status] || '#374151';
+  if (out) out.innerHTML = '<div style="margin-top:0.75rem;padding:1rem;background:#F9F8F6;border:1px solid #E8E4DE;border-radius:10px;font-size:0.85rem;">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;">'
+    + '<strong>' + (order.id || '') + '</strong>'
+    + '<span style="background:' + statusColor + ';color:white;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.72rem;font-weight:600;">' + (order.status || '') + '</span>'
+    + '</div>'
+    + '<div style="color:#8A8480;line-height:1.8;">'
+    + (order.client || order.customerName ? '<div><span style="color:#555;">Client:</span> ' + (order.client || order.customerName) + '</div>' : '')
+    + (order.product ? '<div><span style="color:#555;">Product:</span> ' + order.product + (order.size && order.size !== '—' ? ' · ' + order.size : '') + '</div>' : '')
+    + (order.date ? '<div><span style="color:#555;">Date:</span> ' + order.date + '</div>' : '')
+    + (order.tracking?.courier ? '<div><span style="color:#555;">Courier:</span> ' + order.tracking.courier + (order.tracking.trackingNumber ? ' · ' + order.tracking.trackingNumber : '') + '</div>' : '')
+    + '</div></div>';
+};
+
+window.sfCpSendMsg = function() {
+  var n = (document.getElementById('sfcp-pm-name')?.value || '').trim();
+  var b = (document.getElementById('sfcp-pm-body')?.value || '').trim();
+  if (!n || !b) { alert('Please fill in your name and message.'); return; }
+  var subj = document.getElementById('sfcp-pm-subj')?.value || '';
+  var msg = 'Hi Najah Chemist!\n\n*Subject:* ' + subj + '\n*From:* ' + n + '\n\n' + b;
+  window.open('https://wa.me/18768851099?text=' + encodeURIComponent(msg), '_blank');
+};
 
 </script>
 
