@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Place Your Order — Najah Chemist</title>
+  <meta name="description" content="Submit your wholesale or private label order with Najah Chemist. We process within 2–3 business days.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --black: #0F0E0D;
+      --off: #FAFAF8;
+      --warm: #F5F2ED;
+      --warmer: #EDE8DF;
+      --mid: #8A8480;
+      --light: #DDD9D3;
+      --border: #E8E4DE;
+      --white: #FFFFFF;
+      --green: #2D6A4F;
+      --red: #DC2626;
+      --blue: #1D4ED8;
+      --gold: #B45309;
+      --text: #1C1A18;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Outfit', sans-serif; background: var(--off); color: var(--text); min-height: 100vh; }
+
+    /* ── Nav ── */
+    .sf-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 300; padding: 0 2rem; height: 68px; display: flex; align-items: center; justify-content: space-between; background: rgba(250,250,248,0.92); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0,0,0,0.06); }
+    .sf-logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
+    .sf-mark { width: 38px; height: 38px; background: #0F0E0D; display: flex; align-items: center; justify-content: center; }
+    .sf-mark span { color: white; font-weight: 700; font-size: 0.82rem; letter-spacing: -0.02em; }
+    .sf-brand { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; color: #0F0E0D; }
+    .sf-nav-links { display: flex; align-items: center; gap: 0.2rem; }
+    .sf-nav-link { padding: 0.4rem 0.9rem; background: none; font-family: 'Outfit', sans-serif; font-size: 0.78rem; font-weight: 500; color: #8A8480; border-radius: 6px; transition: all 0.18s; text-decoration: none; }
+    .sf-nav-link:hover { color: #0F0E0D; background: #F0EDE8; }
+    .sf-nav-wa { padding: 0.42rem 1.1rem; background: #25D366; color: white; border: none; border-radius: 20px; font-family: 'Outfit', sans-serif; font-size: 0.78rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; transition: all 0.2s; text-decoration: none; }
+    .sf-nav-wa:hover { background: #1ebe5a; transform: translateY(-1px); }
+
+    /* ── Page body ── */
+    .cp-page { padding: 6rem 2rem 5rem; max-width: 1200px; margin: 0 auto; }
+    .sf-section-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.18em; color: #B45309; margin-bottom: 0.6rem; }
+    .sf-section-h2 { font-family: 'Playfair Display', serif; font-size: clamp(1.8rem, 3.5vw, 2.6rem); font-weight: 700; color: #0F0E0D; line-height: 1.15; margin-bottom: 0.5rem; }
+    .sf-section-sub { font-size: 0.88rem; color: #8A8480; margin-bottom: 2.5rem; max-width: 500px; }
+
+    /* ── Cards & forms ── */
+    .card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 1.4rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+    .clbl { font-size: 0.67rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--mid); margin-bottom: 0.85rem; }
+    .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .fg { margin-bottom: 0.9rem; }
+    .fl { display: block; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--mid); margin-bottom: 0.32rem; }
+    .fi, .fs, .ft { width: 100%; padding: 0.6rem 0.85rem; border: 1.5px solid var(--border); border-radius: 8px; font-family: 'Outfit', sans-serif; font-size: 0.85rem; background: var(--white); color: var(--text); outline: none; transition: border 0.18s; }
+    .fi:focus, .fs:focus, .ft:focus { border-color: var(--black); }
+    .ft { resize: vertical; min-height: 75px; }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 0.3rem; margin-bottom: 1.4rem; border-bottom: 1.5px solid var(--border); }
+    .tab { padding: 0.48rem 1rem; border: none; background: none; font-family: 'Outfit', sans-serif; font-size: 0.78rem; font-weight: 500; color: var(--mid); cursor: pointer; transition: all 0.18s; border-bottom: 2px solid transparent; margin-bottom: -1.5px; }
+    .tab.on { color: var(--black); border-bottom-color: var(--black); font-weight: 600; }
+    .tab:hover:not(.on) { color: var(--text); }
+    .tc { display: none; }
+    .tc.on { display: block; animation: up 0.2s ease; }
+    @keyframes up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── Buttons ── */
+    .btn { padding: 0.58rem 1.3rem; border-radius: 8px; font-family: 'Outfit', sans-serif; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.18s; border: none; }
+    .btn-dk { background: var(--black); color: var(--white); }
+    .btn-dk:hover { background: #333; transform: translateY(-1px); }
+    .btn-ol { background: var(--white); color: var(--black); border: 1.5px solid var(--black); }
+    .btn-ol:hover { background: var(--black); color: var(--white); }
+    .btn-sm { padding: 0.3rem 0.8rem; font-size: 0.73rem; }
+    .sf-btn-wa { padding: 0.8rem 1.6rem; background: #25D366; color: white; border: none; border-radius: 8px; font-family: 'Outfit', sans-serif; font-size: 0.88rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s; }
+    .sf-btn-wa:hover { background: #1ebe5a; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(37,211,102,0.3); }
+
+    /* ── Info rows ── */
+    .info-row { display: flex; justify-content: space-between; padding: 0.38rem 0; border-bottom: 1px solid var(--border); font-size: 0.83rem; }
+    .info-row:last-child { border-bottom: none; }
+
+    /* ── Table ── */
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 0.6rem 0.9rem; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--mid); border-bottom: 1.5px solid var(--border); font-weight: 600; }
+    td { padding: 0.82rem 0.9rem; font-size: 0.83rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--warm); }
+
+    /* ── Footer ── */
+    .sf-footer { background: #0A0908; padding: 2rem; text-align: center; margin-top: 4rem; }
+    .sf-footer p { font-size: 0.75rem; color: #4B5563; }
+    .sf-footer a { color: #6B7280; text-decoration: none; }
+    .sf-footer a:hover { color: #9CA3AF; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .cp-grid { grid-template-columns: 1fr !important; }
+      .cp-sidebar { order: -1; }
+      .g2 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .sf-nav { padding: 0 0.75rem; }
+      .sf-nav-links { display: none; }
+      .cp-page { padding: 5rem 1rem 3rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav class="sf-nav">
+    <a class="sf-logo" href="/">
+      <div class="sf-mark"><span>Nc</span></div>
+      <span class="sf-brand">Najah Chemist</span>
+    </a>
+    <div class="sf-nav-links">
+      <a class="sf-nav-link" href="/#sf-products">Products</a>
+      <a class="sf-nav-link" href="/#sf-about">About</a>
+      <a class="sf-nav-link" href="/#sf-reviews-section">Reviews</a>
+      <a class="sf-nav-link" href="/#sf-faq">FAQ</a>
+      <a class="sf-nav-link" href="/#sf-policies">Policies</a>
+    </div>
+    <a class="sf-nav-wa" href="https://wa.me/18768851099" target="_blank" rel="noopener">💬 WhatsApp Us</a>
+  </nav>
+
+  <!-- Main -->
+  <main class="cp-page">
+    <h1 class="sf-section-h2" style="margin-bottom:0.4rem;">Place Your Order</h1>
+    <p class="sf-section-sub">Fill out the form below and we'll begin processing your order within 2–3 business days.</p>
+
+    <div class="cp-grid" style="display:grid;grid-template-columns:1fr 300px;gap:2rem;align-items:start;">
+      <!-- Tabs panel -->
+      <div>
+        <div class="tabs">
+          <button class="tab on" id="sfcp-btn-submit" onclick="cpTab('submit',this)">Submit Order</button>
+          <button class="tab" id="sfcp-btn-track" onclick="cpTab('track',this)">Track</button>
+          <button class="tab" id="sfcp-btn-docs" onclick="cpTab('docs',this)">Documents</button>
+          <button class="tab" id="sfcp-btn-msg" onclick="cpTab('msg',this)">Message</button>
+        </div>
+
+        <!-- Submit Order -->
+        <div class="tc on" id="sfcp-submit">
+          <div class="card">
+            <div class="clbl">Custom / Private Label Order</div>
+            <div class="fg"><label class="fl">Brand / Your Name</label><input class="fi" id="sfcp-po-name" placeholder="e.g. Regal Skin Co."></div>
+            <div class="fg"><label class="fl">Email</label><input class="fi" id="sfcp-po-email" type="email" placeholder="your@email.com"></div>
+            <div class="fg">
+              <label class="fl">WhatsApp</label>
+              <input class="fi" id="sfcp-po-phone" placeholder="Include country code — e.g. 18768851099">
+              <div style="font-size:0.72rem;color:#8A8480;margin-top:0.2rem;">Include country code — example: 18768851099 or 16582019466</div>
+            </div>
+            <div class="fg"><label class="fl">Product</label>
+              <select class="fs" id="sfcp-po-prod">
+                <option>Bar Soap</option>
+                <option>Cream / Lotion</option>
+                <option>Serum</option>
+                <option>Feminine Wash</option>
+                <option>Hair Product</option>
+                <option>Custom Formula</option>
+              </select>
+            </div>
+            <div class="g2">
+              <div class="fg"><label class="fl">Size</label>
+                <select class="fs" id="sfcp-po-size">
+                  <option>Bar Soap (no sizes)</option>
+                  <option>Litre</option>
+                  <option>Gallon</option>
+                  <option>5 Gallon</option>
+                </select>
+              </div>
+              <div class="fg"><label class="fl">Quantity</label><input class="fi" id="sfcp-po-qty" type="number" placeholder="e.g. 50"></div>
+            </div>
+            <div class="fg"><label class="fl">Scent / Variant</label><input class="fi" id="sfcp-po-scent" placeholder="e.g. Lavender"></div>
+            <div class="fg"><label class="fl">Instructions</label><textarea class="ft" id="sfcp-po-notes" placeholder="Label design, ingredients, skin concerns..."></textarea></div>
+            <button class="sf-btn-wa" style="width:100%;border-radius:10px;margin-top:0.5rem;justify-content:center;" onclick="cpSubPO()">Submit Order Request via WhatsApp →</button>
+          </div>
+        </div>
+
+        <!-- Track -->
+        <div class="tc" id="sfcp-track">
+          <div class="card">
+            <div class="clbl">Track Your Order</div>
+            <div class="fg">
+              <label class="fl">Order ID or Email</label>
+              <div style="display:flex;gap:0.5rem;">
+                <input class="fi" id="sfcp-trk-in" placeholder="Order ID or email">
+                <button class="btn btn-dk btn-sm" onclick="cpDoTrack()">Track</button>
+              </div>
+            </div>
+            <div id="sfcp-trk-out"><p style="font-size:0.8rem;color:#8A8480;margin-top:0.75rem;">Enter your Order ID or email above to track your order.</p></div>
+          </div>
+        </div>
+
+        <!-- Documents -->
+        <div class="tc" id="sfcp-docs">
+          <div class="card">
+            <div class="clbl">Your Documents</div>
+            <table>
+              <thead><tr><th>Document</th><th>Date</th><th></th></tr></thead>
+              <tbody>
+                <tr><td>Invoice NC-0038</td><td>Feb 20</td><td><button class="btn btn-ol btn-sm" onclick="alert('Downloading...')">Download</button></td></tr>
+                <tr><td>Private Label Agreement</td><td>Jan 15</td><td><button class="btn btn-ol btn-sm" onclick="alert('Downloading...')">Download</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Message -->
+        <div class="tc" id="sfcp-msg">
+          <div class="card">
+            <div class="clbl">Send a Message</div>
+            <div class="fg"><label class="fl">Name</label><input class="fi" id="sfcp-pm-name" placeholder="Name or brand"></div>
+            <div class="fg"><label class="fl">Email</label><input class="fi" id="sfcp-pm-email" type="email" placeholder="your@email.com"></div>
+            <div class="fg"><label class="fl">Subject</label>
+              <select class="fs" id="sfcp-pm-subj">
+                <option>Private Label Question</option>
+                <option>Order Issue</option>
+                <option>Formulation Inquiry</option>
+                <option>Pricing / Quote</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="fg"><label class="fl">Message</label><textarea class="ft" id="sfcp-pm-body" placeholder="How can we help?"></textarea></div>
+            <button class="sf-btn-wa" style="width:100%;border-radius:10px;margin-top:0.5rem;justify-content:center;" onclick="cpSendMsg()">Send Message via WhatsApp →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="cp-sidebar">
+        <div class="card" style="background:#0F0E0D;color:white;border-color:#0F0E0D;margin-bottom:1.25rem;">
+          <div class="clbl" style="color:#9CA3AF;">Private Label Info</div>
+          <div style="font-size:0.82rem;line-height:1.9;color:#D1D5DB;">
+            <div class="info-row" style="border-color:#333;"><span>Min Order</span><span style="color:white;font-weight:600;">1 Litre / 2 lbs</span></div>
+            <div class="info-row" style="border-color:#333;"><span>Lead Time</span><span style="color:white;font-weight:600;">2–3 business days</span></div>
+            <div class="info-row" style="border-color:#333;"><span>Sizes</span><span style="color:white;font-weight:600;">Litre · Gallon · 5 Gallon</span></div>
+            <div class="info-row" style="border-color:#333;"><span>Shipping</span><span style="color:white;font-weight:600;">Island-wide via Knutsford &amp; Zipmail</span></div>
+            <div class="info-row" style="border-color:transparent;"><span>Payment</span><span style="color:white;font-weight:600;">NCB · Lynk · Card</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="clbl">We Accept</div>
+          <div style="font-size:0.81rem;color:#8A8480;line-height:2.2;">🌐 Online card payments (Fygaro)<br>🏦 Bank Transfer (NCB)<br>📱 Lynk mobile wallet<br>🚫 No COD — payment required before processing</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="sf-footer">
+    <p>© 2026 Najah Chemist · Jamaica's Professional-Grade Skincare Manufacturer</p>
+    <p style="margin-top:0.4rem;">
+      <a href="mailto:start@najahchemistja.com">start@najahchemistja.com</a>
+      &nbsp;·&nbsp;
+      <a href="https://instagram.com/najahchemist" target="_blank" rel="noopener">Instagram</a>
+      &nbsp;·&nbsp;
+      <a href="https://tiktok.com/@najahchemist" target="_blank" rel="noopener">TikTok</a>
+      &nbsp;·&nbsp;
+      @najahchemist
+    </p>
+  </footer>
+
+  <script>
+    function cpTab(tab) {
+      ['submit','track','docs','msg'].forEach(function(t) {
+        var panel = document.getElementById('sfcp-' + t);
+        var btn = document.getElementById('sfcp-btn-' + t);
+        if (panel) panel.classList.toggle('on', t === tab);
+        if (btn) btn.classList.toggle('on', t === tab);
+      });
+    }
+
+    function cpSubPO() {
+      var n     = (document.getElementById('sfcp-po-name').value  || '').trim();
+      var e     = (document.getElementById('sfcp-po-email').value || '').trim();
+      var ph    = (document.getElementById('sfcp-po-phone').value || '').trim();
+      var prod  = document.getElementById('sfcp-po-prod').value   || '';
+      var size  = document.getElementById('sfcp-po-size').value   || '';
+      var qty   = (document.getElementById('sfcp-po-qty').value   || '').trim();
+      var scent = (document.getElementById('sfcp-po-scent').value || '').trim();
+      var notes = (document.getElementById('sfcp-po-notes').value || '').trim();
+      if (!n || !e) { alert('Please fill in your name and email.'); return; }
+      var msg = "Hi Najah Chemist! I'd like to submit an order request.\n\n"
+        + '*Brand / Name:* ' + n + '\n'
+        + '*Email:* ' + e + '\n'
+        + (ph    ? '*WhatsApp:* ' + ph + '\n'           : '')
+        + '*Product:* ' + prod + '\n'
+        + '*Size:* ' + size + '\n'
+        + (qty   ? '*Quantity:* ' + qty + '\n'          : '')
+        + (scent ? '*Scent / Variant:* ' + scent + '\n' : '')
+        + (notes ? '*Instructions:* ' + notes            : '');
+      window.open('https://wa.me/18768851099?text=' + encodeURIComponent(msg), '_blank');
+    }
+
+    function cpDoTrack() {
+      var q   = (document.getElementById('sfcp-trk-in').value || '').trim();
+      var out = document.getElementById('sfcp-trk-out');
+      if (!q) {
+        out.innerHTML = '<p style="font-size:0.8rem;color:#8A8480;margin-top:0.75rem;">Enter your Order ID or email above to track your order.</p>';
+        return;
+      }
+      var msg = 'Hi Najah Chemist! I\'d like to track my order: *' + q + '*. Can you give me an update?';
+      out.innerHTML = '<div style="margin-top:0.75rem;padding:1rem;background:#F9F8F6;border:1px solid #E8E4DE;border-radius:10px;font-size:0.85rem;">'
+        + '<p style="margin-bottom:0.75rem;color:#1C1A18;">We\'ll look up <strong>' + q + '</strong> for you on WhatsApp.</p>'
+        + '<a href="https://wa.me/18768851099?text=' + encodeURIComponent(msg) + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.5rem 1.1rem;background:#25D366;color:white;border-radius:8px;font-size:0.82rem;font-weight:600;text-decoration:none;">💬 Track on WhatsApp</a>'
+        + '</div>';
+    }
+
+    function cpSendMsg() {
+      var n = (document.getElementById('sfcp-pm-name').value || '').trim();
+      var b = (document.getElementById('sfcp-pm-body').value || '').trim();
+      if (!n || !b) { alert('Please fill in your name and message.'); return; }
+      var subj = document.getElementById('sfcp-pm-subj').value || '';
+      var msg = 'Hi Najah Chemist!\n\n*Subject:* ' + subj + '\n*From:* ' + n + '\n\n' + b;
+      window.open('https://wa.me/18768851099?text=' + encodeURIComponent(msg), '_blank');
+    }
+  </script>
+
+</body>
+</html>
