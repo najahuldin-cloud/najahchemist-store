@@ -334,10 +334,20 @@ tr:hover td{background:var(--warm);}
 .sf-cta-p { color:#9CA3AF; font-size:0.9rem; margin-bottom:2rem; }
 .sf-cta-btns { display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap; }
 
-.sf-footer { background:#0A0908; padding:2rem; text-align:center; }
-.sf-footer p { font-size:0.75rem; color:#4B5563; }
-.sf-footer a { color:#6B7280; text-decoration:none; }
-.sf-footer a:hover { color:#9CA3AF; }
+.sf-footer { background:#0A0908; border-top:1px solid rgba(255,255,255,0.06); }
+.sf-footer-main { max-width:1100px; margin:0 auto; padding:2.8rem 2rem 2rem; display:grid; grid-template-columns:1fr auto 1fr; gap:2rem; align-items:start; }
+.sf-footer-brand-name { font-family:'Playfair Display',serif; font-size:1.1rem; font-weight:700; color:white; margin-bottom:0.35rem; }
+.sf-footer-brand-tag { font-size:0.72rem; color:#6B7280; letter-spacing:0.04em; line-height:1.5; }
+.sf-footer-links { display:flex; flex-direction:column; gap:0.55rem; align-items:center; }
+.sf-footer-links-title { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#4B5563; margin-bottom:0.2rem; }
+.sf-footer-link { font-size:0.78rem; color:#9CA3AF; text-decoration:none; transition:color 0.15s; }
+.sf-footer-link:hover { color:#B45309; }
+.sf-footer-contact { text-align:right; display:flex; flex-direction:column; gap:0.45rem; }
+.sf-footer-contact-title { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#4B5563; margin-bottom:0.2rem; }
+.sf-footer-contact a, .sf-footer-contact span { font-size:0.78rem; color:#9CA3AF; text-decoration:none; display:block; transition:color 0.15s; }
+.sf-footer-contact a:hover { color:#B45309; }
+.sf-footer-bar { border-top:1px solid rgba(255,255,255,0.05); padding:0.9rem 2rem; text-align:center; }
+.sf-footer-bar p { font-size:0.7rem; color:#374151; }
 
 /* Product detail modal for storefront */
 .sf-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:500; align-items:center; justify-content:center; padding:1rem; }
@@ -399,6 +409,9 @@ tr:hover td{background:var(--warm);}
   .sf-cta-btns{flex-direction:column;align-items:stretch;}
   .sf-modal-body{padding:1.1rem 1.2rem 1.5rem;}
   .sf-modal-img{height:180px;}
+  .sf-footer-main{grid-template-columns:1fr;gap:2rem;padding:2rem 1.2rem 1.5rem;}
+  .sf-footer-links{align-items:flex-start;}
+  .sf-footer-contact{text-align:left;}
 }
 
 
@@ -898,16 +911,34 @@ tr:hover td{background:var(--warm);}
 </div>
 
 <footer class="sf-footer">
-  <p>© 2026 Najah Chemist · Jamaica's Professional-Grade Skincare Manufacturer</p>
-  <p style="margin-top:0.4rem;">
-    <a href="mailto:start@najahchemistja.com">start@najahchemistja.com</a>
-    &nbsp;·&nbsp;
-    <a href="https://instagram.com/najahchemist" target="_blank" rel="noopener">Instagram</a>
-    &nbsp;·&nbsp;
-    <a href="https://tiktok.com/@najahchemist" target="_blank" rel="noopener">TikTok</a>
-    &nbsp;·&nbsp;
-    @najahchemist
-  </p>
+  <div class="sf-footer-main">
+
+    <!-- Brand -->
+    <div>
+      <div class="sf-footer-brand-name">Najah Chemist</div>
+      <div class="sf-footer-brand-tag">Jamaica's Private Label Skincare Manufacturer</div>
+    </div>
+
+    <!-- Quick links -->
+    <div class="sf-footer-links">
+      <div class="sf-footer-links-title">Quick Links</div>
+      <a href="/start" class="sf-footer-link">Start Your Brand</a>
+      <a href="/wholesale-prices" class="sf-footer-link">Wholesale Price List</a>
+      <a href="/track" class="sf-footer-link">Track Your Order</a>
+    </div>
+
+    <!-- Contact -->
+    <div class="sf-footer-contact">
+      <div class="sf-footer-contact-title">Contact</div>
+      <a href="mailto:start@najahchemistja.com">start@najahchemistja.com</a>
+      <a href="https://wa.me/18768851099" target="_blank" rel="noopener">+1876-885-1099</a>
+      <a href="https://instagram.com/najahchemist" target="_blank" rel="noopener">@najahchemist</a>
+    </div>
+
+  </div>
+  <div class="sf-footer-bar">
+    <p>© 2026 Najah Chemist · Jamaica's Professional-Grade Skincare Manufacturer</p>
+  </div>
 </footer>
 
   <!-- Product detail modal -->
