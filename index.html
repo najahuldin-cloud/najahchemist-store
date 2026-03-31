@@ -3973,7 +3973,7 @@ function sfRenderProducts(filter) {
       : '';
     const learnMoreUrl = SF_PRODUCT_PAGES[p.id] || '';
     const learnMoreHtml = learnMoreUrl
-      ? `<a href="${learnMoreUrl}" target="_blank" onclick="event.stopPropagation()" style="display:inline-block;font-size:0.68rem;color:#8A8480;text-decoration:none;margin-top:0.15rem;margin-bottom:0.55rem;letter-spacing:0.01em;" onmouseover="this.style.color='#B45309'" onmouseout="this.style.color='#8A8480'">Learn More →</a>`
+      ? `<a href="${learnMoreUrl}" target="_blank" onclick="event.stopPropagation()" style="display:inline-block;font-size:0.68rem;color:#8A8480;text-decoration:none;margin-top:0.2rem;margin-bottom:0.9rem;letter-spacing:0.01em;" onmouseover="this.style.color='#B45309'" onmouseout="this.style.color='#8A8480'">Learn More →</a>`
       : '';
     return `<div class="sf-card" onclick="sfOpenProduct('${p.id}')">
       <div class="sf-card-img ${SF_IMG_CLASS[p.cat]||'img-cream'}">${imgHtml}${p.tag?`<span class="sf-card-badge">${p.tag}</span>`:''}</div>
@@ -3981,7 +3981,7 @@ function sfRenderProducts(filter) {
         <div class="sf-card-cat" style="display:flex;justify-content:space-between;align-items:center;">${SF_CAT_LABEL[p.cat]||p.cat}${starHtml}</div>
         <div class="sf-card-name">${p.name}</div>
         <div style="font-size:0.78rem;font-weight:700;color:#B45309;margin-bottom:0.25rem;">${price}</div>
-        <div class="sf-card-tl">${p.tagline}</div>
+        <div class="sf-card-tl" ${learnMoreUrl ? 'style="margin-bottom:0.2rem;"' : ''}>${p.tagline}</div>
         ${learnMoreHtml}
         <div class="sf-card-footer">
           <div class="sf-card-moq">${moq}</div>
