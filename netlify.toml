@@ -136,6 +136,11 @@
   status = 200
 
 [[redirects]]
+  from = "/wholesale-prices"
+  to   = "/guide/wholesale-price-list.html"
+  status = 200
+
+[[redirects]]
   from = "/calculator"
   to = "/calculator.html"
   status = 200
