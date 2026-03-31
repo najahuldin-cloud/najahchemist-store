@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Najah Chemist — Wholesale Price List</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── SCREEN STYLES ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --black:  #0F0E0D;
+  --gold:   #B45309;
+  --gold-lt:#FEF3C7;
+  --gold-md:#F59E0B;
+  --warm:   #FAF8F5;
+  --border: #E8E4DE;
+  --mid:    #6B7280;
+  --text:   #1C1A18;
+}
+
+body {
+  font-family: 'Outfit', Arial, sans-serif;
+  background: #F0EDE8;
+  color: var(--text);
+  min-height: 100vh;
+  padding: 2rem 1rem 4rem;
+}
+
+/* Save button — screen only */
+.save-bar {
+  max-width: 794px;
+  margin: 0 auto 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.save-bar-note {
+  font-size: 0.8rem;
+  color: #6B7280;
+}
+.btn-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--gold);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.65rem 1.4rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.btn-save:hover { background: #92400E; }
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--mid);
+  font-size: 0.82rem;
+  text-decoration: none;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  background: white;
+  font-family: 'Outfit', sans-serif;
+  transition: color 0.15s;
+}
+.btn-back:hover { color: var(--black); }
+
+/* ── DOCUMENT (A4 proportions on screen) ────────────────────────── */
+.doc {
+  background: white;
+  max-width: 794px;
+  margin: 0 auto;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.13);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Header */
+.doc-header {
+  background: var(--black);
+  padding: 2.5rem 2.8rem 2rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.doc-brand { flex: 1; min-width: 200px; }
+.doc-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+.doc-monogram {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #B45309, #78350F);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+.doc-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.doc-tagline {
+  font-size: 0.78rem;
+  color: #B8A99A;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 0.35rem;
+  padding-left: 0.1rem;
+}
+.doc-contact {
+  text-align: right;
+  padding-top: 0.2rem;
+}
+.doc-contact p {
+  font-size: 0.74rem;
+  color: #9CA3AF;
+  line-height: 1.8;
+}
+.doc-contact strong {
+  color: #D1C4B4;
+  font-weight: 600;
+}
+
+/* Gold title band */
+.doc-title-band {
+  background: linear-gradient(135deg, #B45309 0%, #92400E 100%);
+  padding: 0.85rem 2.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.doc-title-band h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 0.03em;
+}
+.doc-title-band span {
+  font-size: 0.72rem;
+  color: #FDE68A;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Body */
+.doc-body { padding: 2rem 2.8rem 2.4rem; }
+
+/* MOQ & terms strip */
+.doc-terms {
+  background: var(--warm);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.8rem 1.2rem;
+  margin-bottom: 2rem;
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+.doc-terms-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--mid);
+}
+.doc-terms-item strong {
+  color: var(--black);
+  font-weight: 700;
+}
+.doc-terms-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
+  flex-shrink: 0;
+}
+
+/* Category section */
+.cat-section { margin-bottom: 2rem; }
+.cat-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  border-bottom: 2px solid var(--gold);
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Pricing table */
+.price-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.price-table thead tr {
+  background: var(--black);
+}
+.price-table thead th {
+  padding: 0.52rem 0.85rem;
+  text-align: left;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #B8A99A;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+.price-table thead th:not(:first-child) { text-align: center; }
+.price-table tbody tr { border-bottom: 1px solid var(--border); }
+.price-table tbody tr:last-child { border-bottom: none; }
+.price-table tbody tr:nth-child(even) { background: #FAFAF8; }
+.price-table tbody tr:hover { background: var(--gold-lt); }
+.price-table td {
+  padding: 0.6rem 0.85rem;
+  vertical-align: middle;
+}
+.price-table td:not(:first-child) {
+  text-align: center;
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.8rem;
+}
+.price-table td.product-name {
+  font-weight: 600;
+  color: var(--black);
+}
+.price-table td.product-name span {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--mid);
+  margin-top: 0.1rem;
+}
+.price-placeholder {
+  color: #9CA3AF;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 0.75rem;
+}
+
+/* Two-column grid for smaller categories */
+.cat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+/* Footer */
+.doc-footer {
+  background: var(--black);
+  padding: 1.1rem 2.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.doc-footer p {
+  font-size: 0.7rem;
+  color: #6B7280;
+  line-height: 1.6;
+}
+.doc-footer strong {
+  color: #9CA3AF;
+}
+
+/* ── PRINT STYLES ────────────────────────────────────────────────── */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  body {
+    background: white;
+    padding: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .save-bar { display: none !important; }
+
+  .doc {
+    max-width: 100%;
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  .price-table tbody tr:hover { background: transparent; }
+
+  /* Keep tables together where possible */
+  .cat-section { break-inside: avoid; }
+}
+
+@media (max-width: 620px) {
+  .doc-header { padding: 1.8rem 1.4rem 1.5rem; }
+  .doc-contact { text-align: left; }
+  .doc-title-band { padding: 0.75rem 1.4rem; }
+  .doc-body { padding: 1.5rem 1.4rem; }
+  .doc-footer { padding: 1rem 1.4rem; }
+  .cat-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- Screen-only controls -->
+<div class="save-bar">
+  <a href="/" class="btn-back">← Back to Site</a>
+  <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+    <span class="save-bar-note">Open in Chrome or Safari for best results</span>
+    <button class="btn-save" onclick="window.print()">⬇ Save as PDF</button>
+  </div>
+</div>
+
+<!-- Document -->
+<div class="doc">
+
+  <!-- Header -->
+  <div class="doc-header">
+    <div class="doc-brand">
+      <div class="doc-logo-row">
+        <div class="doc-monogram">Nc</div>
+        <div class="doc-name">Najah Chemist</div>
+      </div>
+      <div class="doc-tagline">Jamaica's Private Label Skincare Manufacturer</div>
+    </div>
+    <div class="doc-contact">
+      <p><strong>Web</strong> najahchemistja.com</p>
+      <p><strong>Email</strong> orders@najahchemistja.com</p>
+      <p><strong>WhatsApp</strong> +1 (876) 885-1099</p>
+    </div>
+  </div>
+
+  <!-- Title band -->
+  <div class="doc-title-band">
+    <h1>Wholesale Price List</h1>
+    <span>Confidential — For Trade Use Only</span>
+  </div>
+
+  <!-- Body -->
+  <div class="doc-body">
+
+    <!-- MOQ / Terms strip -->
+    <div class="doc-terms">
+      <div class="doc-terms-item"><div class="doc-terms-dot"></div><div><strong>MOQ</strong> 1 Litre / 1 Gallon / 2 lbs</div></div>
+      <div class="doc-terms-item"><div class="doc-terms-dot"></div><div><strong>Turnaround</strong> 2–3 business days after payment</div></div>
+      <div class="doc-terms-item"><div class="doc-terms-dot"></div><div><strong>Payment</strong> NCB Transfer · Lynk · Card (Fygaro)</div></div>
+      <div class="doc-terms-item"><div class="doc-terms-dot"></div><div><strong>Delivery</strong> Knutsford · Zipmail · Kingston direct</div></div>
+    </div>
+
+    <!-- BODY CARE -->
+    <div class="cat-section">
+      <div class="cat-title">Body Care</div>
+      <table class="price-table">
+        <thead>
+          <tr>
+            <th style="width:40%;">Product</th>
+            <th>1 Litre</th>
+            <th>1 Gallon</th>
+            <th>5 Gallon</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="product-name">Whipped Body Butter<span>Rich, whipped texture — deeply moisturising</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+          </tr>
+          <tr>
+            <td class="product-name">Luxury Body Oil<span>Lightweight, fast-absorbing blend</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+          </tr>
+          <tr>
+            <td class="product-name">Body Scrub<span>Exfoliating — sugar or salt base available</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- FACIAL CARE -->
+    <div class="cat-section">
+      <div class="cat-title">Facial Care</div>
+      <table class="price-table">
+        <thead>
+          <tr>
+            <th style="width:50%;">Product</th>
+            <th>1 Litre</th>
+            <th>1 Gallon</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="product-name">Facial Cleanser<span>Gentle daily cleanser — all skin types</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td class="product-name">Face Moisturiser<span>Lightweight hydration with SPF-ready base</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td class="product-name">Facial Serum<span>Brightening / anti-aging actives</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- FEMININE CARE + MEN'S GROOMING side by side -->
+    <div class="cat-grid">
+      <!-- Feminine Care -->
+      <div class="cat-section">
+        <div class="cat-title">Feminine Care</div>
+        <table class="price-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>1L</th>
+              <th>1 Gal</th>
+              <th>5 Gal</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="product-name">Feminine Wash<span>pH-balanced formula</span></td>
+              <td><span class="price-placeholder">Contact</span></td>
+              <td><span class="price-placeholder">Contact</span></td>
+              <td><span class="price-placeholder">Contact</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Men's Grooming -->
+      <div class="cat-section">
+        <div class="cat-title">Men's Grooming</div>
+        <table class="price-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>1L</th>
+              <th>1 Gal</th>
+              <th>5 Gal</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="product-name">Beard Oil<span>Conditioning &amp; growth blend</span></td>
+              <td><span class="price-placeholder">Contact</span></td>
+              <td><span class="price-placeholder">Contact</span></td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td class="product-name">Men's Body Wash<span>Activated charcoal / cedarwood</span></td>
+              <td><span class="price-placeholder">Contact</span></td>
+              <td><span class="price-placeholder">Contact</span></td>
+              <td><span class="price-placeholder">Contact</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SOAP -->
+    <div class="cat-section">
+      <div class="cat-title">Soap</div>
+      <table class="price-table">
+        <thead>
+          <tr>
+            <th style="width:42%;">Product</th>
+            <th>Per Bar</th>
+            <th>Per 10 Bars</th>
+            <th>Per 50 Bars</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="product-name">Kojic &amp; Turmeric Soap<span>Brightening &amp; even skin tone</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+          </tr>
+          <tr>
+            <td class="product-name">Garlic &amp; Lavender Soap<span>Antibacterial &amp; calming</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+            <td><span class="price-placeholder">Contact</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Custom & Private Label callout -->
+    <div style="background:var(--black);border-radius:10px;padding:1.2rem 1.6rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;margin-top:0.5rem;">
+      <div>
+        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#B45309;margin-bottom:0.25rem;">Private Label Available</div>
+        <div style="font-size:0.85rem;font-weight:600;color:white;line-height:1.4;">Custom fragrances · Your label &amp; branding · Bulk packaging</div>
+        <div style="font-size:0.74rem;color:#9CA3AF;margin-top:0.2rem;">Contact us for a custom quote. Samples available on request.</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:0.7rem;color:#6B7280;margin-bottom:0.15rem;">Place your order</div>
+        <div style="font-size:0.9rem;font-weight:700;color:#F59E0B;">najahchemistja.com/start</div>
+      </div>
+    </div>
+
+  </div><!-- /doc-body -->
+
+  <!-- Footer -->
+  <div class="doc-footer">
+    <p>Prices in JMD. Minimum order quantities apply. Valid for 30 days from date of issue.<br>
+    <strong>Contact us to place your order:</strong> orders@najahchemistja.com &nbsp;|&nbsp; WhatsApp +1 (876) 885-1099</p>
+    <p style="text-align:right;font-size:0.65rem;color:#4B5563;">© Najah Chemist &nbsp;·&nbsp; najahchemistja.com</p>
+  </div>
+
+</div><!-- /doc -->
+
+</body>
+</html>
