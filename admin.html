@@ -2733,8 +2733,16 @@ window.plSearch = function() {
 
   tbody.innerHTML = matches.map(o => {
     const clientName = o.client || o.customerName || o.clientName || '—';
-    const email      = o.email || o.customerEmail || '—';
     const phone      = o.phone || o.customerWhatsApp || o.whatsapp || o.wa || '—';
+    let email = o.email || o.customerEmail || '';
+    if (!email) {
+      const rawPhone = phone.replace(/\D/g, '');
+      if (rawPhone) {
+        const cl = (CLIENTS || []).find(c => (c.phone || c.whatsapp || c.wa || '').replace(/\D/g, '') === rawPhone);
+        if (cl) email = cl.email || '';
+      }
+    }
+    email = email || '—';
 
     // Extract matched product(s) from items array or products string
     let matchedProduct = '—';
@@ -2749,7 +2757,14 @@ window.plSearch = function() {
         sizeQty = o.items.map(i => (i.size || '—') + ' × ' + (i.qty || 1)).join(', ');
       }
     } else {
-      matchedProduct = (o.product || o.products || '—').substring(0, 80);
+      const prodStr = o.product || o.products || '';
+      const segments = prodStr.split(' | ');
+      const matchedSeg = segments.find(s => s.toLowerCase().includes(termLower)) || segments[0] || '';
+      // Strip the "(Size xQty)" suffix to get the product name
+      matchedProduct = matchedSeg.replace(/\s*\([^)]+\)\s*$/, '').trim() || matchedSeg.substring(0, 80);
+      // Parse "(Size xQty)" — e.g. "(1 Litre x2)" or "(2 lbs x1)"
+      const m = matchedSeg.match(/\(([^)]+?)\s+x(\d+)\)/i);
+      sizeQty = m ? (m[1].trim() + ' × ' + m[2]) : '—';
     }
 
     // Shipping area: prefer shippingDetail, else deliveryLocation, else knutsfordBranch/zipmailLocation/deliveryAddress
