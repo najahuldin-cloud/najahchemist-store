@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Container Label Size Guide — Najah Chemist</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --black:  #0F0E0D;
+  --gold:   #B45309;
+  --gold-lt:#FEF3C7;
+  --gold-md:#F59E0B;
+  --warm:   #FAF8F5;
+  --border: #E8E4DE;
+  --mid:    #6B7280;
+  --text:   #1C1A18;
+}
+
+body {
+  font-family: 'Outfit', Arial, sans-serif;
+  background: #F0EDE8;
+  color: var(--text);
+  min-height: 100vh;
+  padding: 2rem 1rem 4rem;
+}
+
+/* Save bar */
+.save-bar {
+  max-width: 794px;
+  margin: 0 auto 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.save-bar-note {
+  font-size: 0.8rem;
+  color: #6B7280;
+}
+.btn-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--gold);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.65rem 1.4rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.btn-save:hover { background: #92400E; }
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--mid);
+  font-size: 0.82rem;
+  text-decoration: none;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  background: white;
+  font-family: 'Outfit', sans-serif;
+  transition: color 0.15s;
+}
+.btn-back:hover { color: var(--black); }
+
+/* Document */
+.doc {
+  background: white;
+  max-width: 794px;
+  margin: 0 auto;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.13);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Header */
+.doc-header {
+  background: var(--black);
+  padding: 2.5rem 2.8rem 2rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.doc-brand { flex: 1; min-width: 200px; }
+.doc-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+.doc-monogram {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #B45309, #78350F);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+.doc-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.doc-tagline {
+  font-size: 0.78rem;
+  color: #B8A99A;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 0.35rem;
+  padding-left: 0.1rem;
+}
+.doc-contact {
+  text-align: right;
+  padding-top: 0.2rem;
+}
+.doc-contact p {
+  font-size: 0.74rem;
+  color: #9CA3AF;
+  line-height: 1.8;
+}
+.doc-contact strong {
+  color: #D1C4B4;
+  font-weight: 600;
+}
+
+/* Gold title band */
+.doc-title-band {
+  background: linear-gradient(135deg, #B45309 0%, #92400E 100%);
+  padding: 0.85rem 2.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.doc-title-band h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 0.03em;
+}
+.doc-title-band span {
+  font-size: 0.72rem;
+  color: #FDE68A;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Body */
+.doc-body { padding: 2rem 2.8rem 2.4rem; }
+
+/* Subtitle */
+.doc-subtitle {
+  font-size: 0.88rem;
+  color: var(--mid);
+  margin-bottom: 1.25rem;
+  line-height: 1.55;
+}
+
+/* Warning note */
+.warning-note {
+  background: #FFFBEB;
+  border: 1px solid #FCD34D;
+  border-left: 4px solid #F59E0B;
+  border-radius: 6px;
+  padding: 0.8rem 1.1rem;
+  margin-bottom: 1.75rem;
+  font-size: 0.8rem;
+  color: #78350F;
+  line-height: 1.55;
+}
+
+/* Section title */
+.section-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  border-bottom: 2px solid var(--gold);
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.9rem;
+}
+
+/* Label table */
+.label-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin-bottom: 2rem;
+}
+.label-table thead tr {
+  background: var(--black);
+}
+.label-table thead th {
+  padding: 0.52rem 0.85rem;
+  text-align: left;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #B8A99A;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+.label-table tbody tr { border-bottom: 1px solid var(--border); }
+.label-table tbody tr:last-child { border-bottom: none; }
+.label-table tbody tr:nth-child(even) { background: #FAFAF8; }
+.label-table tbody tr:hover { background: var(--gold-lt); }
+.label-table td {
+  padding: 0.65rem 0.85rem;
+  vertical-align: top;
+  line-height: 1.45;
+}
+.label-table td.col-container {
+  font-weight: 600;
+  color: var(--black);
+  white-space: nowrap;
+}
+.label-table td.col-size {
+  font-weight: 700;
+  color: var(--gold);
+  white-space: nowrap;
+}
+.label-table td.col-type {
+  color: #374151;
+  font-size: 0.78rem;
+}
+.label-table td.col-area,
+.label-table td.col-notes {
+  color: var(--mid);
+  font-size: 0.78rem;
+}
+.label-table td.col-size small {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--mid);
+  margin-top: 0.15rem;
+}
+
+/* Design tips section */
+.tips-section { margin-top: 0.25rem; }
+.tips-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 0.5rem;
+}
+.tips-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-size: 0.82rem;
+  color: #374151;
+  line-height: 1.5;
+}
+.tips-list li::before {
+  content: '→';
+  color: var(--gold);
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+.tips-list li strong {
+  color: var(--black);
+}
+
+/* Footer */
+.doc-footer {
+  background: var(--black);
+  padding: 1.1rem 2.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.doc-footer p {
+  font-size: 0.7rem;
+  color: #6B7280;
+  line-height: 1.6;
+}
+.doc-footer strong {
+  color: #9CA3AF;
+}
+
+/* Print */
+@media print {
+  @page { size: A4; margin: 0; }
+  body { background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .save-bar { display: none !important; }
+  .doc { max-width: 100%; box-shadow: none; border-radius: 0; }
+  .label-table tbody tr:hover { background: transparent; }
+}
+
+@media (max-width: 620px) {
+  .doc-header { padding: 1.8rem 1.4rem 1.5rem; }
+  .doc-contact { text-align: left; }
+  .doc-title-band { padding: 0.75rem 1.4rem; }
+  .doc-body { padding: 1.5rem 1.4rem; }
+  .doc-footer { padding: 1rem 1.4rem; }
+  .label-table td.col-container { white-space: normal; }
+  .label-table td.col-size { white-space: normal; }
+}
+</style>
+</head>
+<body>
+
+<!-- Screen-only controls -->
+<div class="save-bar">
+  <a href="/wholesale-prices" class="btn-back">← Back to Price List</a>
+  <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+    <span class="save-bar-note">Open in Chrome or Safari for best results</span>
+    <a href="/wholesale-prices" class="btn-save">📋 Download Price List</a>
+  </div>
+</div>
+
+<!-- Document -->
+<div class="doc">
+
+  <!-- Header -->
+  <div class="doc-header">
+    <div class="doc-brand">
+      <div class="doc-logo-row">
+        <div class="doc-monogram">Nc</div>
+        <div class="doc-name">Najah Chemist</div>
+      </div>
+      <div class="doc-tagline">Jamaica's Private Label Skincare Manufacturer</div>
+    </div>
+    <div class="doc-contact">
+      <p><strong>Web</strong> najahchemistja.com</p>
+      <p><strong>Email</strong> orders@najahchemistja.com</p>
+      <p><strong>WhatsApp</strong> +1 (876) 885-1099</p>
+    </div>
+  </div>
+
+  <!-- Title band -->
+  <div class="doc-title-band">
+    <h1>Container Label Size Guide</h1>
+    <span>Private Label Reference</span>
+  </div>
+
+  <!-- Body -->
+  <div class="doc-body">
+
+    <p class="doc-subtitle">Standard label dimensions for Najah Chemist containers. Measure your actual container before printing.</p>
+
+    <div class="warning-note">
+      ⚠️ These are standard industry dimensions. Always measure your specific container before ordering labels. Label size may vary slightly by manufacturer.
+    </div>
+
+    <!-- Label sizes table -->
+    <div class="section-title">Label Dimensions by Container</div>
+
+    <table class="label-table">
+      <thead>
+        <tr>
+          <th>Container</th>
+          <th>Label Area</th>
+          <th>Recommended Label Size</th>
+          <th>Label Type</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-container">2oz Spray Bottle</td>
+          <td class="col-area">Side panel</td>
+          <td class="col-size">4" × 1.5"</td>
+          <td class="col-type">Wraparound</td>
+          <td class="col-notes">Full wrap around circumference</td>
+        </tr>
+        <tr>
+          <td class="col-container">2oz Dropper Bottle</td>
+          <td class="col-area">Front panel</td>
+          <td class="col-size">2" × 3"</td>
+          <td class="col-type">Rectangle front label</td>
+          <td class="col-notes">Tall narrow label</td>
+        </tr>
+        <tr>
+          <td class="col-container">2oz Foam Bottle</td>
+          <td class="col-area">Side panel</td>
+          <td class="col-size">4" × 1.75"</td>
+          <td class="col-type">Wraparound</td>
+          <td class="col-notes">Full wrap</td>
+        </tr>
+        <tr>
+          <td class="col-container">2oz Double Wall Jar</td>
+          <td class="col-area">Lid + side</td>
+          <td class="col-size">
+            Lid: 2" round
+            <small>Side: 8.5" × 0.75"</small>
+          </td>
+          <td class="col-type">Round lid + strip</td>
+          <td class="col-notes">Brand on lid, ingredients on side strip</td>
+        </tr>
+        <tr>
+          <td class="col-container">4oz Flip Top Bottle</td>
+          <td class="col-area">Front panel</td>
+          <td class="col-size">3.5" × 4"</td>
+          <td class="col-type">Rectangle front label</td>
+          <td class="col-notes">Standard front label</td>
+        </tr>
+        <tr>
+          <td class="col-container">4oz Double Wall Jar</td>
+          <td class="col-area">Lid + side</td>
+          <td class="col-size">
+            Lid: 2.75" round
+            <small>Side: 8.7" × 1.5"</small>
+          </td>
+          <td class="col-type">Round lid + wraparound</td>
+          <td class="col-notes">Brand on lid, full wrap for ingredients</td>
+        </tr>
+        <tr>
+          <td class="col-container">4oz Foam Bottle</td>
+          <td class="col-area">Side panel</td>
+          <td class="col-size">4.7" × 3.6"</td>
+          <td class="col-type">Wraparound</td>
+          <td class="col-notes">Full wrap</td>
+        </tr>
+        <tr>
+          <td class="col-container">White Pill Bottle</td>
+          <td class="col-area">Front panel</td>
+          <td class="col-size">2" × 2.5"</td>
+          <td class="col-type">Rectangle front label</td>
+          <td class="col-notes">Small label, keep design minimal</td>
+        </tr>
+        <tr>
+          <td class="col-container">Small Pouch</td>
+          <td class="col-area">Front panel</td>
+          <td class="col-size">2.5" × 3"</td>
+          <td class="col-type">Rectangle</td>
+          <td class="col-notes">Centre front panel only</td>
+        </tr>
+        <tr>
+          <td class="col-container">Large Pouch</td>
+          <td class="col-area">Front panel</td>
+          <td class="col-size">3" × 4"</td>
+          <td class="col-type">Rectangle</td>
+          <td class="col-notes">Centre front panel only</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Design tips -->
+    <div class="tips-section">
+      <div class="section-title">Design Tips</div>
+      <ul class="tips-list">
+        <li><strong>Use Canva</strong> to design your labels — it's free and easy</li>
+        <li><strong>Set your canvas</strong> to the exact label dimensions before designing</li>
+        <li><strong>Use 300 DPI</strong> for print quality</li>
+        <li><strong>Add a bleed</strong> of 0.125" around the edges</li>
+        <li><strong>Include:</strong> Product name, your brand name, net weight/volume, ingredients, how to use, your contact info</li>
+        <li><strong>For Jamaica:</strong> no specific regulatory label requirements for cosmetics, but best practice is to include all of the above</li>
+      </ul>
+    </div>
+
+  </div><!-- /doc-body -->
+
+  <!-- Footer -->
+  <div class="doc-footer">
+    <p><strong>Najah Chemist</strong> — Jamaica's Private Label Skincare Manufacturer<br>najahchemistja.com · orders@najahchemistja.com · +1 (876) 885-1099</p>
+    <p>Dimensions are standard industry references. Always verify with your actual container.</p>
+  </div>
+
+</div><!-- /doc -->
+
+</body>
+</html>

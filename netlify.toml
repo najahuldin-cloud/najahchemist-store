@@ -141,6 +141,11 @@
   status = 200
 
 [[redirects]]
+  from = "/label-sizes"
+  to   = "/guide/label-sizes.html"
+  status = 200
+
+[[redirects]]
   from = "/calculator"
   to = "/calculator.html"
   status = 200
