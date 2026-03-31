@@ -232,6 +232,7 @@ select.finp{cursor:pointer;}
     <button class="nb" onclick="nav('sitecontent',this)"><span class="nb-icon">🌐</span>Site Content</button>
     <button class="nb" onclick="nav('leads',this)"><span class="nb-icon">🌱</span>Leads</button>
     <button class="nb" onclick="nav('broadcast',this)"><span class="nb-icon">📣</span>Broadcast Email</button>
+    <button class="nb" onclick="nav('productlookup',this)"><span class="nb-icon">🔍</span>Product Lookup</button>
   </nav>
   <div class="sb-footer">
     <div class="sb-user" id="sb-user-email"></div>
@@ -528,6 +529,40 @@ select.finp{cursor:pointer;}
         <div id="bc-result" style="display:none;padding:0.65rem 0.9rem;border-radius:8px;font-size:0.82rem;margin-bottom:0.9rem;"></div>
 
         <button class="btn btn-gold" onclick="bcSend()" id="bc-send-btn">Send Broadcast</button>
+      </div>
+    </div>
+
+    <!-- ══════════ PRODUCT LOOKUP ══════════ -->
+    <div class="view" id="v-productlookup">
+      <div class="section-title">Product Lookup</div>
+      <p style="font-size:0.78rem;color:var(--mid);margin-bottom:1.2rem;">Find all orders containing a specific product. Use this to refer retail customers to wholesale clients who stock that product.</p>
+      <div class="card" style="max-width:680px;margin-bottom:1.5rem;">
+        <div style="display:flex;gap:0.75rem;align-items:center;">
+          <input class="finp" type="text" id="pl-search-input" placeholder="Search by product name…" style="flex:1;margin-bottom:0;"
+            onkeydown="if(event.key==='Enter')plSearch()">
+          <button class="btn btn-dk" onclick="plSearch()" style="white-space:nowrap;">Search</button>
+        </div>
+      </div>
+      <div id="pl-results-wrap" style="display:none;">
+        <div style="font-size:0.82rem;font-weight:600;color:var(--mid);margin-bottom:0.75rem;" id="pl-count"></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Email</th>
+                <th>WhatsApp</th>
+                <th>Product (matched)</th>
+                <th>Size / Qty</th>
+                <th>Date</th>
+                <th>Shipping Area</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="pl-tbody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -980,7 +1015,7 @@ window.nav = function(id, btn) {
   document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
   document.getElementById('v-'+id).classList.add('on');
   if(btn) btn.classList.add('on');
-  const titles = {dashboard:'Dashboard',orders:'Orders',clients:'Clients',products:'Products',labels:'Shipping Labels',consultations:'Consultations',knowledge:'Chatbot Knowledge Base',sitecontent:'Site Content',leads:'Leads',broadcast:'Broadcast Email'};
+  const titles = {dashboard:'Dashboard',orders:'Orders',clients:'Clients',products:'Products',labels:'Shipping Labels',consultations:'Consultations',knowledge:'Chatbot Knowledge Base',sitecontent:'Site Content',leads:'Leads',broadcast:'Broadcast Email',productlookup:'Product Lookup'};
   document.getElementById('topbar-title').textContent = titles[id]||id;
   closeSidebar();
   if(id==='clients'){
@@ -2665,6 +2700,87 @@ window.bcSend = async function() {
     btn.disabled = false;
     btn.textContent = 'Send Broadcast';
   }
+};
+
+// ── PRODUCT LOOKUP ──
+window.plSearch = function() {
+  const term = (document.getElementById('pl-search-input').value || '').trim();
+  if (!term) return;
+
+  const termLower = term.toLowerCase();
+  const wrap  = document.getElementById('pl-results-wrap');
+  const count = document.getElementById('pl-count');
+  const tbody = document.getElementById('pl-tbody');
+
+  // Filter orders whose product string or items array contains the search term
+  const matches = (ORDERS || []).filter(o => {
+    const prodStr = (o.product || o.products || '').toLowerCase();
+    if (prodStr.includes(termLower)) return true;
+    if (Array.isArray(o.items)) {
+      return o.items.some(i => (i.name || '').toLowerCase().includes(termLower));
+    }
+    return false;
+  });
+
+  // Sort by date descending (already is, since ORDERS is ordered that way)
+  count.textContent = matches.length + ' order' + (matches.length !== 1 ? 's' : '') + ' found for "' + term + '"';
+  wrap.style.display = 'block';
+
+  if (!matches.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No orders found</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = matches.map(o => {
+    const clientName = o.client || o.customerName || o.clientName || '—';
+    const email      = o.email || o.customerEmail || '—';
+    const phone      = o.phone || o.customerWhatsApp || o.whatsapp || o.wa || '—';
+
+    // Extract matched product(s) from items array or products string
+    let matchedProduct = '—';
+    let sizeQty = '—';
+    if (Array.isArray(o.items) && o.items.length) {
+      const matched = o.items.filter(i => (i.name || '').toLowerCase().includes(termLower));
+      if (matched.length) {
+        matchedProduct = matched.map(i => i.name).join(', ');
+        sizeQty = matched.map(i => (i.size || '—') + ' × ' + (i.qty || 1)).join(', ');
+      } else {
+        matchedProduct = o.items.map(i => i.name).join(', ');
+        sizeQty = o.items.map(i => (i.size || '—') + ' × ' + (i.qty || 1)).join(', ');
+      }
+    } else {
+      matchedProduct = (o.product || o.products || '—').substring(0, 80);
+    }
+
+    // Shipping area: prefer shippingDetail, else deliveryLocation, else knutsfordBranch/zipmailLocation/deliveryAddress
+    const shippingArea = (o.shippingDetail || o.deliveryLocation ||
+      (o.knutsfordBranch ? 'Knutsford — ' + o.knutsfordBranch : '') ||
+      (o.zipmailLocation ? 'Zipmail — ' + o.zipmailLocation : '') ||
+      o.deliveryAddress || '—').substring(0, 60);
+
+    const dateStr = formatDate(o.date || o.createdAt);
+    const status  = o.status || 'Pending';
+
+    // WA referral message
+    const waPhone = phone.replace(/\D/g, '');
+    const waMsg = encodeURIComponent(
+      'Hi ' + clientName + ', a customer is looking for ' + term +
+      ' in your area — would you be open to being referred as a retailer?'
+    );
+    const waHref = waPhone ? 'https://wa.me/' + waPhone + '?text=' + waMsg : '#';
+
+    return `<tr>
+      <td><strong>${clientName}</strong></td>
+      <td style="font-size:0.75rem;">${email}</td>
+      <td style="font-size:0.75rem;">${phone !== '—' ? '<a href="https://wa.me/' + phone.replace(/\D/g,'') + '" target="_blank" style="color:var(--text);text-decoration:none;">' + phone + '</a>' : '—'}</td>
+      <td style="font-size:0.75rem;max-width:160px;">${matchedProduct}</td>
+      <td style="font-size:0.75rem;">${sizeQty}</td>
+      <td style="font-size:0.75rem;white-space:nowrap;">${dateStr}</td>
+      <td style="font-size:0.75rem;max-width:140px;">${shippingArea}</td>
+      <td><span class="badge b-${status.toLowerCase().replace(/\s+/g,'')}">${status}</span></td>
+      <td><a href="${waHref}" target="_blank" title="Send referral WhatsApp" style="font-size:1.1rem;text-decoration:none;">💬</a></td>
+    </tr>`;
+  }).join('');
 };
 </script>
 </body>
