@@ -867,17 +867,17 @@ tr:hover td{background:var(--warm);}
   <div class="sf-modal" style="max-width:420px;border-radius:20px;">
     <div style="background:linear-gradient(135deg,#0F0E0D,#2D2B28);padding:2rem 2rem 1.5rem;border-radius:20px 20px 0 0;text-align:center;position:relative;">
       <button onclick="closeEmailPopup()" style="position:absolute;top:1rem;right:1rem;background:rgba(255,255,255,0.15);border:none;color:white;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:0.9rem;">×</button>
-      <div style="font-size:2.5rem;margin-bottom:0.6rem;">✨</div>
-      <div style="font-family:'Playfair Display',serif;font-size:1.3rem;color:white;font-weight:700;margin-bottom:0.3rem;">Get 10% off your first order</div>
-      <div style="font-size:0.8rem;color:#9CA3AF;">Join 500+ customers. No spam, ever.</div>
+      <div style="font-size:2.5rem;margin-bottom:0.6rem;">📋</div>
+      <div style="font-family:'Playfair Display',serif;font-size:1.3rem;color:white;font-weight:700;margin-bottom:0.3rem;">Get Our Wholesale Price List</div>
+      <div style="font-size:0.8rem;color:#9CA3AF;">Full pricing for 65+ products across every size. No commitment — just the numbers.</div>
     </div>
     <div style="padding:1.5rem 2rem 2rem;">
       <div style="margin-bottom:0.8rem;"><label class="fl">Your Name</label><input class="fi" id="ep-name" placeholder="e.g. Kezia"></div>
       <div style="margin-bottom:0.8rem;"><label class="fl">Email Address</label><input class="fi" id="ep-email" type="email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')submitEmailPopup()"></div>
       <div id="ep-err" style="display:none;background:#FEE2E2;color:#991B1B;font-size:0.75rem;padding:0.4rem 0.7rem;border-radius:6px;margin-bottom:0.7rem;"></div>
-      <div id="ep-success" style="display:none;background:#D1FAE5;color:#065F46;font-size:0.82rem;padding:0.6rem 0.9rem;border-radius:8px;margin-bottom:0.7rem;text-align:center;">You're in! 🎉 WhatsApp is opening so you can claim your 10% discount. We'll be in touch!</div>
-      <button id="ep-btn" class="sf-modal-wa" onclick="submitEmailPopup()">Claim My 10% Discount</button>
-      <button onclick="closeEmailPopup()" style="width:100%;margin-top:0.6rem;background:none;border:none;font-size:0.75rem;color:#8A8480;cursor:pointer;font-family:'Outfit',sans-serif;">No thanks, I'll pay full price</button>
+      <div id="ep-success" style="display:none;background:#D1FAE5;color:#065F46;font-size:0.82rem;padding:0.6rem 0.9rem;border-radius:8px;margin-bottom:0.7rem;text-align:center;">Opening your price list now! 🎉</div>
+      <button id="ep-btn" class="sf-modal-wa" onclick="submitEmailPopup()">Send Me the Price List</button>
+      <button onclick="closeEmailPopup()" style="width:100%;margin-top:0.6rem;background:none;border:none;font-size:0.75rem;color:#8A8480;cursor:pointer;font-family:'Outfit',sans-serif;">No thanks</button>
     </div>
   </div>
 </div>
@@ -3797,18 +3797,13 @@ window.submitEmailPopup = async function() {
   const email = (document.getElementById('ep-email')?.value||'').trim();
   const btn = document.getElementById('ep-btn');
   if (!email || !email.includes('@')) { sfShowToast('Please enter a valid email'); return; }
-  if (btn) { btn.textContent = 'Saving...'; btn.disabled = true; }
-  try { await saveSubscriber(name, email, 'popup_discount'); } catch(e) {}
-  const waMsg = encodeURIComponent(
-    'Hi Najah Chemist! I just subscribed and I\u2019d like to claim my 10% first order discount.' +
-    ' My name is ' + (name || 'a new subscriber') + ' and my email is ' + email +
-    '. Please apply the discount to my first order.'
-  );
-  window.open('https://wa.me/18768851099?text=' + waMsg, '_blank');
+  if (btn) { btn.textContent = 'Opening...'; btn.disabled = true; }
+  try { await saveSubscriber(name, email, 'popup_price_list'); } catch(e) {}
+  window.open('https://najahchemistja.com/wholesale-prices', '_blank');
   const succ = document.getElementById('ep-success');
   if (succ) succ.style.display = 'block';
   if (btn) btn.style.display = 'none';
-  setTimeout(window.closeEmailPopup, 4000);
+  setTimeout(window.closeEmailPopup, 3000);
 };
 
 window.submitEmailSection = async function() {
