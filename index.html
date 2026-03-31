@@ -3934,6 +3934,23 @@ function sfShowToast(msg) {
 }
 
 // ── Product grid & filters ───────────────────────────
+// Map of product IDs → dedicated product page URLs (only where a page exists)
+const SF_PRODUCT_PAGES = {
+  'yw1':   '/products/yoni-foaming-wash-jamaica',
+  'bpw1':  '/products/probiotic-yoni-wash-jamaica',
+  'yp1':   '/products/yoni-pops-boric-acid-jamaica',
+  'ls1':   '/products/dark-spot-corrector-serum-jamaica',
+  'pays1': '/products/papaya-brightening-serum-jamaica',
+  'slc1':  '/products/lightening-cream-jamaica',
+  'bsc1':  '/products/foaming-scrub-jamaica',
+  'bb1':   '/products/body-butter-wholesale-jamaica',
+  'gls1':  '/products/garlic-lavender-soap-jamaica',
+  'sas1':  '/products/salicylic-acid-soap-jamaica',
+  'vcs1':  '/products/vitamin-c-soap-jamaica',
+  'kts1':  '/products/turmeric-kojic-soap-jamaica',
+  'hgo1':  '/products/ayurvedic-hair-growth-oil-jamaica',
+};
+
 function sfRenderProducts(filter) {
   const grid = document.getElementById('sf-products-grid');
   if (!grid) return;
@@ -3954,6 +3971,10 @@ function sfRenderProducts(filter) {
     const starHtml = revs.length
       ? `<span style="font-size:0.68rem;color:#B45309;font-weight:600;">⭐ ${(revs.reduce((s,r)=>s+r.stars,0)/revs.length).toFixed(1)} (${revs.length})</span>`
       : '';
+    const learnMoreUrl = SF_PRODUCT_PAGES[p.id] || '';
+    const learnMoreHtml = learnMoreUrl
+      ? `<a href="${learnMoreUrl}" target="_blank" onclick="event.stopPropagation()" style="display:inline-block;font-size:0.68rem;color:#8A8480;text-decoration:none;margin-top:0.15rem;margin-bottom:0.55rem;letter-spacing:0.01em;" onmouseover="this.style.color='#B45309'" onmouseout="this.style.color='#8A8480'">Learn More →</a>`
+      : '';
     return `<div class="sf-card" onclick="sfOpenProduct('${p.id}')">
       <div class="sf-card-img ${SF_IMG_CLASS[p.cat]||'img-cream'}">${imgHtml}${p.tag?`<span class="sf-card-badge">${p.tag}</span>`:''}</div>
       <div class="sf-card-body">
@@ -3961,6 +3982,7 @@ function sfRenderProducts(filter) {
         <div class="sf-card-name">${p.name}</div>
         <div style="font-size:0.78rem;font-weight:700;color:#B45309;margin-bottom:0.25rem;">${price}</div>
         <div class="sf-card-tl">${p.tagline}</div>
+        ${learnMoreHtml}
         <div class="sf-card-footer">
           <div class="sf-card-moq">${moq}</div>
           <button class="sf-card-btn" onclick="event.stopPropagation();sfOpenProduct('${p.id}')">Details</button>
