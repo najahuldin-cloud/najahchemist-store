@@ -4053,7 +4053,9 @@ window.sfSubmitReview = async function() {
 };
 
 // ── Starter Kit checkbox selector ────────────────────
-const SK_EXCLUDED = ['containers', 'soap', 'bundle', 'label'];
+const SK_EXCLUDED_CATS = ['containers', 'soap', 'bundle', 'label'];
+// Name keywords that disqualify a product from the bundle builder
+const SK_EXCLUDED_KEYWORDS = ['bundle', 'kit', 'capsule', 'capsules', 'herb', 'herbs', 'steam', 'boric acid'];
 var skChecked = {};
 
 function sfRenderStarterKit() {
@@ -4063,7 +4065,13 @@ function sfRenderStarterKit() {
 window.sfRenderStarterKit = sfRenderStarterKit;
 
 function skGetEligible() {
-  return (window.PRODUCTS || []).filter(function(p) { return !p.hidden && !SK_EXCLUDED.includes(p.cat); });
+  return (window.PRODUCTS || []).filter(function(p) {
+    if (p.hidden) return false;
+    if (SK_EXCLUDED_CATS.includes(p.cat)) return false;
+    var nameLower = (p.name || '').toLowerCase();
+    if (SK_EXCLUDED_KEYWORDS.some(function(kw){ return nameLower.includes(kw); })) return false;
+    return true;
+  });
 }
 
 window.skTogglePanel = function() {
