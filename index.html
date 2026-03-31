@@ -4391,6 +4391,7 @@ window.sfAddToCart = function() {
   sfUpdateCartBtn();
   window.closeSfModal();
   sfShowToast('✓ Added: '+p.name);
+  sfSaveAbandonedCart();
 };
 
 function sfUpdateCartBtn() {
@@ -4418,10 +4419,12 @@ window.sfCloseCart = function() {
 window.sfCartQty = function(i, d) {
   sfCart[i].qty = Math.max(1, sfCart[i].qty + d);
   sfRenderCart(); sfUpdateCartBtn();
+  sfSaveAbandonedCart();
 };
 
 window.sfRemoveItem = function(i) {
   sfCart.splice(i,1); sfRenderCart(); sfUpdateCartBtn();
+  sfSaveAbandonedCart();
 };
 
 window.sfGoCheckout = function() {
@@ -4800,6 +4803,7 @@ window.sfCheckoutWA = function() {
 
   // 4. Save to Sheets + Firestore + email in background (non-blocking)
   setTimeout(async function() {
+    sfMarkCartRecovered();
     try {
       await fetch('/.netlify/functions/create-order', {
         method:'POST', headers:{'Content-Type':'application/json'},
@@ -4892,6 +4896,7 @@ window.sfCheckoutFygaro = function() {
 
   // 4. Save to Sheets + Firestore + email in background
   setTimeout(async function() {
+    sfMarkCartRecovered();
     try {
       await fetch('/.netlify/functions/create-order', {
         method:'POST', headers:{'Content-Type':'application/json'},
@@ -4919,6 +4924,61 @@ window.sfCheckoutFygaro = function() {
 
 // ── Email Collection ──────────────────────────────────
 // (saveSubscriber is defined in the module script above line 3033)
+
+// ── Abandoned Cart ────────────────────────────────────
+const _sfSessionId = Math.random().toString(36).slice(2) + Date.now().toString(36);
+let _sfAbandonedCartDocId = null;
+
+function sfGetPageEmail() {
+  const ids = ['sf-cust-email', 'po-email', 'pm-email', 'cp-email', 'email'];
+  for (const id of ids) {
+    const v = (document.getElementById(id)?.value || '').trim();
+    if (v.includes('@')) return v.toLowerCase();
+  }
+  return null;
+}
+
+async function sfSaveAbandonedCart() {
+  if (sfCart.length === 0) return;
+  const email = sfGetPageEmail();
+  if (!email) return;
+  const db = window._db;
+  if (!db) return;
+  try {
+    const { collection, doc, addDoc, setDoc, serverTimestamp } =
+      await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+    const name = (document.getElementById('sf-cust-name')?.value || '').trim();
+    const cartItems = sfCart.map(i => ({ name: i.name, size: i.size, qty: i.qty }));
+    if (_sfAbandonedCartDocId) {
+      await setDoc(doc(db, 'abandonedCarts', _sfAbandonedCartDocId),
+        { email, name, cartItems, updatedAt: serverTimestamp() },
+        { merge: true });
+    } else {
+      const ref = await addDoc(collection(db, 'abandonedCarts'), {
+        email, name, cartItems,
+        createdAt: serverTimestamp(),
+        recovered: false,
+        emailSent: false,
+        sessionId: _sfSessionId
+      });
+      _sfAbandonedCartDocId = ref.id;
+    }
+  } catch(e) { console.error('[abandonedCart] save error:', e); }
+}
+
+async function sfMarkCartRecovered() {
+  if (!_sfAbandonedCartDocId) return;
+  const db = window._db;
+  if (!db) return;
+  try {
+    const { doc, updateDoc, serverTimestamp } =
+      await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+    await updateDoc(doc(db, 'abandonedCarts', _sfAbandonedCartDocId), {
+      recovered: true,
+      recoveredAt: serverTimestamp()
+    });
+  } catch(e) { console.error('[abandonedCart] recover error:', e); }
+}
 
 // ── Chat widget ───────────────────────────────────────
 let sfChatOpen = false;

@@ -12,6 +12,7 @@
 
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onDocumentUpdated, onDocumentCreated } = require('firebase-functions/v2/firestore');
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const functionsV1 = require('firebase-functions/v1');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue, Timestamp } = require('firebase-admin/firestore');
@@ -324,14 +325,17 @@ async function sendEmail(email, clientName, items) {
 }
 
 // ── Email Follow-up Sequences ─────────────────────────────────────────────────
-// Sequence 1: Subscribers (popup sign-ups)  — 3 emails over 7 days
-// Sequence 2: Leads      (start funnel)     — 3 emails over 7 days
+// Sequence 1: Subscribers (popup sign-ups)  — 3 emails: day 0, 3, 7
+// Sequence 2: Leads      (start funnel)     — 4 emails: day 0, 3, 7, 14
+//   Email 8 (day 14) is a re-engagement with discount code LAUNCH10 (10% off
+//   first wholesale order). It is skipped if the lead has converted: true or
+//   has placed any order in the orders collection.
 //
 // Architecture:
-//   onDocumentCreated triggers send Email 1 immediately and write scheduledEmails
-//   docs for day 3 and day 7. sendScheduledEmails cron (hourly) queries
-//   sent==false, filters scheduledAt<=now in JS, marks sent:true BEFORE sending
-//   to prevent duplicates on retry, rolls back on failure.
+//   onDocumentCreated triggers send Email 1 immediately and writes scheduledEmails
+//   docs for day 3, 7 (and day 14 for leads). sendScheduledEmails cron (hourly)
+//   queries sent==false, filters scheduledAt<=now in JS, marks sent:true BEFORE
+//   sending to prevent duplicates on retry, rolls back on failure.
 
 const PDF_URL    = 'https://najahchemistja.com/guide/24-hour-brand-launch-blueprint.pdf';
 const FROM_SEQ   = 'Najah Chemist <start@najahchemistja.com>';
@@ -524,6 +528,42 @@ function leadEmail3Html(name, unsubscribeUrl) {
     <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah Chemist Team</p>`, unsubscribeUrl);
 }
 
+// Lead email 8 — day-14 re-engagement with discount incentive
+//
+// DISCOUNT CODE: LAUNCH10 — 10% off first wholesale order.
+// TODO: configure this code in the checkout flow (client-portal or order form)
+//       so it is validated at checkout and applied to the first order total.
+function leadEmail8Html(name, unsubscribeUrl) {
+  const first = (name || 'there').split(' ')[0];
+  return wrapEmail('A Little Something For You', `
+    <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">Still thinking it over, ${first}? 🎁</h2>
+    <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
+      Two weeks ago you downloaded our <strong>24-Hour Brand Launch Blueprint</strong>. We hope it's been helpful — and we're guessing you might still be weighing things up.
+    </p>
+    <p style="margin:0 0 20px;color:#555;font-size:0.9rem;line-height:1.6;">
+      We want to make it a little easier to take that first step, so here's something just for you:
+    </p>
+    <div style="background:#f5f1ec;border-radius:10px;padding:24px;margin:0 0 24px;text-align:center;">
+      <p style="margin:0 0 8px;font-size:0.78rem;color:#777;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;">Your Exclusive Discount</p>
+      <p style="margin:0 0 12px;font-size:2rem;font-weight:700;letter-spacing:0.12em;color:#1a1a1a;">LAUNCH10</p>
+      <p style="margin:0;font-size:0.88rem;color:#555;line-height:1.6;"><strong>10% off your first wholesale order.</strong><br>Enter this code when you place your order. Limited time only.</p>
+    </div>
+    <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
+      Your brand could be in production this week. We handle the formula, the packaging, and the production — you bring the vision and the customers.
+    </p>
+    <p style="margin:0 0 20px;color:#555;font-size:0.9rem;line-height:1.6;">
+      Start with as little as 1 litre. That's a real product, with your label, in your hands in under a week.
+    </p>
+    <div style="text-align:center;margin:28px 0;">
+      <a href="https://najahchemistja.com/start"
+         style="display:inline-block;background:#1a1a1a;color:white;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:0.95rem;letter-spacing:0.02em;">
+        Claim Your 10% Discount →
+      </a>
+    </div>
+    <p style="margin:0 0 8px;color:#777;font-size:0.8rem;line-height:1.6;text-align:center;">This offer is time-limited. Reply to this email if you have any questions — we respond personally.</p>
+    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah Chemist Team</p>`, unsubscribeUrl);
+}
+
 // Build the HTML for a scheduled email based on its sequence/emailNumber
 function buildScheduledEmailHtml(d) {
   const unsubUrl = (d.sourceCollection && d.sourceDocId)
@@ -533,7 +573,9 @@ function buildScheduledEmailHtml(d) {
     return d.emailNumber === 2 ? subEmail2Html(unsubUrl) : subEmail3Html(unsubUrl);
   }
   if (d.sequence === 'lead') {
-    return d.emailNumber === 2 ? leadEmail2Html(d.recipientName, unsubUrl) : leadEmail3Html(d.recipientName, unsubUrl);
+    if (d.emailNumber === 2) return leadEmail2Html(d.recipientName, unsubUrl);
+    if (d.emailNumber === 8) return leadEmail8Html(d.recipientName, unsubUrl);
+    return leadEmail3Html(d.recipientName, unsubUrl);
   }
   throw new Error(`Unknown sequence: ${d.sequence}`);
 }
@@ -610,10 +652,12 @@ exports.onLeadCreated = onDocumentCreated('leads/{id}', async (event) => {
     console.error(`[onLeadCreated] Email 1 failed for ${email}:`, err.message);
   }
 
-  // Schedule Emails 2 (day 3) and 3 (day 7)
+  // Schedule Emails 2 (day 3), 3 (day 7), and 8 (day 14 re-engagement)
+  // Email 8 is only sent if the lead has not converted — checked at send time.
   const toSchedule = [
-    { emailNumber: 2, delayMs: 3 * DAY_MS, subject: 'Quick check-in from Najah Chemist' },
-    { emailNumber: 3, delayMs: 7 * DAY_MS, subject: "Your brand is waiting — don't let it sit 🌿" },
+    { emailNumber: 2, delayMs:  3 * DAY_MS, subject: 'Quick check-in from Najah Chemist' },
+    { emailNumber: 3, delayMs:  7 * DAY_MS, subject: "Your brand is waiting — don't let it sit 🌿" },
+    { emailNumber: 8, delayMs: 14 * DAY_MS, subject: "Still thinking it over? Here's something to help 🎁" },
   ];
   for (const s of toSchedule) {
     await db.collection('scheduledEmails').add({
@@ -629,7 +673,7 @@ exports.onLeadCreated = onDocumentCreated('leads/{id}', async (event) => {
       sourceDocId:      docId
     });
   }
-  console.log(`[onLeadCreated] Scheduled emails 2 & 3 for ${email}`);
+  console.log(`[onLeadCreated] Scheduled emails 2, 3 & 8 for ${email}`);
 });
 
 // ── Scheduled: sendScheduledEmails (hourly) ───────────────────────────────────
@@ -661,6 +705,25 @@ exports.sendScheduledEmails = onSchedule(
             console.log(`[sendScheduledEmails] Skipped (unsubscribed) ${d.sequence} #${d.emailNumber} → ${d.recipientEmail}`);
             continue;
           }
+
+          // Day-14 lead re-engagement: skip if the lead has already converted or placed an order
+          if (d.sequence === 'lead' && d.emailNumber === 8 && sourceSnap.exists) {
+            if (sourceSnap.data().converted === true) {
+              await doc.ref.update({ sent: true, skippedReason: 'converted', sentAt: FieldValue.serverTimestamp() });
+              console.log(`[sendScheduledEmails] Skipped (converted) lead #8 → ${d.recipientEmail}`);
+              continue;
+            }
+            // Check both email field variants used in the orders collection
+            const [byEmail, byCustomerEmail] = await Promise.all([
+              getFirestore().collection('orders').where('email',         '==', d.recipientEmail).limit(1).get(),
+              getFirestore().collection('orders').where('customerEmail', '==', d.recipientEmail).limit(1).get(),
+            ]);
+            if (!byEmail.empty || !byCustomerEmail.empty) {
+              await doc.ref.update({ sent: true, skippedReason: 'placed_order', sentAt: FieldValue.serverTimestamp() });
+              console.log(`[sendScheduledEmails] Skipped (placed_order) lead #8 → ${d.recipientEmail}`);
+              continue;
+            }
+          }
         }
 
         // Mark sent FIRST — prevents duplicate send if function retries after partial failure
@@ -684,6 +747,243 @@ exports.sendScheduledEmails = onSchedule(
 // ── HTTP: unsubscribe ─────────────────────────────────────────────────────────
 // URL: https://us-central1-{PROJECT_ID}.cloudfunctions.net/unsubscribe
 // Query params: col (subscribers|leads), id (Firestore doc ID)
+
+// ── HTTPS Callable: sendBroadcastEmail ───────────────────────────────────────
+// Called from the Admin Panel Broadcast Email tool.
+// Args: { subject, body, sendToSubscribers, sendToLeads }
+// Returns: { sent, failed }
+
+exports.sendBroadcastEmail = onCall({ cors: true, secrets: ['RESEND_API_KEY'] }, async (request) => {
+  const { subject, body, sendToSubscribers, sendToLeads } = request.data || {};
+
+  if (!subject || !body) {
+    throw new HttpsError('invalid-argument', 'subject and body are required');
+  }
+  if (!sendToSubscribers && !sendToLeads) {
+    throw new HttpsError('invalid-argument', 'select at least one audience');
+  }
+
+  const resendKey = process.env.RESEND_API_KEY;
+  if (!resendKey) {
+    throw new HttpsError('internal', 'RESEND_API_KEY not configured');
+  }
+
+  const db = getFirestore();
+
+  // Collect recipients from selected collections (skip unsubscribed)
+  const recipients = []; // { id, col, name, email }
+
+  if (sendToSubscribers) {
+    const snap = await db.collection('subscribers').get();
+    snap.forEach(d => {
+      const data = d.data();
+      if (data.unsubscribed) return;
+      if (!data.email) return;
+      recipients.push({ id: d.id, col: 'subscribers', name: data.name || '', email: data.email });
+    });
+  }
+
+  if (sendToLeads) {
+    const snap = await db.collection('leads').get();
+    snap.forEach(d => {
+      const data = d.data();
+      if (data.unsubscribed) return;
+      if (!data.email) return;
+      // Avoid duplicates if same email is in both collections
+      if (!recipients.some(r => r.email === data.email)) {
+        recipients.push({ id: d.id, col: 'leads', name: data.name || '', email: data.email });
+      }
+    });
+  }
+
+  let sent = 0;
+  let failed = 0;
+  const failures = []; // { email, name, col, reason }
+
+  // Create a broadcast run doc now so failures can reference a runId
+  const runRef = await db.collection('broadcastLogs').add({
+    subject,
+    sendToSubscribers: sendToSubscribers || false,
+    sendToLeads:       sendToLeads || false,
+    totalRecipients:   recipients.length,
+    startedAt:         FieldValue.serverTimestamp(),
+    status:            'running',
+  });
+  const runId = runRef.id;
+
+  for (const r of recipients) {
+    try {
+      const unsubscribeUrl = `${UNSUBSCRIBE_BASE}?col=${r.col}&id=${r.id}`;
+      const greeting = r.name ? `Hi ${r.name},` : 'Hi there,';
+      // Preserve line breaks from plain-text body
+      const bodyHtml = body
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .split('\n')
+        .map(line => line.trim() === '' ? '<br>' : `<p style="margin:0 0 14px;color:#555;font-size:0.9rem;line-height:1.6;">${line}</p>`)
+        .join('\n');
+
+      const html = wrapEmail('Message from Najah Chemist', `
+        <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">${subject}</h2>
+        <p style="margin:0 0 20px;font-size:1rem;">${greeting}</p>
+        ${bodyHtml}
+      `, unsubscribeUrl);
+
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: 'Najah Chemist <orders@najahchemistja.com>',
+          to: [r.email],
+          subject,
+          html
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        const reason  = `Resend ${res.status}: ${errData.message || errData.name || JSON.stringify(errData)}`;
+        console.error(`[sendBroadcastEmail] Failed ${r.email}: ${reason}`);
+        failures.push({ email: r.email, name: r.name, col: r.col, reason });
+        failed++;
+      } else {
+        sent++;
+      }
+    } catch (err) {
+      const reason = err.message || String(err);
+      console.error(`[sendBroadcastEmail] Error ${r.email}:`, reason);
+      failures.push({ email: r.email, name: r.name, col: r.col, reason });
+      failed++;
+    }
+  }
+
+  // Write each failure as a sub-document under the run
+  for (const f of failures) {
+    await db.collection('broadcastLogs').doc(runId)
+      .collection('failures').add({
+        email:     f.email,
+        name:      f.name  || '',
+        col:       f.col,
+        reason:    f.reason,
+        loggedAt:  FieldValue.serverTimestamp(),
+      });
+  }
+
+  // Update the run doc with final counts
+  await runRef.update({
+    sent,
+    failed,
+    status:      failed === 0 ? 'complete' : 'complete_with_failures',
+    completedAt: FieldValue.serverTimestamp(),
+  });
+
+  console.log(`[sendBroadcastEmail] Done — sent: ${sent}, failed: ${failed}, runId: ${runId}`);
+  return { sent, failed, runId };
+});
+
+// ── Abandoned Cart Recovery ───────────────────────────────────────────────────
+
+exports.checkAbandonedCarts = onSchedule(
+  { schedule: 'every 30 minutes', timeZone: 'America/Jamaica', secrets: ['RESEND_API_KEY'] },
+  async () => {
+    const db  = getFirestore();
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - 60 * 60 * 1000); // 60 minutes ago
+
+    // Query carts not yet recovered; filter emailSent in JS to handle missing field
+    const snap = await db.collection('abandonedCarts')
+      .where('recovered', '==', false)
+      .get();
+
+    const due = snap.docs.filter(d => {
+      const data = d.data();
+      if (data.emailSent) return false;
+      const ca = data.createdAt;
+      if (!ca) return false;
+      const createdAt = ca.toDate ? ca.toDate() : new Date(ca);
+      return createdAt <= cutoff;
+    });
+
+    console.log(`[checkAbandonedCarts] ${due.length} eligible of ${snap.size} unrecovered`);
+
+    const resendKey = process.env.RESEND_API_KEY;
+    if (!resendKey) {
+      console.warn('[checkAbandonedCarts] RESEND_API_KEY not configured — skipping');
+      return;
+    }
+
+    for (const cartDoc of due) {
+      const d = cartDoc.data();
+      try {
+        const name  = d.name || 'there';
+        const first = name.split(' ')[0];
+        const items = Array.isArray(d.cartItems) ? d.cartItems : [];
+        const itemsList = items.length
+          ? items.map(i => `<li style="margin-bottom:0.3rem;">${i.name} — ${i.size} × ${i.qty}</li>`).join('')
+          : '<li>Your selected items</li>';
+
+        const html = `
+<div style="font-family:Arial,sans-serif;max-width:580px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #E5E7EB;">
+  <div style="background:#0F0E0D;padding:1.4rem 2rem;text-align:center;">
+    <span style="font-family:Georgia,serif;font-size:1.2rem;font-weight:700;color:white;">Najah Chemist</span>
+    <div style="font-size:0.72rem;color:#9CA3AF;margin-top:0.2rem;letter-spacing:0.05em;text-transform:uppercase;">Jamaica's Private Label Skincare Manufacturer</div>
+  </div>
+  <div style="padding:2rem 2rem 1.5rem;">
+    <p style="font-size:1rem;font-weight:700;color:#0F0E0D;margin:0 0 0.6rem;">Hi ${first},</p>
+    <p style="color:#374151;line-height:1.7;margin:0 0 1.2rem;">You were checking out some of our products and left before completing your order.</p>
+    <p style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:#B45309;margin:0 0 0.5rem;">Here's what you had in your cart</p>
+    <ul style="margin:0 0 1.5rem;padding-left:1.3rem;color:#374151;line-height:2;">
+      ${itemsList}
+    </ul>
+    <p style="color:#374151;line-height:1.7;margin:0 0 1.5rem;">Your formula is ready — just waiting on you.</p>
+    <div style="text-align:center;margin:1.5rem 0;">
+      <a href="https://najahchemistja.com" style="display:inline-block;background:#B45309;color:white;text-decoration:none;padding:0.8rem 2rem;border-radius:8px;font-weight:700;font-size:0.9rem;letter-spacing:0.02em;">Complete My Order →</a>
+    </div>
+    <p style="color:#374151;line-height:1.7;margin:1.5rem 0 0;">— Najah<br>
+    <span style="font-size:0.82rem;color:#6B7280;">Najah Chemist | Jamaica's Private Label Skincare Manufacturer</span></p>
+  </div>
+  <div style="background:#F9FAFB;border-top:1px solid #E5E7EB;padding:1rem 2rem;text-align:center;">
+    <p style="font-size:0.7rem;color:#9CA3AF;margin:0;line-height:1.6;">
+      You received this because you added items to your cart on najahchemistja.com.<br>
+      Reply to this email to unsubscribe from cart reminders.
+    </p>
+  </div>
+</div>`;
+
+        const res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from:    'Najah Chemist <orders@najahchemistja.com>',
+            to:      [d.email],
+            subject: "You left something behind 👀",
+            html
+          })
+        });
+
+        if (res.ok) {
+          await cartDoc.ref.update({
+            emailSent:   true,
+            emailSentAt: FieldValue.serverTimestamp()
+          });
+          console.log(`[checkAbandonedCarts] Sent to ${d.email}`);
+        } else {
+          const err = await res.json().catch(() => ({}));
+          console.error(`[checkAbandonedCarts] Resend failed ${d.email}: ${err.message || JSON.stringify(err)}`);
+        }
+      } catch(e) {
+        console.error(`[checkAbandonedCarts] Error for ${d.email}:`, e.message);
+      }
+    }
+  }
+);
 
 exports.unsubscribe = functionsV1.https.onRequest(async (req, res) => {
   const col = req.query.col;
