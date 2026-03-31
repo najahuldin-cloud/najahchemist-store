@@ -231,6 +231,7 @@ select.finp{cursor:pointer;}
     <button class="nb" onclick="nav('knowledge',this)"><span class="nb-icon">🤖</span>Chatbot KB</button>
     <button class="nb" onclick="nav('sitecontent',this)"><span class="nb-icon">🌐</span>Site Content</button>
     <button class="nb" onclick="nav('leads',this)"><span class="nb-icon">🌱</span>Leads</button>
+    <button class="nb" onclick="nav('broadcast',this)"><span class="nb-icon">📣</span>Broadcast Email</button>
   </nav>
   <div class="sb-footer">
     <div class="sb-user" id="sb-user-email"></div>
@@ -330,6 +331,7 @@ select.finp{cursor:pointer;}
         <div class="filter-bar">
           <input class="search-inp" placeholder="🔍 Search clients…" oninput="searchClients(this.value)" style="min-width:260px;">
           <button class="btn btn-ol btn-sm" onclick="backfillClientIds()" title="Link all existing orders to client records">🔄 Backfill Orders</button>
+          <button class="btn btn-ol btn-sm" onclick="findMergeDuplicates()" title="Find and merge duplicate client records">🔀 Find &amp; Merge Duplicates</button>
         </div>
         <div class="tbl-wrap">
           <table>
@@ -489,6 +491,43 @@ select.finp{cursor:pointer;}
           </div>
         </div>
 
+      </div>
+    </div>
+
+    <!-- ══════════ BROADCAST EMAIL ══════════ -->
+    <div class="view" id="v-broadcast">
+      <div class="section-title">Broadcast Email</div>
+      <div class="card" style="max-width:680px;">
+        <div class="card-title">Compose Broadcast</div>
+
+        <div class="frow">
+          <label>Audience</label>
+          <div style="display:flex;gap:1.2rem;flex-wrap:wrap;align-items:center;">
+            <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.82rem;font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
+              <input type="checkbox" id="bc-to-subscribers" onchange="bcUpdateCount()" style="width:15px;height:15px;cursor:pointer;">
+              Subscribers
+            </label>
+            <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.82rem;font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
+              <input type="checkbox" id="bc-to-leads" onchange="bcUpdateCount()" style="width:15px;height:15px;cursor:pointer;">
+              Leads
+            </label>
+            <span id="bc-count-msg" style="font-size:0.78rem;color:var(--mid);"></span>
+          </div>
+        </div>
+
+        <div class="frow">
+          <label>Subject Line</label>
+          <input class="finp" type="text" id="bc-subject" placeholder="e.g. New products just launched 🌿">
+        </div>
+
+        <div class="frow">
+          <label>Email Body <span style="font-weight:400;text-transform:none;letter-spacing:0;">(plain text — line breaks preserved)</span></label>
+          <textarea class="finp" id="bc-body" rows="10" placeholder="Write your message here…&#10;&#10;Each line break will be preserved in the email."></textarea>
+        </div>
+
+        <div id="bc-result" style="display:none;padding:0.65rem 0.9rem;border-radius:8px;font-size:0.82rem;margin-bottom:0.9rem;"></div>
+
+        <button class="btn btn-gold" onclick="bcSend()" id="bc-send-btn">Send Broadcast</button>
       </div>
     </div>
 
@@ -652,6 +691,21 @@ select.finp{cursor:pointer;}
   </div>
 </div>
 
+<!-- MERGE DUPLICATES -->
+<div class="modal-overlay" id="m-merge-dupes">
+  <div class="modal modal-lg" style="max-width:900px;">
+    <button class="modal-close" onclick="closeM('m-merge-dupes')">✕</button>
+    <div class="modal-title">Find &amp; Merge Duplicate Clients</div>
+    <p class="text-sm" style="margin-bottom:1rem;">Records highlighted in <span style="background:#D1FAE5;padding:0.1rem 0.4rem;border-radius:4px;">green</span> will be kept (oldest record). Records in <span style="background:#FEE2E2;padding:0.1rem 0.4rem;border-radius:4px;">red</span> will be deleted after merging.</p>
+    <div id="merge-dupes-body"></div>
+    <div id="merge-dupes-result" style="display:none;padding:0.65rem 0.9rem;border-radius:8px;background:#D1FAE5;color:#065F46;font-size:0.82rem;font-weight:600;margin-bottom:0.9rem;"></div>
+    <div class="btn-group" style="justify-content:flex-end;">
+      <button class="btn btn-ol" onclick="closeM('m-merge-dupes')">Close</button>
+      <button class="btn btn-gold" id="merge-all-btn" style="display:none;" onclick="mergeAllDuplicates()">Merge All Groups</button>
+    </div>
+  </div>
+</div>
+
 <!-- EDIT PRODUCT -->
 <div class="modal-overlay" id="m-edit-product">
   <div class="modal modal-lg">
@@ -791,6 +845,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, getDocs, getDoc, onSnapshot, query, orderBy, where, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
 const firebaseConfig = {
   apiKey: "__FIREBASE_API_KEY__",
@@ -805,6 +860,7 @@ const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 const auth = getAuth(firebaseApp);
 const storage = getStorage(firebaseApp);
+const functions = getFunctions(firebaseApp);
 
 // ── STATE ──
 let PRODUCTS = [];
@@ -903,6 +959,7 @@ async function initAdmin() {
     renderClientsTable();
     updateDashStats();
     rebuildClientDatalist();
+    backfillMissingClientIds();
   });
 
   getDoc(doc(db,'settings','bestSellers')).then(d=>{
@@ -923,7 +980,7 @@ window.nav = function(id, btn) {
   document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
   document.getElementById('v-'+id).classList.add('on');
   if(btn) btn.classList.add('on');
-  const titles = {dashboard:'Dashboard',orders:'Orders',clients:'Clients',products:'Products',labels:'Shipping Labels',consultations:'Consultations',knowledge:'Chatbot Knowledge Base',sitecontent:'Site Content',leads:'Leads'};
+  const titles = {dashboard:'Dashboard',orders:'Orders',clients:'Clients',products:'Products',labels:'Shipping Labels',consultations:'Consultations',knowledge:'Chatbot Knowledge Base',sitecontent:'Site Content',leads:'Leads',broadcast:'Broadcast Email'};
   document.getElementById('topbar-title').textContent = titles[id]||id;
   closeSidebar();
   if(id==='clients'){
@@ -1165,8 +1222,9 @@ function renderClientsTable(){
     const orderCount = (c.orders != null) ? c.orders : ORDERS.filter(o=>o.client_id===c._docId).length;
     const spent = (c.totalSpent != null) ? parseFloat(c.totalSpent) : 0;
     const phone = c.phone||c.whatsapp||'—';
+    const displayId = c.clientId || c._docId;
     return `<tr>
-      <td><strong>${c.clientId||'—'}</strong></td>
+      <td><strong>${displayId}</strong></td>
       <td>${c.name||'—'}</td>
       <td>${c.email||'—'}</td>
       <td>${phone}</td>
@@ -1174,7 +1232,7 @@ function renderClientsTable(){
       <td>${spent?'J$'+spent.toLocaleString():'J$0'}</td>
       <td class="btn-group">
         <button class="btn btn-sm btn-ol" onclick="viewClientProfile('${c._docId}')">View</button>
-        <button class="btn btn-sm btn-wa" onclick="reorderWA('${c.clientId||''}','${c.name||''}','${c.phone||c.whatsapp||''}')">↩ Reorder</button>
+        <button class="btn btn-sm btn-wa" onclick="reorderWA('${displayId}','${c.name||''}','${c.phone||c.whatsapp||''}')">↩ Reorder</button>
         <button class="btn btn-sm btn-rd" onclick="deleteClient('${c._docId}')">🗑</button>
       </td>
     </tr>`;
@@ -1184,12 +1242,216 @@ function renderClientsTable(){
 let _clientSearch = '';
 window.searchClients = function(v){ _clientSearch=v; renderClientsTable(); };
 
+// Patch any Firestore client docs that are missing the clientId field by writing
+// the document ID back as the clientId, so every record has a consistent field.
+let _clientIdBackfillDone = false;
+async function backfillMissingClientIds() {
+  if (_clientIdBackfillDone) return;
+  _clientIdBackfillDone = true;
+  const missing = CLIENTS.filter(c => !c.clientId);
+  if (!missing.length) return;
+  try {
+    await Promise.all(missing.map(c => updateDoc(doc(db,'clients',c._docId), { clientId: c._docId })));
+    console.log(`[backfillMissingClientIds] Patched ${missing.length} client(s) with missing clientId`);
+  } catch(e) { console.error('[backfillMissingClientIds]', e); }
+}
+
+// ── FIND & MERGE DUPLICATES ──
+
+window.findMergeDuplicates = function() {
+  // Group by email (primary) or name (fallback for clients without email)
+  const byEmail = {};
+  const byName  = {};
+  const emailSeen = new Set();
+
+  CLIENTS.forEach(c => {
+    const email = (c.email || '').trim().toLowerCase();
+    if (email) {
+      if (!byEmail[email]) byEmail[email] = [];
+      byEmail[email].push(c);
+      emailSeen.add(c._docId);
+    }
+  });
+  CLIENTS.forEach(c => {
+    if (emailSeen.has(c._docId)) return; // already in an email group
+    const name = (c.name || '').trim().toLowerCase();
+    if (!name) return;
+    if (!byName[name]) byName[name] = [];
+    byName[name].push(c);
+  });
+
+  const groups = [
+    ...Object.values(byEmail).filter(g => g.length > 1),
+    ...Object.values(byName).filter(g => g.length > 1)
+  ];
+
+  const body   = document.getElementById('merge-dupes-body');
+  const result = document.getElementById('merge-dupes-result');
+  const mergeAllBtn = document.getElementById('merge-all-btn');
+  result.style.display = 'none';
+
+  if (!groups.length) {
+    body.innerHTML = '<div class="empty-state" style="padding:2rem;">No duplicates found — all client records are unique.</div>';
+    mergeAllBtn.style.display = 'none';
+    openM('m-merge-dupes');
+    return;
+  }
+
+  window._dupeGroups = groups;
+
+  body.innerHTML = groups.map((group, gi) => {
+    const sorted = _sortByAge(group);
+    const key = sorted[0].email || sorted[0].name || '—';
+    return `<div class="card" style="margin-bottom:1rem;" id="dupe-group-${gi}">
+      <div class="card-title" style="margin-bottom:0.6rem;">
+        Group ${gi+1}: <em>${escHtml(key)}</em> — ${group.length} records
+        <button class="btn btn-sm btn-gold" onclick="mergeClientGroup(${gi})">Merge This Group</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="font-size:0.75rem;width:100%;border-collapse:collapse;">
+          <thead><tr>
+            <th style="padding:5px 8px;background:var(--warm);font-size:0.68rem;">Action</th>
+            <th style="padding:5px 8px;background:var(--warm);font-size:0.68rem;">Client ID</th>
+            <th style="padding:5px 8px;background:var(--warm);font-size:0.68rem;">Name</th>
+            <th style="padding:5px 8px;background:var(--warm);font-size:0.68rem;">Email</th>
+            <th style="padding:5px 8px;background:var(--warm);font-size:0.68rem;">Phone</th>
+            <th style="padding:5px 8px;background:var(--warm);font-size:0.68rem;">Orders</th>
+            <th style="padding:5px 8px;background:var(--warm);font-size:0.68rem;">Spent</th>
+            <th style="padding:5px 8px;background:var(--warm);font-size:0.68rem;">Created</th>
+          </tr></thead>
+          <tbody>
+            ${sorted.map((c, ci) => {
+              const bg = ci === 0 ? '#D1FAE5' : '#FEE2E2';
+              const label = ci === 0 ? '✓ Keep' : '✗ Delete';
+              const id = c.clientId || c._docId;
+              const created = c.createdAt?.toDate
+                ? c.createdAt.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+                : '—';
+              return `<tr style="background:${bg};">
+                <td style="padding:5px 8px;font-weight:700;font-size:0.7rem;">${label}</td>
+                <td style="padding:5px 8px;font-family:monospace;font-size:0.7rem;">${escHtml(id)}</td>
+                <td style="padding:5px 8px;">${escHtml(c.name||'—')}</td>
+                <td style="padding:5px 8px;">${escHtml(c.email||'—')}</td>
+                <td style="padding:5px 8px;">${escHtml(c.phone||c.whatsapp||'—')}</td>
+                <td style="padding:5px 8px;">${c.orders||0}</td>
+                <td style="padding:5px 8px;">J$${Number(c.totalSpent||0).toLocaleString()}</td>
+                <td style="padding:5px 8px;white-space:nowrap;">${created}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+
+  mergeAllBtn.style.display = 'block';
+  mergeAllBtn.textContent = `Merge All ${groups.length} Group${groups.length!==1?'s':''}`;
+  openM('m-merge-dupes');
+};
+
+// Sort a group of clients oldest-first
+function _sortByAge(group) {
+  return [...group].sort((a, b) => {
+    const ta = a.createdAt?.toDate ? a.createdAt.toDate().getTime()
+             : a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0;
+    const tb = b.createdAt?.toDate ? b.createdAt.toDate().getTime()
+             : b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0;
+    return ta - tb;
+  });
+}
+
+// Prefer the first non-empty value in the sorted array
+function _bestField(sorted, field) {
+  return sorted.map(c => (c[field]||'').trim()).find(v => v) || '';
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+window.mergeClientGroup = async function(gi) {
+  const group = window._dupeGroups && window._dupeGroups[gi];
+  if (!group) return;
+
+  const sorted  = _sortByAge(group);
+  const keeper  = sorted[0];
+  const dupes   = sorted.slice(1);
+
+  const merged = {
+    clientId:     keeper.clientId || keeper._docId,
+    name:         _bestField(sorted, 'name'),
+    businessName: _bestField(sorted, 'businessName'),
+    email:        _bestField(sorted, 'email'),
+    phone:        _bestField(sorted, 'phone') || _bestField(sorted, 'whatsapp'),
+    whatsapp:     _bestField(sorted, 'whatsapp') || _bestField(sorted, 'phone'),
+    address:      _bestField(sorted, 'address'),
+    notes:        _bestField(sorted, 'notes'),
+    // Take the maximum count — avoids double-counting orders logged in multiple records
+    orders:       Math.max(...group.map(c => Number(c.orders||0))),
+    totalSpent:   Math.max(...group.map(c => Number(c.totalSpent||0))),
+  };
+
+  try {
+    // 1. Write merged data to the keeper document
+    await updateDoc(doc(db,'clients', keeper._docId), merged);
+
+    // 2. Re-point any orders referencing a deleted doc ID to the keeper
+    for (const dupe of dupes) {
+      const ordersSnap = await getDocs(query(collection(db,'orders'), where('client_id','==', dupe._docId)));
+      for (const od of ordersSnap.docs) {
+        await updateDoc(doc(db,'orders', od.id), { client_id: keeper._docId });
+      }
+      await deleteDoc(doc(db,'clients', dupe._docId));
+    }
+
+    // 3. Mark this group as done in the UI
+    window._dupeGroups[gi] = null;
+    const groupEl = document.getElementById(`dupe-group-${gi}`);
+    if (groupEl) {
+      groupEl.innerHTML = `<div style="padding:0.8rem 1rem;color:#065F46;font-weight:600;background:#D1FAE5;border-radius:8px;">
+        ✓ Merged — kept <strong>${escHtml(merged.clientId)}</strong>, deleted ${dupes.length} duplicate record${dupes.length!==1?'s':''}.
+      </div>`;
+    }
+    toast(`Merged: kept ${merged.clientId}, deleted ${dupes.length} record${dupes.length!==1?'s':''}`);
+
+    // Hide Merge All button if no groups remain
+    if ((window._dupeGroups||[]).every(g => !g)) {
+      document.getElementById('merge-all-btn').style.display = 'none';
+    }
+  } catch(e) {
+    toast('Merge error: ' + e.message);
+    console.error('[mergeClientGroup]', e);
+  }
+};
+
+window.mergeAllDuplicates = async function() {
+  const remaining = (window._dupeGroups||[]).filter(g => g);
+  if (!remaining.length) return;
+  if (!confirm(`Merge all ${remaining.length} duplicate group${remaining.length!==1?'s':''}? This cannot be undone.`)) return;
+
+  let totalGroups = 0;
+  let totalDeleted = 0;
+  for (let i = 0; i < window._dupeGroups.length; i++) {
+    if (!window._dupeGroups[i]) continue;
+    const count = window._dupeGroups[i].length;
+    await window.mergeClientGroup(i);
+    totalGroups++;
+    totalDeleted += count - 1;
+  }
+
+  const result = document.getElementById('merge-dupes-result');
+  result.textContent = `Done — ${totalGroups} group${totalGroups!==1?'s':''} merged, ${totalDeleted} duplicate record${totalDeleted!==1?'s':''} deleted.`;
+  result.style.display = 'block';
+  document.getElementById('merge-all-btn').style.display = 'none';
+};
+
 window.viewClientProfile = function(docId){
   const c = CLIENTS.find(x=>x._docId===docId);
   if(!c) return;
   const clientOrders = ORDERS.filter(o=>(o.client||o.customerName||'').toLowerCase()===(c.name||'').toLowerCase());
   const spent = clientOrders.filter(o=>o.payment==='Paid').reduce((s,o)=>s+(parseFloat(o.total)||0),0);
-  const reorderLink = `https://najahchemistja.com?reorder=${c.clientId||''}`;
+  const clientDisplayId = c.clientId || c._docId;
+  const reorderLink = `https://najahchemistja.com?reorder=${clientDisplayId}`;
   const profileDiv = document.getElementById('v-client-profile');
   profileDiv.innerHTML = `
     <button class="btn btn-ol btn-sm" onclick="document.getElementById('v-clients-list').style.display='';document.getElementById('v-client-profile').style.display='none';document.getElementById('clients-title').textContent='Clients';" style="margin-bottom:1rem;">← Back to Clients</button>
@@ -1197,7 +1459,7 @@ window.viewClientProfile = function(docId){
       <div class="profile-avatar">${(c.name||'?')[0].toUpperCase()}</div>
       <div>
         <div style="font-size:1.1rem;font-weight:700;">${c.name||'—'}</div>
-        <div style="font-size:0.78rem;color:#9CA3AF;">${c.businessName||''} · ${c.clientId||'—'}</div>
+        <div style="font-size:0.78rem;color:#9CA3AF;">${c.businessName||''} · ${clientDisplayId}</div>
         <div style="font-size:0.78rem;color:#9CA3AF;margin-top:0.2rem;">${c.email||''} · ${c.whatsapp||''}</div>
       </div>
       <div style="margin-left:auto;text-align:right;">
@@ -1210,7 +1472,7 @@ window.viewClientProfile = function(docId){
       <div class="card">
         <div class="card-title">Actions</div>
         <div style="display:flex;flex-direction:column;gap:0.5rem;">
-          <button class="btn btn-wa" onclick="reorderWA('${c.clientId||''}','${c.name||''}','${c.whatsapp||''}')" style="justify-content:center;">📱 Send Reorder Link via WhatsApp</button>
+          <button class="btn btn-wa" onclick="reorderWA('${clientDisplayId}','${c.name||''}','${c.whatsapp||''}')" style="justify-content:center;">📱 Send Reorder Link via WhatsApp</button>
           <button class="btn btn-ol btn-sm" onclick="copyText('${reorderLink}')" style="justify-content:center;">🔗 Copy Reorder Link</button>
           <button class="btn btn-ol btn-sm" onclick="openEditClient('${c._docId}')" style="justify-content:center;">✏️ Edit Client</button>
         </div>
@@ -2224,7 +2486,7 @@ window.saveBestSellers = async function(){
 document.getElementById('m-new-order').addEventListener('click', function(e){
   if(e.target===this) closeM('m-new-order');
 });
-['m-new-client','m-edit-product','m-consult-detail','m-label'].forEach(id=>{
+['m-new-client','m-edit-product','m-consult-detail','m-label','m-merge-dupes'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){ if(e.target===this) closeM(id); });
 });
 
@@ -2326,6 +2588,83 @@ window.leadsExportCSV = function() {
   a.href = url; a.download = 'najah-leads-'+new Date().toISOString().slice(0,10)+'.csv';
   a.click(); URL.revokeObjectURL(url);
   toast('CSV exported ✓');
+};
+
+// ── BROADCAST EMAIL ──
+
+let _bcSubCount = 0;
+let _bcLeadCount = 0;
+let _bcCountLoaded = false;
+
+async function bcLoadCounts() {
+  if (_bcCountLoaded) return;
+  try {
+    const [subSnap, leadSnap] = await Promise.all([
+      getDocs(query(collection(db,'subscribers'))),
+      getDocs(query(collection(db,'leads')))
+    ]);
+    _bcSubCount = 0;
+    subSnap.forEach(d => { if (!d.data().unsubscribed && d.data().email) _bcSubCount++; });
+    // Collect subscriber emails to deduplicate leads
+    const subEmails = new Set();
+    subSnap.forEach(d => { if (d.data().email) subEmails.add(d.data().email); });
+    _bcLeadCount = 0;
+    leadSnap.forEach(d => { const data = d.data(); if (!data.unsubscribed && data.email && !subEmails.has(data.email)) _bcLeadCount++; });
+    _bcCountLoaded = true;
+  } catch(e) {
+    console.error('bcLoadCounts error:', e);
+  }
+}
+
+window.bcUpdateCount = async function() {
+  await bcLoadCounts();
+  const toSub  = document.getElementById('bc-to-subscribers').checked;
+  const toLead = document.getElementById('bc-to-leads').checked;
+  const count  = (toSub ? _bcSubCount : 0) + (toLead ? _bcLeadCount : 0);
+  const msg    = document.getElementById('bc-count-msg');
+  if (!toSub && !toLead) { msg.textContent = ''; return; }
+  msg.textContent = `→ ${count} recipient${count !== 1 ? 's' : ''}`;
+};
+
+window.bcSend = async function() {
+  const toSub  = document.getElementById('bc-to-subscribers').checked;
+  const toLead = document.getElementById('bc-to-leads').checked;
+  const subject = document.getElementById('bc-subject').value.trim();
+  const body    = document.getElementById('bc-body').value.trim();
+  const result  = document.getElementById('bc-result');
+
+  if (!toSub && !toLead) { toast('Select at least one audience'); return; }
+  if (!subject) { toast('Enter a subject line'); return; }
+  if (!body)    { toast('Enter an email body'); return; }
+
+  await bcLoadCounts();
+  const count = (toSub ? _bcSubCount : 0) + (toLead ? _bcLeadCount : 0);
+  if (!confirm(`You are about to send to ${count} recipient${count !== 1 ? 's' : ''}. Continue?`)) return;
+
+  const btn = document.getElementById('bc-send-btn');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  result.style.display = 'none';
+
+  try {
+    const sendBroadcast = httpsCallable(functions, 'sendBroadcastEmail');
+    const res = await sendBroadcast({ subject, body, sendToSubscribers: toSub, sendToLeads: toLead });
+    const { sent, failed } = res.data;
+    result.style.display = 'block';
+    result.style.background = failed === 0 ? '#D1FAE5' : '#FEF3C7';
+    result.style.color = failed === 0 ? '#065F46' : '#92400E';
+    result.textContent = `Sent: ${sent}  •  Failed: ${failed}`;
+    toast(`Broadcast sent — ${sent} delivered`);
+  } catch(e) {
+    result.style.display = 'block';
+    result.style.background = '#FEE2E2';
+    result.style.color = '#991B1B';
+    result.textContent = `Error: ${e.message}`;
+    toast('Broadcast failed');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send Broadcast';
+  }
 };
 </script>
 </body>
