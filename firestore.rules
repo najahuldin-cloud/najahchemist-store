@@ -2,20 +2,45 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Authenticated admin: full read/write access ───────────────────────
-    match /{document=**} {
+    // Admin-only collections — no public access
+    match /clients/{doc} {
+      allow read, write: if request.auth != null;
+    }
+    match /orders/{doc} {
+      allow read, write: if request.auth != null;
+    }
+    match /leads/{doc} {
+      allow read, write: if request.auth != null;
+    }
+    match /broadcastLogs/{doc}/{sub=**} {
       allow read, write: if request.auth != null;
     }
 
-    // ── Public storefront reads ───────────────────────────────────────────
-    match /products/{id}    { allow read: if true; }
-    match /settings/{id}    { allow read: if true; }
-    match /reviews/{id}     { allow read: if true; }
+    // Public write allowed — for cart and subscriber capture from site
+    match /subscribers/{doc} {
+      allow create: if true;
+      allow read, write: if request.auth != null;
+    }
+    match /abandonedCarts/{doc} {
+      allow create: if true;
+      allow read, write: if request.auth != null;
+    }
 
-    // ── Public storefront writes (checkout, contact, email signup, review) ─
-    match /orders/{id}      { allow write: if true; }
-    match /messages/{id}    { allow write: if true; }
-    match /subscribers/{id} { allow write: if true; }
-    match /reviews/{id}     { allow write: if true; }
+    // Scheduled emails — functions only
+    match /scheduledEmails/{doc} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Products — public read, admin write
+    match /products/{doc} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Reviews — public read and create, admin write
+    match /reviews/{doc} {
+      allow read, create: if true;
+      allow update, delete: if request.auth != null;
+    }
   }
 }
