@@ -1099,8 +1099,14 @@ function _fmtRevDate(d) {
   return d.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
 }
 function _parseOrderDate(o) {
-  const raw = o.date || o.createdAt; if (!raw) return null;
-  let d; if (raw.seconds) d = new Date(raw.seconds * 1000); else if (raw.toDate) d = raw.toDate(); else d = new Date(raw);
+  // Prefer createdAt (always a reliable Firestore serverTimestamp).
+  // o.date is a locale string set by the storefront ("03/04/2026, 11:30:00") which
+  // new Date() can't parse reliably — only use it as a last resort.
+  const raw = o.createdAt || o.date;
+  if (!raw) return null;
+  if (raw.toDate) return raw.toDate();           // Firestore Timestamp object
+  if (raw.seconds) return new Date(raw.seconds * 1000); // serialised Timestamp
+  const d = new Date(raw);
   return isNaN(d.getTime()) ? null : d;
 }
 
@@ -1117,7 +1123,7 @@ function updateDashStats() {
 
   const filter = (document.getElementById('rev-filter') || {}).value || 'this-month';
   const range = _getRevenueDateRange(filter);
-  let paidOrders = ORDERS.filter(o => o.payment === 'Paid' || o.paymentStatus === 'Paid');
+  let paidOrders = ORDERS.filter(o => (o.paymentStatus||o.payStatus||o.payment||'').toLowerCase() === 'paid');
   let subText;
   if (range) {
     paidOrders = paidOrders.filter(o => { const d = _parseOrderDate(o); return d && d >= range.start && d <= range.end; });
