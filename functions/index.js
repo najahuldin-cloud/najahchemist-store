@@ -84,15 +84,113 @@ function toDate(value) {
 
 // ── Firestore Trigger: set completedAt when status → Complete ─────────────────
 
-exports.onOrderComplete = onDocumentUpdated('orders/{orderId}', async (event) => {
-  const before = event.data.before.data();
-  const after  = event.data.after.data();
+exports.onOrderComplete = onDocumentUpdated(
+  { document: 'orders/{orderId}', secrets: ['RESEND_API_KEY'] },
+  async (event) => {
+    const before  = event.data.before.data();
+    const after   = event.data.after.data();
+    const orderId = event.params.orderId;
 
-  if (before.status !== 'Complete' && after.status === 'Complete') {
-    await event.data.after.ref.update({ completedAt: FieldValue.serverTimestamp() });
-    console.log(`[onOrderComplete] Set completedAt for order ${event.params.orderId}`);
+    if (before.status !== 'Complete' && after.status === 'Complete') {
+      await event.data.after.ref.update({ completedAt: FieldValue.serverTimestamp() });
+      console.log(`[onOrderComplete] Set completedAt for order ${orderId}`);
+
+      // Send order-complete email if we have an address
+      const email = after.email || after.customerEmail || '';
+      if (email) {
+        try {
+          await sendOrderCompleteEmail(email, after, orderId);
+          console.log(`[onOrderComplete] Sent completion email to ${email}`);
+        } catch (err) {
+          console.error(`[onOrderComplete] Email failed for ${orderId}:`, err.message);
+        }
+      } else {
+        console.log(`[onOrderComplete] No email on order ${orderId} — skipping email`);
+      }
+    }
   }
-});
+);
+
+// ── Helper: send order-complete email ────────────────────────────────────────
+
+async function sendOrderCompleteEmail(email, order, docId) {
+  const resendKey = process.env.RESEND_API_KEY;
+  if (!resendKey) {
+    console.warn('[onOrderComplete] RESEND_API_KEY not configured — skipping email');
+    return;
+  }
+
+  const clientName    = getClientName(order);
+  const first         = clientName.split(' ')[0];
+  const displayId     = order.id || order.orderId || docId;
+  const items         = buildItemsList(order);
+  const total         = order.total ? `J$${Number(order.total).toLocaleString()}` : '—';
+
+  const itemRowsHtml = items.length > 0
+    ? items.map(i =>
+        `<tr>
+          <td style="padding:8px 12px;border-bottom:1px solid #f0ece8;color:#1a1a1a;">` +
+            `${i.name}${i.size && i.size !== '—' ? ' — ' + i.size : ''}` +
+          `</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f0ece8;text-align:center;color:#555;">×${i.qty || 1}</td>
+        </tr>`).join('')
+    : `<tr><td colspan="2" style="padding:8px 12px;color:#777;">See order details</td></tr>`;
+
+  const html = wrapEmail('Order Complete ✅', `
+    <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">Your order is ready, ${first}! ✅</h2>
+    <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
+      Great news — your order <strong>NC-${displayId}</strong> has been completed and is ready.
+    </p>
+
+    <p style="margin:0 0 8px;font-weight:600;font-size:0.9rem;color:#1a1a1a;">What you ordered:</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;border:1px solid #f0ece8;border-radius:8px;overflow:hidden;">
+      <thead>
+        <tr style="background:#f5f1ec;">
+          <th style="padding:8px 12px;text-align:left;font-size:0.78rem;color:#777;font-weight:600;">Product</th>
+          <th style="padding:8px 12px;text-align:center;font-size:0.78rem;color:#777;font-weight:600;">Qty</th>
+        </tr>
+      </thead>
+      <tbody>${itemRowsHtml}</tbody>
+    </table>
+
+    <p style="margin:0 0 20px;font-size:0.9rem;color:#1a1a1a;"><strong>Total: ${total}</strong></p>
+
+    <div style="background:#f5f1ec;border-radius:10px;padding:16px 20px;margin:0 0 24px;">
+      <p style="margin:0 0 6px;font-weight:600;font-size:0.88rem;color:#1a1a1a;">Your next step</p>
+      <p style="margin:0;color:#555;font-size:0.85rem;line-height:1.6;">Arrange collection or delivery using the shipping method you selected.</p>
+    </div>
+
+    <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
+      Need to reorder? Reply to this email or WhatsApp us:<br>
+      <a href="https://wa.me/18768851099" style="color:#B45309;font-weight:600;text-decoration:none;">wa.me/18768851099</a>
+    </p>
+
+    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">
+      Thank you for ordering with Najah Chemist. We look forward to your next order.<br><br>
+      — Najah<br>
+      <span style="font-size:0.82rem;color:#777;">Najah Chemist | Jamaica's Private Label Skincare Manufacturer</span>
+    </p>
+  `, null);
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${resendKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      from:    'Najah Chemist <orders@najahchemistja.com>',
+      to:      [email],
+      subject: `Your order is ready ✅ — NC-${displayId}`,
+      html
+    })
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(`Resend error ${res.status}: ${errData.message || JSON.stringify(errData)}`);
+  }
+}
 
 // ── Scheduled Function: reorderReminder ───────────────────────────────────────
 // Runs daily at 9:00am Jamaica time (America/Jamaica = UTC-5, no DST)
@@ -327,7 +425,7 @@ async function sendEmail(email, clientName, items) {
 // ── Email Follow-up Sequences ─────────────────────────────────────────────────
 // Sequence 1: Subscribers (popup sign-ups)  — 3 emails: day 0, 3, 7
 // Sequence 2: Leads      (start funnel)     — 4 emails: day 0, 3, 7, 14
-//   Email 8 (day 14) is a re-engagement with discount code LAUNCH10 (10% off
+//   Email 8 (day 14) is a re-engagement offering a free 15-min brand consultation (
 //   first wholesale order). It is skipped if the lead has converted: true or
 //   has placed any order in the orders collection.
 //
@@ -528,40 +626,36 @@ function leadEmail3Html(name, unsubscribeUrl) {
     <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah Chemist Team</p>`, unsubscribeUrl);
 }
 
-// Lead email 8 — day-14 re-engagement with discount incentive
-//
-// DISCOUNT CODE: LAUNCH10 — 10% off first wholesale order.
-// TODO: configure this code in the checkout flow (client-portal or order form)
-//       so it is validated at checkout and applied to the first order total.
+// Lead email 8 — day-14 re-engagement with free consultation offer
 function leadEmail8Html(name, unsubscribeUrl) {
   const first = (name || 'there').split(' ')[0];
-  return wrapEmail('A Little Something For You', `
-    <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">Still thinking it over, ${first}? 🎁</h2>
+  return wrapEmail('Let\'s Talk', `
+    <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">Still thinking it over? Let's talk, ${first} 👋</h2>
     <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
-      Two weeks ago you downloaded our <strong>24-Hour Brand Launch Blueprint</strong>. We hope it's been helpful — and we're guessing you might still be weighing things up.
+      You downloaded our Brand Launch Guide a couple of weeks ago — and we haven't heard from you since.
     </p>
-    <p style="margin:0 0 20px;color:#555;font-size:0.9rem;line-height:1.6;">
-      We want to make it a little easier to take that first step, so here's something just for you:
-    </p>
-    <div style="background:#f5f1ec;border-radius:10px;padding:24px;margin:0 0 24px;text-align:center;">
-      <p style="margin:0 0 8px;font-size:0.78rem;color:#777;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;">Your Exclusive Discount</p>
-      <p style="margin:0 0 12px;font-size:2rem;font-weight:700;letter-spacing:0.12em;color:#1a1a1a;">LAUNCH10</p>
-      <p style="margin:0;font-size:0.88rem;color:#555;line-height:1.6;"><strong>10% off your first wholesale order.</strong><br>Enter this code when you place your order. Limited time only.</p>
-    </div>
     <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
-      Your brand could be in production this week. We handle the formula, the packaging, and the production — you bring the vision and the customers.
+      Starting a brand is a big decision. If you're not sure where to begin, what products to choose, or how much to budget — that's exactly what we're here for.
     </p>
+    <p style="margin:0 0 12px;color:#555;font-size:0.9rem;line-height:1.6;">
+      We're offering a <strong>free 15-minute brand consultation</strong> where we'll help you:
+    </p>
+    <ul style="margin:0 0 20px;padding-left:1.3rem;color:#555;font-size:0.9rem;line-height:2;">
+      <li>Figure out which products fit your brand</li>
+      <li>Understand minimum order quantities and pricing</li>
+      <li>Map out a realistic launch plan</li>
+    </ul>
     <p style="margin:0 0 20px;color:#555;font-size:0.9rem;line-height:1.6;">
-      Start with as little as 1 litre. That's a real product, with your label, in your hands in under a week.
+      No pressure. No commitment. Just clarity.
     </p>
     <div style="text-align:center;margin:28px 0;">
-      <a href="https://najahchemistja.com/start"
+      <a href="https://wa.me/18768851099"
          style="display:inline-block;background:#1a1a1a;color:white;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:0.95rem;letter-spacing:0.02em;">
-        Claim Your 10% Discount →
+        👉 Book My Free Consultation
       </a>
     </div>
-    <p style="margin:0 0 8px;color:#777;font-size:0.8rem;line-height:1.6;text-align:center;">This offer is time-limited. Reply to this email if you have any questions — we respond personally.</p>
-    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah Chemist Team</p>`, unsubscribeUrl);
+    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah<br>
+    <span style="font-size:0.82rem;color:#777;">Najah Chemist | Jamaica's Private Label Skincare Manufacturer</span></p>`, unsubscribeUrl);
 }
 
 // Build the HTML for a scheduled email based on its sequence/emailNumber
@@ -657,7 +751,7 @@ exports.onLeadCreated = onDocumentCreated('leads/{id}', async (event) => {
   const toSchedule = [
     { emailNumber: 2, delayMs:  3 * DAY_MS, subject: 'Quick check-in from Najah Chemist' },
     { emailNumber: 3, delayMs:  7 * DAY_MS, subject: "Your brand is waiting — don't let it sit 🌿" },
-    { emailNumber: 8, delayMs: 14 * DAY_MS, subject: "Still thinking it over? Here's something to help 🎁" },
+    { emailNumber: 8, delayMs: 14 * DAY_MS, subject: "Still thinking it over? Let's talk 👋" },
   ];
   for (const s of toSchedule) {
     await db.collection('scheduledEmails').add({
@@ -884,6 +978,111 @@ exports.sendBroadcastEmail = onCall({ cors: true, secrets: ['RESEND_API_KEY'] },
   console.log(`[sendBroadcastEmail] Done — sent: ${sent}, failed: ${failed}, runId: ${runId}`);
   return { sent, failed, runId };
 });
+
+// ── Scheduled: checkReviewRequests (daily at 11am Jamaica time) ───────────────
+// Fires 7 days after an order is marked Complete and sends a Google review request.
+// Guards: requires email on order, sends once per order (reviewEmailSent: true).
+
+const GOOGLE_REVIEW_URL = 'https://g.page/r/CSroEUHbcOi3EBM/review';
+
+exports.checkReviewRequests = onSchedule(
+  { schedule: '0 11 * * *', timeZone: 'America/Jamaica', secrets: ['RESEND_API_KEY'] },
+  async () => {
+    const db          = getFirestore();
+    const now         = Date.now();
+    const SEVEN_DAYS  = 7 * 24 * 60 * 60 * 1000;
+    const cutoff      = new Date(now - SEVEN_DAYS);
+
+    const snap = await db.collection('orders').where('status', '==', 'Complete').get();
+
+    const candidates = snap.docs.filter(d => {
+      const data = d.data();
+      if (data.reviewEmailSent === true) return false;
+      const email = data.email || data.customerEmail || '';
+      if (!email) return false;
+      // Use completedAt preferably, fall back to updatedAt
+      const ts = toDate(data.completedAt || data.updatedAt);
+      return ts && ts <= cutoff;
+    });
+
+    console.log(`[checkReviewRequests] ${candidates.length} eligible of ${snap.size} complete orders`);
+
+    const resendKey = process.env.RESEND_API_KEY;
+    if (!resendKey) {
+      console.warn('[checkReviewRequests] RESEND_API_KEY not configured — skipping');
+      return;
+    }
+
+    for (const doc of candidates) {
+      const order = doc.data();
+      try {
+        const email      = order.email || order.customerEmail;
+        const clientName = getClientName(order);
+        const first      = clientName.split(' ')[0];
+
+        const html = wrapEmail('How Was Your Order?', `
+          <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">How was your Najah Chemist order, ${first}? ⭐</h2>
+          <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
+            It's been a week since your order was completed — we hope you're happy with your products!
+          </p>
+          <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
+            If you have a moment, we'd love a Google review. It helps other Jamaican entrepreneurs find us and helps us grow.
+          </p>
+
+          <div style="text-align:center;margin:28px 0;">
+            <a href="${GOOGLE_REVIEW_URL}"
+               style="display:inline-block;background:#1a1a1a;color:white;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:0.95rem;letter-spacing:0.02em;">
+              👉 Leave a Review (30 seconds)
+            </a>
+          </div>
+
+          <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
+            Thank you for supporting a Jamaican business. 🇯🇲
+          </p>
+
+          <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">
+            — Najah<br>
+            <span style="font-size:0.82rem;color:#777;">Najah Chemist | Jamaica's Private Label Skincare Manufacturer</span>
+          </p>
+        `, null);
+
+        // Mark sent FIRST to prevent duplicate sends on retry
+        await doc.ref.update({
+          reviewEmailSent:   true,
+          reviewEmailSentAt: FieldValue.serverTimestamp()
+        });
+
+        const res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from:    'Najah Chemist <orders@najahchemistja.com>',
+            to:      [email],
+            subject: 'How was your Najah Chemist order? ⭐',
+            html
+          })
+        });
+
+        if (res.ok) {
+          console.log(`[checkReviewRequests] Sent review request to ${email}`);
+        } else {
+          // Roll back the flag so it retries tomorrow
+          await doc.ref.update({ reviewEmailSent: false }).catch(() => {});
+          const err = await res.json().catch(() => ({}));
+          console.error(`[checkReviewRequests] Resend failed ${email}: ${err.message || JSON.stringify(err)}`);
+        }
+      } catch (err) {
+        await doc.ref.update({ reviewEmailSent: false }).catch(() => {});
+        console.error(`[checkReviewRequests] Error for order ${doc.id}:`, err.message);
+      }
+    }
+
+    console.log('[checkReviewRequests] Done.');
+  }
+);
 
 // ── Abandoned Cart Recovery ───────────────────────────────────────────────────
 
