@@ -263,10 +263,45 @@ select.finp{cursor:pointer;}
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-lbl">Total Orders</div><div class="stat-val" id="ds-total-orders">0</div><div class="stat-sub">All time</div></div>
         <div class="stat-card"><div class="stat-lbl">Pending</div><div class="stat-val" id="ds-pending" style="color:#92400E;">0</div><div class="stat-sub">Needs processing</div></div>
-        <div class="stat-card"><div class="stat-lbl">Revenue (JMD)</div><div class="stat-val" id="ds-revenue" style="font-size:1.2rem;">J$0</div><div class="stat-sub">Total collected</div></div>
+        <div class="stat-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.3rem;">
+            <div class="stat-lbl" style="margin-bottom:0;">Revenue (JMD)</div>
+            <select id="rev-filter" onchange="updateDashStats()" style="font-size:0.65rem;font-family:'Outfit',sans-serif;border:none;background:transparent;color:var(--mid);cursor:pointer;outline:none;padding:0 0.1rem;max-width:90px;">
+              <option value="this-month">This Month</option>
+              <option value="this-week">This Week</option>
+              <option value="last-month">Last Month</option>
+              <option value="all">All Time</option>
+            </select>
+          </div>
+          <div class="stat-val" id="ds-revenue" style="font-size:1.2rem;">J$0</div>
+          <div class="stat-sub" id="ds-revenue-sub">Loading…</div>
+        </div>
         <div class="stat-card"><div class="stat-lbl">Clients</div><div class="stat-val" id="ds-clients">0</div><div class="stat-sub">Registered</div></div>
         <div class="stat-card"><div class="stat-lbl">Products</div><div class="stat-val" id="ds-products">0</div><div class="stat-sub" id="ds-products-sub">In catalogue</div></div>
       </div>
+
+      <!-- ── LEAD PIPELINE ── -->
+      <div style="margin-bottom:1.5rem;">
+        <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--mid);margin-bottom:0.75rem;">Lead Pipeline</div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-lbl">Total Leads</div>
+            <div class="stat-val" id="ds-leads-total">0</div>
+            <div class="stat-sub" id="ds-leads-period-sub">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-lbl">Converted</div>
+            <div class="stat-val" id="ds-leads-converted" style="color:var(--green);">0</div>
+            <div class="stat-sub">Placed an order</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-lbl">Conversion Rate</div>
+            <div class="stat-val" id="ds-leads-rate">—</div>
+            <div class="stat-sub" id="ds-leads-segments" style="line-height:1.6;">—</div>
+          </div>
+        </div>
+      </div>
+
       <div class="g2">
         <div class="card">
           <div class="card-title">Recent Orders
@@ -901,6 +936,7 @@ const functions = getFunctions(firebaseApp);
 let PRODUCTS = [];
 let ORDERS = [];
 let CLIENTS = [];
+let LEADS = [];
 let _lastOrdersSig = '';
 let _ordersUnsub = null;
 let _productsUnsub = null;
@@ -997,6 +1033,11 @@ async function initAdmin() {
     backfillMissingClientIds();
   });
 
+  onSnapshot(query(collection(db,'leads'), orderBy('createdAt','desc')), snap => {
+    LEADS = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+    updateDashStats();
+  });
+
   getDoc(doc(db,'settings','bestSellers')).then(d=>{
     if(d.exists()) window._bsIds=(d.data().productIds||d.data().ids||[]);
     else window._bsIds=[];
@@ -1033,19 +1074,92 @@ window.closeSidebar = function(){ document.getElementById('sidebar').classList.r
 function toast(msg){ const t=document.getElementById('a-toast'); t.textContent=msg; t.style.opacity='1'; setTimeout(()=>t.style.opacity='0',2800); }
 
 // ── DASHBOARD ──
+function _getRevenueDateRange(filter) {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  if (filter === 'this-week') {
+    const day = now.getDay(); // 0=Sun
+    const diff = day === 0 ? 6 : day - 1; // shift so Mon=0
+    const mon = new Date(now); mon.setHours(0,0,0,0); mon.setDate(now.getDate() - diff);
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6); sun.setHours(23,59,59,999);
+    return { start: mon, end: sun };
+  }
+  if (filter === 'this-month') {
+    return { start: new Date(y, m, 1, 0,0,0,0), end: new Date(y, m, now.getDate(), 23,59,59,999) };
+  }
+  if (filter === 'last-month') {
+    const lm = m === 0 ? 11 : m - 1;
+    const ly = m === 0 ? y - 1 : y;
+    const lastDay = new Date(y, m, 0).getDate();
+    return { start: new Date(ly, lm, 1, 0,0,0,0), end: new Date(ly, lm, lastDay, 23,59,59,999) };
+  }
+  return null; // all time
+}
+function _fmtRevDate(d) {
+  return d.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+}
+function _parseOrderDate(o) {
+  const raw = o.date || o.createdAt; if (!raw) return null;
+  let d; if (raw.seconds) d = new Date(raw.seconds * 1000); else if (raw.toDate) d = raw.toDate(); else d = new Date(raw);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 function updateDashStats() {
   const total = ORDERS.length;
   const pending = ORDERS.filter(o=>['Pending','pending','Processing'].includes(o.status)).length;
-  const revenue = ORDERS.filter(o=>o.payment==='Paid'||o.paymentStatus==='Paid').reduce((s,o)=>s+(parseFloat(o.total)||0),0);
   const visProds = PRODUCTS.filter(p=>!p.hidden).length;
   const allProds = PRODUCTS.length;
   document.getElementById('ds-total-orders').textContent = total;
   document.getElementById('ds-pending').textContent = pending;
-  document.getElementById('ds-revenue').textContent = 'J$'+revenue.toLocaleString();
   document.getElementById('ds-clients').textContent = CLIENTS.length;
   document.getElementById('ds-products').textContent = allProds + ' total';
   document.getElementById('ds-products-sub').textContent = allProds > 0 ? `${visProds} visible · ${allProds-visProds} hidden` : 'In catalogue';
+
+  const filter = (document.getElementById('rev-filter') || {}).value || 'this-month';
+  const range = _getRevenueDateRange(filter);
+  let paidOrders = ORDERS.filter(o => o.payment === 'Paid' || o.paymentStatus === 'Paid');
+  let subText;
+  if (range) {
+    paidOrders = paidOrders.filter(o => { const d = _parseOrderDate(o); return d && d >= range.start && d <= range.end; });
+    subText = _fmtRevDate(range.start) + ' – ' + _fmtRevDate(range.end);
+  } else {
+    subText = 'All time';
+  }
+  const revenue = paidOrders.reduce((s, o) => s + (parseFloat(o.total) || 0), 0);
+  document.getElementById('ds-revenue').textContent = 'J$' + revenue.toLocaleString();
+  document.getElementById('ds-revenue-sub').textContent = subText;
+
+  // ── Lead Pipeline ──
+  let filteredLeads = range
+    ? LEADS.filter(l => { const d = _parseOrderDate(l); return d && d >= range.start && d <= range.end; })
+    : LEADS;
+  const totalLeads = filteredLeads.length;
+
+  // Build lookup sets from all orders (match regardless of order date)
+  const orderEmails = new Set(ORDERS.map(o => (o.email||o.customerEmail||'').trim().toLowerCase()).filter(Boolean));
+  const orderPhones = new Set(ORDERS.map(o => (o.phone||o.customerWhatsApp||o.wa||'').replace(/\D/g,'')).filter(Boolean));
+
+  let converted = 0;
+  filteredLeads.forEach(l => {
+    const le = (l.email||'').trim().toLowerCase();
+    const lp = (l.whatsapp||'').replace(/\D/g,'');
+    if ((le && orderEmails.has(le)) || (lp && lp.length >= 7 && orderPhones.has(lp))) converted++;
+  });
+
+  const rate = totalLeads > 0 ? Math.round((converted / totalLeads) * 100) + '%' : '—';
+
+  // Segment breakdown using brandType field
+  const segMap = {};
+  filteredLeads.forEach(l => { const s = l.brandType || 'Other'; segMap[s] = (segMap[s] || 0) + 1; });
+  const segText = Object.entries(segMap).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + ' ' + v).join(' · ') || '—';
+
+  document.getElementById('ds-leads-total').textContent = totalLeads;
+  document.getElementById('ds-leads-period-sub').textContent = range ? _fmtRevDate(range.start) + ' – ' + _fmtRevDate(range.end) : 'All time';
+  document.getElementById('ds-leads-converted').textContent = converted;
+  document.getElementById('ds-leads-rate').textContent = rate;
+  document.getElementById('ds-leads-segments').textContent = segText;
 }
+window.updateDashStats = updateDashStats;
 
 function renderDashRecentOrders() {
   const tbody = document.getElementById('dash-recent-orders');
