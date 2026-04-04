@@ -814,29 +814,37 @@ exports.onLeadCreated = onDocumentCreated({ document: 'leads/{id}', secrets: ['R
     console.error(`[onLeadCreated] Email 1 failed for ${email}:`, err.message);
   }
 
-  // Owner notification — send lead details to start@najahchemistja.com
+  // Owner notification — direct Resend call, from orders@najahchemistja.com
   const wa     = data.whatsapp || '—';
   const budget = data.budget   || '—';
-  const ownerHtml = `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#fff;border:1px solid #e8e3d8;border-radius:8px;">
-      <p style="font-size:0.85rem;color:#777;margin:0 0 4px;">New lead from /start</p>
-      <h2 style="font-family:Georgia,serif;font-size:1.4rem;color:#1a1a1a;margin:0 0 20px;">New Lead Submitted</h2>
-      <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
-        <tr><td style="padding:8px 0;color:#777;width:120px;">Name</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${name || '—'}</td></tr>
-        <tr><td style="padding:8px 0;color:#777;">WhatsApp</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${wa}</td></tr>
-        <tr><td style="padding:8px 0;color:#777;">Email</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${email}</td></tr>
-        <tr><td style="padding:8px 0;color:#777;">Brand type</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${brandType || '—'}</td></tr>
-        <tr><td style="padding:8px 0;color:#777;">Budget</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${budget}</td></tr>
-      </table>
-      <p style="margin:20px 0 0;font-size:0.8rem;color:#bbb;">Lead ID: ${docId}</p>
-    </div>`;
-  console.log(`[onLeadCreated] Sending owner notification — name:${name} wa:${wa} email:${email} brandType:${brandType} budget:${budget} RESEND_KEY_SET:${!!process.env.RESEND_API_KEY}`);
-  try {
-    await sendResendEmail('start@najahchemistja.com', `New lead: ${name || email}`, ownerHtml);
-    console.log(`[onLeadCreated] Owner notification sent OK for ${email}`);
-  } catch (err) {
-    console.error(`[onLeadCreated] Owner notification FAILED:`, err.message);
+  const resendKey = process.env.RESEND_API_KEY;
+  console.log(`[onLeadCreated] owner-notif start — name:${name} wa:${wa} email:${email} brandType:${brandType} budget:${budget} RESEND_KEY_SET:${!!resendKey}`);
+  if (!resendKey) {
+    console.error('[onLeadCreated] RESEND_API_KEY not available — owner notification skipped');
+  } else {
+    const ownerHtml = `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#fff;border:1px solid #e8e3d8;border-radius:8px;"><p style="font-size:0.85rem;color:#777;margin:0 0 4px;">New lead from /start</p><h2 style="font-family:Georgia,serif;font-size:1.4rem;color:#1a1a1a;margin:0 0 20px;">New Lead Submitted</h2><table style="width:100%;border-collapse:collapse;font-size:0.9rem;"><tr><td style="padding:8px 0;color:#777;width:120px;">Name</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${name || '—'}</td></tr><tr><td style="padding:8px 0;color:#777;">WhatsApp</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${wa}</td></tr><tr><td style="padding:8px 0;color:#777;">Email</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${email}</td></tr><tr><td style="padding:8px 0;color:#777;">Brand type</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${brandType || '—'}</td></tr><tr><td style="padding:8px 0;color:#777;">Budget</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${budget}</td></tr></table><p style="margin:20px 0 0;font-size:0.8rem;color:#bbb;">Lead ID: ${docId}</p></div>`;
+    try {
+      const ownerRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: 'Najah Chemist <orders@najahchemistja.com>',
+          to: ['start@najahchemistja.com'],
+          subject: `New lead: ${name || email}`,
+          html: ownerHtml
+        })
+      });
+      const ownerBody = await ownerRes.json().catch(() => ({}));
+      if (ownerRes.ok) {
+        console.log(`[onLeadCreated] owner-notif sent OK — id:${ownerBody.id}`);
+      } else {
+        console.error(`[onLeadCreated] owner-notif FAILED — status:${ownerRes.status} body:${JSON.stringify(ownerBody)}`);
+      }
+    } catch (err) {
+      console.error(`[onLeadCreated] owner-notif exception:`, err.message);
+    }
   }
-  console.log(`[onLeadCreated] Owner notification block done`);
+  console.log(`[onLeadCreated] owner-notif block done`);
 
   // Email 2 subject — segmented by brandType
   const email2SubjectMap = {
