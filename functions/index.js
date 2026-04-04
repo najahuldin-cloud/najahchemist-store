@@ -789,7 +789,7 @@ exports.onSubscriberCreated = onDocumentCreated('subscribers/{id}', async (event
 
 // ── Trigger: onLeadCreated ────────────────────────────────────────────────────
 
-exports.onLeadCreated = onDocumentCreated('leads/{id}', async (event) => {
+exports.onLeadCreated = onDocumentCreated({ document: 'leads/{id}', secrets: ['RESEND_API_KEY'] }, async (event) => {
   const data  = event.data.data();
   const email = data.email;
   const name  = data.name || '';
@@ -829,12 +829,14 @@ exports.onLeadCreated = onDocumentCreated('leads/{id}', async (event) => {
       </table>
       <p style="margin:20px 0 0;font-size:0.8rem;color:#bbb;">Lead ID: ${docId}</p>
     </div>`;
+  console.log(`[onLeadCreated] Sending owner notification — name:${name} wa:${wa} email:${email} brandType:${brandType} budget:${budget} RESEND_KEY_SET:${!!process.env.RESEND_API_KEY}`);
   try {
     await sendResendEmail('start@najahchemistja.com', `New lead: ${name || email}`, ownerHtml);
-    console.log(`[onLeadCreated] Owner notified for ${email}`);
+    console.log(`[onLeadCreated] Owner notification sent OK for ${email}`);
   } catch (err) {
-    console.error(`[onLeadCreated] Owner notification failed:`, err.message);
+    console.error(`[onLeadCreated] Owner notification FAILED:`, err.message);
   }
+  console.log(`[onLeadCreated] Owner notification block done`);
 
   // Email 2 subject — segmented by brandType
   const email2SubjectMap = {
