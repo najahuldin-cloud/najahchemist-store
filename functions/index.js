@@ -580,50 +580,117 @@ function leadEmail1Html(name, unsubscribeUrl) {
     <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah Chemist Team</p>`, unsubscribeUrl);
 }
 
-function leadEmail2Html(name, unsubscribeUrl) {
+function leadEmail2Html(name, brandType, unsubscribeUrl) {
   const first = (name || 'there').split(' ')[0];
-  return wrapEmail('Quick Check-In', `
-    <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">How's the guide, ${first}?</h2>
-    <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
-      It's been a few days since you downloaded the Brand Launch Blueprint. We wanted to check in — have you had a chance to look through it?
-    </p>
-    <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
-      A common question we get at this stage: <strong>"Where do I even start if I don't know what products to pick?"</strong>
-    </p>
-    <p style="margin:0 0 20px;color:#555;font-size:0.9rem;line-height:1.6;">
-      Our most popular starting bundle is the <strong>Yoni Care Set</strong> (Foaming Wash + Scrub + Body Butter) — high demand, high repeat buyers, and a strong margin from day one. But every brand is different. Reply to this email and tell us who your customer is — we'll suggest the right products for your niche.
-    </p>
+  const bt = (brandType || '').trim();
+
+  let subtitle, intro, productsHeader, products, closing, ctaText;
+
+  if (bt === 'Skincare') {
+    subtitle    = 'What\'s Selling';
+    intro       = `If you're building a skincare brand, here's what's actually selling:`;
+    productsHeader = null;
+    products    = [
+      '🥇 <strong>Turmeric Kojic Soap</strong> — dark spots, acne, uneven tone. Our most reordered product.',
+      '🥈 <strong>Papaya Serum</strong> — brightening serum your customers will repurchase every 4–6 weeks.',
+      '🥉 <strong>Spot Remover</strong> — targeted treatment. Easy add-on sale to any skincare bundle.',
+    ];
+    closing     = 'You don\'t need all three. Start with one litre of one product, put your label on it, and test your market.';
+    ctaText     = 'WhatsApp me — I\'ll have a quote to you same day.';
+  } else if (bt === 'Feminine Care') {
+    subtitle    = 'What\'s Selling';
+    intro       = 'Women who find a feminine care brand they trust don\'t switch. That\'s the business you\'re building.';
+    productsHeader = 'Here\'s what\'s moving:';
+    products    = [
+      '🥇 <strong>Yoni Foaming Wash</strong> — our fastest moving feminine care product. Clients reorder within weeks.',
+      '🥈 <strong>Yoni Oil</strong> — premium margins, strong repeat purchase, customers stay loyal.',
+      '🥉 <strong>Boric Acid &amp; Probiotics Gel Wash</strong> — educated buyers actively search for this. Low competition.',
+    ];
+    closing     = 'Start with one litre. That\'s your entire investment to launch.';
+    ctaText     = 'Message me and let\'s get your first order sorted.';
+  } else if (bt === "Men's Grooming") {
+    subtitle    = 'What\'s Selling';
+    intro       = 'Most brand owners ignore the men\'s market. Which means less competition for you.';
+    productsHeader = 'What men are already spending money on:';
+    products    = [
+      '🥇 <strong>Beard Oil</strong> — every man with a beard needs it. Simple sell, strong repeat purchase.',
+      '🥈 <strong>Ryfle Wash</strong> — masculine intimate wash, a unique product with almost no local competition.',
+      '🥉 <strong>Beard Balm</strong> — pairs with the oil. Sell as a set and increase your average order value.',
+    ];
+    closing     = 'The window to be first in this space won\'t stay open forever.';
+    ctaText     = 'WhatsApp me — let\'s talk about your first product.';
+  } else {
+    subtitle    = 'What\'s Selling';
+    intro       = 'Here\'s what\'s actually moving for private label brands in Jamaica right now:';
+    productsHeader = null;
+    products    = [
+      '🥇 <strong>Turmeric Kojic Soap</strong> — our most reordered product across all categories.',
+      '🥈 <strong>Yoni Foaming Wash</strong> — fastest moving feminine care product.',
+      '🥉 <strong>Beard Oil</strong> — strong repeat purchase, almost no local competition.',
+    ];
+    closing     = 'Start with one litre of whichever fits your brand vision.';
+    ctaText     = 'WhatsApp me — I\'ll have a quote to you same day.';
+  }
+
+  const productsHeaderHtml = productsHeader
+    ? `<p style="margin:0 0 12px;color:#555;font-size:0.9rem;line-height:1.6;">${productsHeader}</p>`
+    : '';
+  const productsHtml = products
+    .map(p => `<p style="margin:0 0 10px;color:#555;font-size:0.9rem;line-height:1.6;">${p}</p>`)
+    .join('');
+
+  return wrapEmail(subtitle, `
+    <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">Hey ${first},</h2>
+    <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">${intro}</p>
+    ${productsHeaderHtml}
+    <div style="margin:0 0 20px;">${productsHtml}</div>
+    <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">${closing}</p>
+    <p style="margin:0 0 20px;color:#555;font-size:0.9rem;line-height:1.6;">${ctaText}</p>
     <div style="text-align:center;margin:28px 0;">
-      <a href="https://najahchemistja.com" style="display:inline-block;background:#1a1a1a;color:white;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:0.95rem;letter-spacing:0.02em;">
-        View the Full Catalogue →
+      <a href="https://wa.me/18768851099" style="display:inline-block;background:#1a1a1a;color:white;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:0.95rem;letter-spacing:0.02em;">
+        WhatsApp Najahuldin →
       </a>
     </div>
-    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah Chemist Team</p>`, unsubscribeUrl);
+    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najahuldin, Najah Chemist</p>`, unsubscribeUrl);
 }
 
-function leadEmail3Html(name, unsubscribeUrl) {
+function leadEmail3Html(name, brandType, unsubscribeUrl) {
   const first = (name || 'there').split(' ')[0];
-  return wrapEmail('Your Brand Is Waiting', `
-    <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">Don't let it sit, ${first} 🌿</h2>
-    <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
-      A week ago you requested information about launching your skincare brand with Najah Chemist. We don't want to pressure you — but we do want to make sure you have everything you need to take that next step.
-    </p>
-    <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
-      Here's the truth: the brands that succeed are the ones that start. Not the ones that wait for the perfect moment.
-    </p>
-    <p style="margin:0 0 20px;color:#555;font-size:0.9rem;line-height:1.6;">
-      You can start with as little as 1 litre. That's a real product, in your hands, with your label, in under a week.
-    </p>
-    <div style="background:#f5f1ec;border-radius:10px;padding:20px 24px;margin:0 0 24px;">
-      <p style="margin:0 0 8px;font-weight:700;font-size:0.9rem;color:#1a1a1a;">What's holding you back?</p>
-      <p style="margin:0;color:#555;font-size:0.85rem;line-height:1.6;">Reply to this email with your biggest question or concern — our team responds to every message personally.</p>
-    </div>
+  const bt = (brandType || '').trim();
+
+  let productRec;
+  if (bt === 'Skincare') {
+    productRec = 'For a skincare brand, start with the <strong>Turmeric Kojic Soap</strong> or <strong>Papaya Serum</strong> — both proven sellers with strong reorder rates.';
+  } else if (bt === 'Feminine Care') {
+    productRec = 'For a feminine care brand, start with the <strong>Yoni Foaming Wash</strong> — our fastest moving product and the easiest first sell.';
+  } else if (bt === "Men's Grooming") {
+    productRec = 'For a men\'s grooming brand, start with the <strong>Beard Oil</strong> — lowest barrier to entry, highest repeat purchase rate.';
+  } else {
+    productRec = 'Message me right now and tell me what type of brand you\'re building. I\'ll recommend the right first product, give you the price, and your order can be ready in days.';
+  }
+
+  // For all segments except fallback, the CTA para is the same; fallback folds it into productRec above.
+  const ctaPara = bt === 'Skincare' || bt === 'Feminine Care' || bt === "Men's Grooming"
+    ? `<p style="margin:0 0 20px;color:#555;font-size:0.9rem;line-height:1.6;">Message me right now. I'll confirm your product, give you the price, and your order can be ready in days.</p>`
+    : `<p style="margin:0 0 20px;color:#555;font-size:0.9rem;line-height:1.6;">${productRec}</p>`;
+
+  const productRecPara = bt === 'Skincare' || bt === 'Feminine Care' || bt === "Men's Grooming"
+    ? `<p style="margin:0 0 20px;color:#555;font-size:0.9rem;line-height:1.6;">${productRec}</p>`
+    : '';
+
+  return wrapEmail('Your First Order', `
+    <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">Hey ${first},</h2>
+    <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">You've had the Brand Launch Guide for a week. I want to make this as easy as possible for you.</p>
+    <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">Your first order is just 1 litre. No large investment, no bulk inventory, no risk.</p>
+    ${productRecPara}
+    ${ctaPara}
     <div style="text-align:center;margin:28px 0;">
-      <a href="https://najahchemistja.com/start" style="display:inline-block;background:#1a1a1a;color:white;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:0.95rem;letter-spacing:0.02em;">
-        Place Your First Order →
+      <a href="https://wa.me/18768851099" style="display:inline-block;background:#1a1a1a;color:white;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:0.95rem;letter-spacing:0.02em;">
+        WhatsApp Najahuldin →
       </a>
     </div>
-    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najah Chemist Team</p>`, unsubscribeUrl);
+    <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">This is the last email in this sequence. The next move is yours.</p>
+    <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">— Najahuldin, Najah Chemist</p>`, unsubscribeUrl);
 }
 
 // Lead email 8 — day-14 re-engagement with free consultation offer
@@ -667,9 +734,9 @@ function buildScheduledEmailHtml(d) {
     return d.emailNumber === 2 ? subEmail2Html(unsubUrl) : subEmail3Html(unsubUrl);
   }
   if (d.sequence === 'lead') {
-    if (d.emailNumber === 2) return leadEmail2Html(d.recipientName, unsubUrl);
+    if (d.emailNumber === 2) return leadEmail2Html(d.recipientName, d.brandType || '', unsubUrl);
     if (d.emailNumber === 8) return leadEmail8Html(d.recipientName, unsubUrl);
-    return leadEmail3Html(d.recipientName, unsubUrl);
+    return leadEmail3Html(d.recipientName, d.brandType || '', unsubUrl);
   }
   throw new Error(`Unknown sequence: ${d.sequence}`);
 }
@@ -731,12 +798,13 @@ exports.onLeadCreated = onDocumentCreated('leads/{id}', async (event) => {
     return;
   }
 
-  const db       = getFirestore();
-  const now      = Date.now();
-  const DAY_MS   = 24 * 60 * 60 * 1000;
-  const first    = (name || 'friend').split(' ')[0];
-  const docId    = event.params.id;
-  const unsubUrl = `${UNSUBSCRIBE_BASE}?col=leads&id=${encodeURIComponent(docId)}`;
+  const db        = getFirestore();
+  const now       = Date.now();
+  const DAY_MS    = 24 * 60 * 60 * 1000;
+  const first     = (name || 'friend').split(' ')[0];
+  const docId     = event.params.id;
+  const brandType = data.brandType || '';
+  const unsubUrl  = `${UNSUBSCRIBE_BASE}?col=leads&id=${encodeURIComponent(docId)}`;
 
   // Email 1: send immediately (separate from send-guide.js PDF email)
   try {
@@ -746,11 +814,41 @@ exports.onLeadCreated = onDocumentCreated('leads/{id}', async (event) => {
     console.error(`[onLeadCreated] Email 1 failed for ${email}:`, err.message);
   }
 
+  // Owner notification — send lead details to start@najahchemistja.com
+  const wa     = data.whatsapp || '—';
+  const budget = data.budget   || '—';
+  const ownerHtml = `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#fff;border:1px solid #e8e3d8;border-radius:8px;">
+      <p style="font-size:0.85rem;color:#777;margin:0 0 4px;">New lead from /start</p>
+      <h2 style="font-family:Georgia,serif;font-size:1.4rem;color:#1a1a1a;margin:0 0 20px;">New Lead Submitted</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+        <tr><td style="padding:8px 0;color:#777;width:120px;">Name</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${name || '—'}</td></tr>
+        <tr><td style="padding:8px 0;color:#777;">WhatsApp</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${wa}</td></tr>
+        <tr><td style="padding:8px 0;color:#777;">Email</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${email}</td></tr>
+        <tr><td style="padding:8px 0;color:#777;">Brand type</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${brandType || '—'}</td></tr>
+        <tr><td style="padding:8px 0;color:#777;">Budget</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${budget}</td></tr>
+      </table>
+      <p style="margin:20px 0 0;font-size:0.8rem;color:#bbb;">Lead ID: ${docId}</p>
+    </div>`;
+  try {
+    await sendResendEmail('start@najahchemistja.com', `New lead: ${name || email}`, ownerHtml);
+    console.log(`[onLeadCreated] Owner notified for ${email}`);
+  } catch (err) {
+    console.error(`[onLeadCreated] Owner notification failed:`, err.message);
+  }
+
+  // Email 2 subject — segmented by brandType
+  const email2SubjectMap = {
+    'Skincare':       'The skincare products Jamaican brands are reordering every month',
+    'Feminine Care':  'Feminine care is the most loyal niche in Jamaica right now',
+    "Men's Grooming": "Men's grooming in Jamaica — almost no local brands. That's your opportunity.",
+  };
+  const email2Subject = email2SubjectMap[brandType] || 'The products Jamaican brands are reordering every month';
+
   // Schedule Emails 2 (day 3), 3 (day 7), and 8 (day 14 re-engagement)
   // Email 8 is only sent if the lead has not converted — checked at send time.
   const toSchedule = [
-    { emailNumber: 2, delayMs:  3 * DAY_MS, subject: 'Quick check-in from Najah Chemist' },
-    { emailNumber: 3, delayMs:  7 * DAY_MS, subject: "Your brand is waiting — don't let it sit 🌿" },
+    { emailNumber: 2, delayMs:  3 * DAY_MS, subject: email2Subject },
+    { emailNumber: 3, delayMs:  7 * DAY_MS, subject: `${first}, I'll help you place your first order today` },
     { emailNumber: 8, delayMs: 14 * DAY_MS, subject: "Still thinking it over? Let's talk 👋" },
   ];
   for (const s of toSchedule) {
@@ -758,6 +856,7 @@ exports.onLeadCreated = onDocumentCreated('leads/{id}', async (event) => {
       sequence:         'lead',
       recipientEmail:   email,
       recipientName:    name,
+      brandType:        brandType,
       emailNumber:      s.emailNumber,
       subject:          s.subject,
       scheduledAt:      Timestamp.fromMillis(now + s.delayMs),
@@ -767,7 +866,7 @@ exports.onLeadCreated = onDocumentCreated('leads/{id}', async (event) => {
       sourceDocId:      docId
     });
   }
-  console.log(`[onLeadCreated] Scheduled emails 2, 3 & 8 for ${email}`);
+  console.log(`[onLeadCreated] Scheduled emails 2, 3 & 8 for ${email} (brandType: ${brandType||'fallback'})`);
 });
 
 // ── Scheduled: sendScheduledEmails (hourly) ───────────────────────────────────
@@ -1084,6 +1183,113 @@ exports.checkReviewRequests = onSchedule(
   }
 );
 
+// ── Scheduled: sendReorderEmails (daily at 10am Jamaica time) ────────────────
+// 30 days after an order's status → Complete, send a personalised reorder email.
+// Guards: requires email on order, sends once per order (reorderEmailSent: true).
+
+exports.sendReorderEmails = onSchedule(
+  { schedule: '0 10 * * *', timeZone: 'America/Jamaica', secrets: ['RESEND_API_KEY'] },
+  async () => {
+    const db          = getFirestore();
+    const now         = Date.now();
+    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+    const cutoff      = new Date(now - THIRTY_DAYS);
+
+    const snap = await db.collection('orders').where('status', '==', 'Complete').get();
+
+    const candidates = snap.docs.filter(d => {
+      const data = d.data();
+      if (data.reorderEmailSent === true) return false;
+      if (data.unsubscribed === true) return false;
+      const email = data.email || data.customerEmail || '';
+      if (!email) return false;
+      // completedAt set by onOrderComplete trigger; fall back to createdAt or date
+      const ts = toDate(data.completedAt || data.createdAt || data.date);
+      return ts && ts <= cutoff;
+    });
+
+    console.log(`[sendReorderEmails] ${candidates.length} eligible of ${snap.size} complete orders`);
+
+    const resendKey = process.env.RESEND_API_KEY;
+    if (!resendKey) {
+      console.warn('[sendReorderEmails] RESEND_API_KEY not configured — skipping');
+      return;
+    }
+
+    for (const doc of candidates) {
+      const order = doc.data();
+      try {
+        const email      = order.email || order.customerEmail;
+        const clientName = getClientName(order);
+        const first      = clientName.split(' ')[0];
+        const orderId    = order.id || order.orderId || doc.id;
+        // Show product name if available, otherwise fall back to order ID
+        const lastOrder  = (order.product || '').trim() || orderId;
+        const unsubUrl   = `${UNSUBSCRIBE_BASE}?col=orders&id=${encodeURIComponent(doc.id)}`;
+
+        const html = wrapEmail('Time to Reorder?', `
+          <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">Hey ${first},</h2>
+          <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
+            It's been about a month since your last order with Najah Chemist — which means if you've been selling, you're probably running low.
+          </p>
+          <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
+            <strong>Your last order:</strong> ${lastOrder}
+          </p>
+          <p style="margin:0 0 20px;color:#555;font-size:0.9rem;line-height:1.6;">
+            Ready to restock? Reply to this email or message us on WhatsApp and we'll get your next batch ready within days.
+          </p>
+          <div style="text-align:center;margin:28px 0;">
+            <a href="https://wa.me/18768851099" style="display:inline-block;background:#1a1a1a;color:white;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:0.95rem;letter-spacing:0.02em;">
+              WhatsApp Najahuldin →
+            </a>
+          </div>
+          <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">
+            And if you want to add a new product to your line this time, we can talk about that too.
+          </p>
+          <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">
+            — Najahuldin, Najah Chemist<br>
+            <span style="font-size:0.82rem;color:#777;">najahchemistja.com</span>
+          </p>
+        `, unsubUrl);
+
+        // Mark sent FIRST — prevents duplicate send if function retries
+        await doc.ref.update({
+          reorderEmailSent:   true,
+          reorderEmailSentAt: FieldValue.serverTimestamp()
+        });
+
+        const res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from:    'Najah Chemist <orders@najahchemistja.com>',
+            to:      [email],
+            subject: `Ready for your next batch, ${first}?`,
+            html
+          })
+        });
+
+        if (res.ok) {
+          console.log(`[sendReorderEmails] Sent to ${email} for order ${orderId}`);
+        } else {
+          // Roll back so it retries tomorrow
+          await doc.ref.update({ reorderEmailSent: false }).catch(() => {});
+          const err = await res.json().catch(() => ({}));
+          console.error(`[sendReorderEmails] Resend failed ${email}: ${err.message || JSON.stringify(err)}`);
+        }
+      } catch (err) {
+        await doc.ref.update({ reorderEmailSent: false }).catch(() => {});
+        console.error(`[sendReorderEmails] Error for order ${doc.id}:`, err.message);
+      }
+    }
+
+    console.log('[sendReorderEmails] Done.');
+  }
+);
+
 // ── Abandoned Cart Recovery ───────────────────────────────────────────────────
 
 exports.checkAbandonedCarts = onSchedule(
@@ -1188,7 +1394,7 @@ exports.unsubscribe = functionsV1.https.onRequest(async (req, res) => {
   const col = req.query.col;
   const id  = req.query.id;
 
-  if (!['subscribers', 'leads'].includes(col) || !id) {
+  if (!['subscribers', 'leads', 'orders'].includes(col) || !id) {
     res.status(400).send('Invalid unsubscribe link.');
     return;
   }
