@@ -1414,9 +1414,9 @@ async function backfillMissingClientIds() {
 // ── FIND & MERGE DUPLICATES ──
 
 window.findMergeDuplicates = function() {
-  // Group by email (primary) or name (fallback for clients without email)
+  // Group by email (primary) or phone number (fallback)
   const byEmail = {};
-  const byName  = {};
+  const byPhone = {};
   const emailSeen = new Set();
 
   CLIENTS.forEach(c => {
@@ -1429,15 +1429,17 @@ window.findMergeDuplicates = function() {
   });
   CLIENTS.forEach(c => {
     if (emailSeen.has(c._docId)) return; // already in an email group
-    const name = (c.name || '').trim().toLowerCase();
-    if (!name) return;
-    if (!byName[name]) byName[name] = [];
-    byName[name].push(c);
+    // Normalise phone: strip all non-digits for comparison
+    const rawPhone = (c.phone || c.whatsapp || '').trim();
+    const phone = rawPhone.replace(/\D/g, '');
+    if (!phone) return;
+    if (!byPhone[phone]) byPhone[phone] = [];
+    byPhone[phone].push(c);
   });
 
   const groups = [
     ...Object.values(byEmail).filter(g => g.length > 1),
-    ...Object.values(byName).filter(g => g.length > 1)
+    ...Object.values(byPhone).filter(g => g.length > 1)
   ];
 
   const body   = document.getElementById('merge-dupes-body');
