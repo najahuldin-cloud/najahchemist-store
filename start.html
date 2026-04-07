@@ -688,14 +688,15 @@ window._ncSaveLead = async function(data) {
   allowed.forEach(function(k) {
     if (data[k] != null) payload[k] = data[k];
   });
-  console.log('[StartPage] saving lead:', JSON.stringify({ ...payload, createdAt: '(serverTimestamp)' }));
+  console.log('[StartPage] attempting Firestore save — payload:', JSON.stringify({ ...payload, createdAt: '(serverTimestamp)' }));
 
   let ref;
   try {
+    console.log('[StartPage] calling addDoc on leads collection...');
     ref = await addDoc(collection(db, 'leads'), payload);
-    console.log('[StartPage] lead saved, doc id:', ref.id);
+    console.log('[StartPage] lead saved OK — doc id:', ref.id);
   } catch(e) {
-    console.error('[StartPage] lead save FAILED:', e.code, e.message);
+    console.error('[StartPage] lead save FAILED —', e.code, e.message);
     return false;
   }
 
