@@ -4902,7 +4902,7 @@ window.sfCheckoutWA = function() {
   document.getElementById('cf-ship').textContent = 'J$' + deliveryFee.toLocaleString();
   document.getElementById('cf-total').textContent = 'J$' + total.toLocaleString();
   document.getElementById('sf-confirm-overlay').classList.add('open');
-  sfScheduleUpsell(cartSnapshot, orderId, total);
+  sfShowUpsell(cartSnapshot, orderId);
 
   // 3. Clear cart immediately
   sfCart = [];
@@ -4996,7 +4996,7 @@ window.sfCheckoutFygaro = function() {
   document.getElementById('cf-ship').textContent = 'J$' + deliveryFee.toLocaleString();
   document.getElementById('cf-total').textContent = 'J$' + cardTotal.toLocaleString() + ' (incl. 15% card fee)';
   document.getElementById('sf-confirm-overlay').classList.add('open');
-  sfScheduleUpsell(cartSnapshot, orderId, cardTotal);
+  sfShowUpsell(cartSnapshot, orderId);
 
   // 3. Clear cart
   sfCart = [];
@@ -5170,25 +5170,19 @@ function sfAddChatMsg(text, isUser, isTyping) {
 })();
 
 // ── Post-Purchase Upsell ─────────────────────────────
-let _sfUpsellOrderId   = null;
-let _sfUpsellTimer     = null;
-let _sfUpsellShown     = false;
+var _sfUpsellOrderId = null;
+var _sfUpsellShown   = false;
 
-function sfScheduleUpsell(cartSnap, orderId, orderTotal) {
+function sfShowUpsell(cartSnap, orderId) {
   if (_sfUpsellShown) return;
+  _sfUpsellShown   = true;
   _sfUpsellOrderId = orderId;
-  if (_sfUpsellTimer) clearTimeout(_sfUpsellTimer);
-  _sfUpsellTimer = setTimeout(function() { sfShowUpsell(cartSnap); }, 1500);
-}
-
-function sfShowUpsell(cartSnap) {
-  if (_sfUpsellShown) return;
-  _sfUpsellShown = true;
   var products = sfBuildUpsellProducts(cartSnap);
+  console.log('upsell triggered', products.length, 'products');
   if (!products.length) return;
   sfRenderUpsellPopup(products);
   var ov = document.getElementById('sf-upsell-overlay');
-  ov.style.display = 'flex';
+  if (ov) ov.style.display = 'flex';
 }
 
 function sfBuildUpsellProducts(cartSnap) {
@@ -5238,7 +5232,14 @@ function sfBuildUpsellProducts(cartSnap) {
     });
   }
 
-  return targets.filter(Boolean).slice(0,3);
+  var results = targets.filter(Boolean).slice(0,3);
+
+  // Last resort: if category logic found nothing, grab first 3 non-ordered visible products
+  if (!results.length) {
+    results = prods.filter(function(p){ return !orderedIds[p.id]; }).slice(0,3);
+  }
+
+  return results;
 }
 
 function sfUpsellBasePrice(p) {
