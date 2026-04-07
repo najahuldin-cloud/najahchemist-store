@@ -601,6 +601,7 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
     <div class="nc-ch-msgs" id="nc-ch-msgs"></div>
     <div class="nc-ch-qr" id="nc-ch-qr" style="display:none;"></div>
     <div class="nc-ch-inp" id="nc-ch-inp-wrap" style="display:none;">
+      <span id="nc-wa-prefix" style="display:none;font-size:0.85rem;font-weight:600;color:#1C1A18;white-space:nowrap;padding-left:0.25rem;">+1</span>
       <input id="nc-ch-in" placeholder="Type here..." onkeydown="if(event.key==='Enter')ncChatSend()">
       <button class="nc-ch-send" onclick="ncChatSend()">
         <svg width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -889,9 +890,11 @@ function ncClearQR() {
   if (qr) { qr.innerHTML = ''; qr.style.display = 'none'; }
 }
 
-function ncShowInput(placeholder, val) {
-  var wrap = document.getElementById('nc-ch-inp-wrap');
-  var inp  = document.getElementById('nc-ch-in');
+function ncShowInput(placeholder, val, showPrefix) {
+  var wrap   = document.getElementById('nc-ch-inp-wrap');
+  var inp    = document.getElementById('nc-ch-in');
+  var prefix = document.getElementById('nc-wa-prefix');
+  if (prefix) prefix.style.display = showPrefix ? 'inline' : 'none';
   if (inp)  { inp.placeholder = placeholder || 'Type here...'; inp.value = val || ''; }
   if (wrap) { wrap.style.display = 'flex'; if (inp) inp.focus(); }
 }
@@ -974,19 +977,20 @@ window.ncChatSend = async function() {
   if (nc.collectStep === 'name') {
     nc.lead.name = msg;
     nc.collectStep = 'whatsapp';
-    ncBotMsg("What's your WhatsApp number?", 500);
-    setTimeout(function() { ncShowInput('e.g. +1876XXXXXXX', '+'); }, 700);
+    ncBotMsg("What's your WhatsApp number? (area code + number, e.g. 8768851099)", 500);
+    setTimeout(function() { ncShowInput('8768851099', '', true); }, 700);
     return;
   }
 
   // ── Step 2: WhatsApp ──
   if (nc.collectStep === 'whatsapp') {
-    if (!ncLooksLikeWA(msg)) {
-      ncBotMsg('Include your country code e.g. +1876XXXXXXX — your number must start with +', 300);
-      setTimeout(function() { ncShowInput('e.g. +1876XXXXXXX', '+'); }, 500);
+    var waDigits = msg.replace(/\D/g, '');
+    if (waDigits.length < 10) {
+      ncBotMsg('Please enter your area code and number (10 digits), e.g. 8768851099', 300);
+      setTimeout(function() { ncShowInput('8768851099', '', true); }, 500);
       return;
     }
-    nc.lead.whatsapp = msg;
+    nc.lead.whatsapp = '+1' + waDigits;
     nc.collectStep = 'email';
     ncBotMsg("What email should we send your free Brand Launch Guide to?", 500);
     setTimeout(function() { ncShowInput('your@email.com'); }, 700);
@@ -1020,6 +1024,17 @@ window.ncChatSend = async function() {
       targetCustomer = '—';
       budget         = '—';
     }
+
+    // 0. Build owner WA notification URL and open it now — MUST be before any await
+    //    or browsers will block the window.open as not triggered by a direct user gesture
+    var waMsg = 'New lead \u2014 Name: ' + (nc.lead.name || '\u2014') +
+      ' | WhatsApp: ' + (nc.lead.whatsapp || '\u2014') +
+      ' | Email: ' + nc.lead.email +
+      ' | Brand: ' + brandType +
+      ' | Budget: ' + budget +
+      ' | Guide sent automatically';
+    var waUrl = 'https://wa.me/18768851099?text=' + encodeURIComponent(waMsg);
+    window.open(waUrl, '_blank');
 
     // 1. Save to Firestore (non-blocking — don't gate guide send on this)
     if (typeof window._ncSaveLead === 'function') {
@@ -1083,14 +1098,6 @@ window.ncChatSend = async function() {
     }
 
     // 4. Completion screen in chat widget
-    var waMsg = 'New lead \u2014 Name: ' + (nc.lead.name || '\u2014') +
-      ' | WhatsApp: ' + (nc.lead.whatsapp || '\u2014') +
-      ' | Email: ' + (nc.lead.email || '\u2014') +
-      ' | Brand: ' + brandType +
-      ' | Budget: ' + budget +
-      ' | Guide sent automatically';
-    var waUrl = 'https://wa.me/18768851099?text=' + encodeURIComponent(waMsg);
-
     var guideNote = guideSent
       ? 'Your brand guide has been sent to ' + nc.lead.email + '. '
       : '';
