@@ -5186,7 +5186,7 @@ function sfShowUpsell(cartSnap) {
   _sfUpsellShown = true;
   var products = sfBuildUpsellProducts(cartSnap);
   if (!products.length) return;
-  sfRenderUpsell(products);
+  sfRenderUpsellPopup(products);
   var ov = document.getElementById('sf-upsell-overlay');
   ov.style.display = 'flex';
 }
@@ -5248,7 +5248,7 @@ function sfUpsellBasePrice(p) {
   return (p.pricing[k] && p.pricing[k].price) || 0;
 }
 
-function sfRenderUpsell(products) {
+function sfRenderUpsellPopup(products) {
   var container = document.getElementById('sf-upsell-cards');
   container.innerHTML = products.map(function(p) {
     var basePrice = sfUpsellBasePrice(p);
