@@ -5212,17 +5212,27 @@ function sfBuildUpsellProducts(cartSnap) {
       find(function(p){ return /beard balm/.test(nm(p)); }),
       find(function(p){ return /ryfle/.test(nm(p)); }),
     ];
-  } else if (cats['soap'] || /cleanser/.test(names)) {
+  } else if (cats['skincare'] || /serum|cream|toner|cleanser|body butter|body scrub|body oil/.test(names)) {
+    if (/body butter|body scrub|body oil/.test(names)) {
+      // Ordered a body product → suggest face/skin treatment products
+      targets = [
+        find(function(p){ return /serum/.test(nm(p)); }),
+        find(function(p){ return /cream|moistur/.test(nm(p)); }),
+        find(function(p){ return /toner/.test(nm(p)); }),
+      ];
+    } else {
+      // Ordered serum, cream, cleanser or toner → suggest body products
+      targets = [
+        find(function(p){ return /body butter/.test(nm(p)); }),
+        find(function(p){ return /body scrub/.test(nm(p)); }),
+        find(function(p){ return /body oil/.test(nm(p)); }),
+      ];
+    }
+  } else if (cats['soap']) {
     targets = [
       find(function(p){ return /toner/.test(nm(p)); }),
       find(function(p){ return /serum/.test(nm(p)); }),
       find(function(p){ return /cream|moistur/.test(nm(p)); }),
-    ];
-  } else if (/serum|cream/.test(names)) {
-    targets = [
-      find(function(p){ return /cleanser/.test(nm(p)) || p.cat==='soap'; }),
-      find(function(p){ return /toner/.test(nm(p)); }),
-      find(function(p){ return /scrub/.test(nm(p)); }),
     ];
   } else {
     // Default: best sellers
