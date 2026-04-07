@@ -1376,18 +1376,23 @@ function renderClientsTable(){
   tbody.innerHTML = list.map(c=>{
     const orderCount = (c.orders != null) ? c.orders : ORDERS.filter(o=>o.client_id===c._docId).length;
     const spent = (c.totalSpent != null) ? parseFloat(c.totalSpent) : 0;
-    const phone = c.phone||c.whatsapp||'—';
-    const displayId = c.clientId || c._docId;
+    // phone: check all field variants used across creation paths
+    const phone = c.phone||c.whatsapp||c.wa||'—';
+    // email: also fall back to customerEmail (some older records)
+    const email = c.email||c.customerEmail||'—';
+    // hide malformed name_xxx_timestamp IDs — show '—' until a proper NC-xxx is assigned
+    const rawId = c.clientId || c._docId;
+    const displayId = (rawId && !rawId.startsWith('name_')) ? rawId : '—';
     return `<tr>
       <td><strong>${displayId}</strong></td>
       <td>${c.name||'—'}</td>
-      <td>${c.email||'—'}</td>
+      <td>${email}</td>
       <td>${phone}</td>
       <td>${orderCount}</td>
       <td>${spent?'J$'+spent.toLocaleString():'J$0'}</td>
       <td class="btn-group">
         <button class="btn btn-sm btn-ol" onclick="viewClientProfile('${c._docId}')">View</button>
-        <button class="btn btn-sm btn-wa" onclick="reorderWA('${displayId}','${c.name||''}','${c.phone||c.whatsapp||''}')">↩ Reorder</button>
+        <button class="btn btn-sm btn-wa" onclick="reorderWA('${rawId}','${c.name||''}','${c.phone||c.whatsapp||c.wa||''}')">↩ Reorder</button>
         <button class="btn btn-sm btn-rd" onclick="deleteClient('${c._docId}')">🗑</button>
       </td>
     </tr>`;
