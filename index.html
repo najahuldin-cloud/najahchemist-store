@@ -1231,6 +1231,23 @@ tr:hover td{background:var(--warm);}
       </div>
     </div>
   </div>
+  <!-- ══ POST-PURCHASE UPSELL POPUP ══ -->
+  <div id="sf-upsell-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,14,13,0.72);z-index:950;align-items:center;justify-content:center;padding:1rem;">
+    <div style="background:white;width:100%;max-width:520px;border-radius:20px;overflow:hidden;max-height:92vh;overflow-y:auto;animation:sfUp 0.3s ease;">
+      <div style="background:linear-gradient(135deg,#B45309,#92400E);padding:1.4rem 1.5rem;text-align:center;position:relative;">
+        <div style="font-size:1.5rem;margin-bottom:0.35rem;">⚡</div>
+        <h2 style="color:white;font-family:'Playfair Display',serif;font-size:1.2rem;margin-bottom:0.3rem;">Wait! Complete Your Routine</h2>
+        <p style="color:rgba(255,255,255,0.88);font-size:0.8rem;margin-bottom:0.4rem;">Add these to your order now and save 15% — no extra shipping</p>
+        <p style="color:#FCD34D;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">⏰ This offer is only available right now</p>
+        <button onclick="sfCloseUpsell()" style="position:absolute;top:0.9rem;right:1rem;background:rgba(255,255,255,0.2);border:none;color:white;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:1rem;line-height:1;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+      <div id="sf-upsell-cards" style="padding:1.2rem;display:flex;flex-direction:column;gap:0.75rem;"></div>
+      <div style="padding:0 1.2rem 1.2rem;">
+        <button onclick="sfCloseUpsell()" style="width:100%;padding:0.7rem;background:none;border:none;color:#8A8480;font-family:'Outfit',sans-serif;font-size:0.8rem;cursor:pointer;text-decoration:underline;">No thanks, I'm done</button>
+      </div>
+    </div>
+  </div>
+
   <button id="sf-cart-btn" onclick="sfOpenCart()">
     🛒 Cart <span class="sf-cart-count-badge" id="sf-cart-badge">0</span>
   </button>
@@ -4885,6 +4902,7 @@ window.sfCheckoutWA = function() {
   document.getElementById('cf-ship').textContent = 'J$' + deliveryFee.toLocaleString();
   document.getElementById('cf-total').textContent = 'J$' + total.toLocaleString();
   document.getElementById('sf-confirm-overlay').classList.add('open');
+  sfScheduleUpsell(cartSnapshot, orderId, total);
 
   // 3. Clear cart immediately
   sfCart = [];
@@ -4978,6 +4996,7 @@ window.sfCheckoutFygaro = function() {
   document.getElementById('cf-ship').textContent = 'J$' + deliveryFee.toLocaleString();
   document.getElementById('cf-total').textContent = 'J$' + cardTotal.toLocaleString() + ' (incl. 15% card fee)';
   document.getElementById('sf-confirm-overlay').classList.add('open');
+  sfScheduleUpsell(cartSnapshot, orderId, cardTotal);
 
   // 3. Clear cart
   sfCart = [];
@@ -5149,6 +5168,159 @@ function sfAddChatMsg(text, isUser, isTyping) {
   containers.forEach(function(c){ window.PRODUCTS.push(c); });
   sfRenderProducts('all');
 })();
+
+// ── Post-Purchase Upsell ─────────────────────────────
+let _sfUpsellOrderId   = null;
+let _sfUpsellTimer     = null;
+let _sfUpsellShown     = false;
+
+function sfScheduleUpsell(cartSnap, orderId, orderTotal) {
+  if (_sfUpsellShown) return;
+  _sfUpsellOrderId = orderId;
+  if (_sfUpsellTimer) clearTimeout(_sfUpsellTimer);
+  _sfUpsellTimer = setTimeout(function() { sfShowUpsell(cartSnap); }, 1500);
+}
+
+function sfShowUpsell(cartSnap) {
+  if (_sfUpsellShown) return;
+  _sfUpsellShown = true;
+  var products = sfBuildUpsellProducts(cartSnap);
+  if (!products.length) return;
+  sfRenderUpsell(products);
+  var ov = document.getElementById('sf-upsell-overlay');
+  ov.style.display = 'flex';
+}
+
+function sfBuildUpsellProducts(cartSnap) {
+  var prods = (window.PRODUCTS || []).filter(function(p){ return !p.hidden && p.cat !== 'containers' && p.cat !== 'label'; });
+  var orderedIds = {};
+  (cartSnap || []).forEach(function(i){ orderedIds[i.id] = true; });
+  var cats = {};
+  (cartSnap || []).forEach(function(i){ if (i.cat) cats[i.cat.toLowerCase()] = true; });
+  var names = (cartSnap || []).map(function(i){ return (i.name||'').toLowerCase(); }).join(' ');
+
+  function find(test) {
+    return prods.find(function(p){ return !orderedIds[p.id] && test(p); }) || null;
+  }
+  function nm(p){ return (p.name||'').toLowerCase(); }
+
+  var targets = [];
+
+  if (cats['yoni']) {
+    targets = [
+      find(function(p){ return p.cat==='yoni' && /foaming/.test(nm(p)); }),
+      find(function(p){ return p.cat==='yoni' && /\boil\b/.test(nm(p)); }),
+      find(function(p){ return /boric acid cap/.test(nm(p)); }),
+    ];
+  } else if (cats['mencare']) {
+    targets = [
+      find(function(p){ return /beard oil/.test(nm(p)); }),
+      find(function(p){ return /beard balm/.test(nm(p)); }),
+      find(function(p){ return /ryfle/.test(nm(p)); }),
+    ];
+  } else if (cats['soap'] || /cleanser/.test(names)) {
+    targets = [
+      find(function(p){ return /toner/.test(nm(p)); }),
+      find(function(p){ return /serum/.test(nm(p)); }),
+      find(function(p){ return /cream|moistur/.test(nm(p)); }),
+    ];
+  } else if (/serum|cream/.test(names)) {
+    targets = [
+      find(function(p){ return /cleanser/.test(nm(p)) || p.cat==='soap'; }),
+      find(function(p){ return /toner/.test(nm(p)); }),
+      find(function(p){ return /scrub/.test(nm(p)); }),
+    ];
+  } else {
+    // Default: best sellers
+    var bsIds = window._bestSellerIds || [];
+    targets = bsIds.slice(0,3).map(function(id){
+      return prods.find(function(p){ return p.id===id && !orderedIds[p.id]; }) || null;
+    });
+  }
+
+  return targets.filter(Boolean).slice(0,3);
+}
+
+function sfUpsellBasePrice(p) {
+  var keys = Object.keys(p.pricing || {});
+  if (!keys.length) return 0;
+  var k = sfMinKey(p.pricing) || keys[0];
+  return (p.pricing[k] && p.pricing[k].price) || 0;
+}
+
+function sfRenderUpsell(products) {
+  var container = document.getElementById('sf-upsell-cards');
+  container.innerHTML = products.map(function(p) {
+    var basePrice = sfUpsellBasePrice(p);
+    var discPrice = Math.round(basePrice * 0.85);
+    var imgHtml = p.img
+      ? '<img src="'+p.img+'" alt="'+p.name+'" style="width:60px;height:60px;object-fit:cover;border-radius:10px;flex-shrink:0;">'
+      : '<div style="width:60px;height:60px;border-radius:10px;background:#F5F2ED;display:flex;align-items:center;justify-content:center;font-size:1.8rem;flex-shrink:0;">'+(p.emoji||'🧴')+'</div>';
+    return '<div style="display:flex;align-items:center;gap:0.9rem;padding:0.9rem;border:1.5px solid #E8E4DE;border-radius:12px;background:#FAFAF8;">'
+      +imgHtml
+      +'<div style="flex:1;min-width:0;">'
+        +'<div style="font-size:0.82rem;font-weight:700;color:#1C1A18;margin-bottom:0.15rem;">'+p.name+'</div>'
+        +'<div style="font-size:0.72rem;color:#8A8480;margin-bottom:0.35rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(p.tagline||'')+'</div>'
+        +'<div style="display:flex;align-items:center;gap:0.45rem;">'
+          +'<span style="font-size:0.7rem;color:#8A8480;text-decoration:line-through;">J$'+basePrice.toLocaleString()+'</span>'
+          +'<span style="font-size:0.88rem;font-weight:700;color:#059669;">J$'+discPrice.toLocaleString()+'</span>'
+          +'<span style="background:#D1FAE5;color:#065F46;font-size:0.6rem;font-weight:700;padding:0.1rem 0.35rem;border-radius:20px;">−15%</span>'
+        +'</div>'
+      +'</div>'
+      +'<button onclick="sfAddUpsellItem(\''+p.id+'\','+discPrice+',this)" style="background:#B45309;color:white;border:none;border-radius:8px;padding:0.5rem 0.65rem;font-family:\'Outfit\',sans-serif;font-size:0.7rem;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;line-height:1.4;">Add to<br>My Order</button>'
+    +'</div>';
+  }).join('');
+}
+
+window.sfAddUpsellItem = async function(productId, discPrice, btn) {
+  var p = (window.PRODUCTS || []).find(function(x){ return x.id === productId; });
+  if (!p) return;
+  var db = window._db;
+  if (!db || !_sfUpsellOrderId) { sfShowToast('Could not add — please message us on WhatsApp'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '…';
+
+  try {
+    var mod = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+    var collection = mod.collection, query = mod.query, where = mod.where,
+        getDocs = mod.getDocs, updateDoc = mod.updateDoc, doc = mod.doc,
+        arrayUnion = mod.arrayUnion, increment = mod.increment;
+
+    // Find order by id field; retry once if background save hasn't completed yet
+    var snap = await getDocs(query(collection(db,'orders'), where('id','==', _sfUpsellOrderId)));
+    if (snap.empty) {
+      await new Promise(function(r){ setTimeout(r, 1500); });
+      snap = await getDocs(query(collection(db,'orders'), where('id','==', _sfUpsellOrderId)));
+    }
+    if (snap.empty) {
+      sfShowToast('Could not find order — message us on WhatsApp');
+      btn.disabled = false; btn.innerHTML = 'Add to<br>My Order';
+      return;
+    }
+
+    var sizeKey   = sfMinKey(p.pricing) || Object.keys(p.pricing||{})[0] || '';
+    var sizeLabel = sfSizeLabel(sizeKey) || 'Standard';
+
+    await updateDoc(doc(db,'orders', snap.docs[0].id), {
+      upsellItems: arrayUnion({name:p.name, size:sizeLabel, qty:1, price:discPrice, upsellDiscount:true}),
+      total: increment(discPrice)
+    });
+
+    btn.innerHTML = '✓ Added!';
+    btn.style.background = '#059669';
+    sfShowToast(p.name + ' added to your order!');
+  } catch(e) {
+    console.error('[upsell]', e);
+    sfShowToast('Error: ' + (e.message || 'Unknown error'));
+    btn.disabled = false; btn.innerHTML = 'Add to<br>My Order';
+  }
+};
+
+window.sfCloseUpsell = function() {
+  var ov = document.getElementById('sf-upsell-overlay');
+  if (ov) ov.style.display = 'none';
+};
 
 // ── Staff/Admin visibility — show buttons if ?staff=true in URL ───────────
 if (window.location.search.includes('staff=true')) {
