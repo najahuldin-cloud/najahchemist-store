@@ -552,13 +552,51 @@ select.finp{cursor:pointer;}
         </div>
 
         <div class="frow">
-          <label>Subject Line</label>
-          <input class="finp" type="text" id="bc-subject" placeholder="e.g. New products just launched 🌿">
+          <label style="display:flex;align-items:center;gap:0.5rem;text-transform:none;letter-spacing:0;cursor:pointer;">
+            <input type="checkbox" id="bc-segmented" onchange="bcToggleSegments()" style="width:15px;height:15px;cursor:pointer;flex-shrink:0;">
+            <span><strong style="font-size:0.8rem;">Segment by brand type</strong> <span style="font-size:0.75rem;color:var(--mid);font-weight:400;">— send a different email to each audience group</span></span>
+          </label>
         </div>
 
-        <div class="frow">
-          <label>Email Body <span style="font-weight:400;text-transform:none;letter-spacing:0;">(plain text — line breaks preserved)</span></label>
-          <textarea class="finp" id="bc-body" rows="10" placeholder="Write your message here…&#10;&#10;Each line break will be preserved in the email."></textarea>
+        <!-- Single broadcast fields (default) -->
+        <div id="bc-single-fields">
+          <div class="frow">
+            <label>Subject Line</label>
+            <input class="finp" type="text" id="bc-subject" placeholder="e.g. New products just launched 🌿">
+          </div>
+          <div class="frow">
+            <label>Email Body <span style="font-weight:400;text-transform:none;letter-spacing:0;">(plain text — line breaks preserved)</span></label>
+            <textarea class="finp" id="bc-body" rows="10" placeholder="Write your message here…&#10;&#10;Each line break will be preserved in the email."></textarea>
+          </div>
+        </div>
+
+        <!-- Segmented broadcast fields (shown when toggle is on) -->
+        <div id="bc-segment-fields" style="display:none;">
+          <p class="text-sm" style="margin-bottom:1rem;">Each lead receives the email matching their brand type. Subscribers (no brand type) receive the Skincare email.</p>
+
+          <div style="border:1.5px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:0.9rem;">
+            <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--mid);margin-bottom:0.75rem;">Skincare</div>
+            <div class="frow" style="margin-bottom:0.6rem;"><label>Subject</label><input class="finp" type="text" id="bc-seg-subj-skincare" placeholder="Subject line for Skincare leads"></div>
+            <div class="frow" style="margin-bottom:0;"><label>Body</label><textarea class="finp" id="bc-seg-body-skincare" rows="6" placeholder="Email body for Skincare leads…"></textarea></div>
+          </div>
+
+          <div style="border:1.5px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:0.9rem;">
+            <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--mid);margin-bottom:0.75rem;">Feminine Care</div>
+            <div class="frow" style="margin-bottom:0.6rem;"><label>Subject</label><input class="finp" type="text" id="bc-seg-subj-femininecare" placeholder="Subject line for Feminine Care leads"></div>
+            <div class="frow" style="margin-bottom:0;"><label>Body</label><textarea class="finp" id="bc-seg-body-femininecare" rows="6" placeholder="Email body for Feminine Care leads…"></textarea></div>
+          </div>
+
+          <div style="border:1.5px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:0.9rem;">
+            <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--mid);margin-bottom:0.75rem;">Men's Grooming</div>
+            <div class="frow" style="margin-bottom:0.6rem;"><label>Subject</label><input class="finp" type="text" id="bc-seg-subj-mensgrooming" placeholder="Subject line for Men's Grooming leads"></div>
+            <div class="frow" style="margin-bottom:0;"><label>Body</label><textarea class="finp" id="bc-seg-body-mensgrooming" rows="6" placeholder="Email body for Men's Grooming leads…"></textarea></div>
+          </div>
+
+          <div style="border:1.5px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:0.9rem;">
+            <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--mid);margin-bottom:0.75rem;">Hair Care</div>
+            <div class="frow" style="margin-bottom:0.6rem;"><label>Subject</label><input class="finp" type="text" id="bc-seg-subj-haircare" placeholder="Subject line for Hair Care leads"></div>
+            <div class="frow" style="margin-bottom:0;"><label>Body</label><textarea class="finp" id="bc-seg-body-haircare" rows="6" placeholder="Email body for Hair Care leads…"></textarea></div>
+          </div>
         </div>
 
         <div id="bc-result" style="display:none;padding:0.65rem 0.9rem;border-radius:8px;font-size:0.82rem;margin-bottom:0.9rem;"></div>
@@ -2788,20 +2826,44 @@ window.bcUpdateCount = async function() {
   msg.textContent = `→ ${count} recipient${count !== 1 ? 's' : ''}`;
 };
 
+window.bcToggleSegments = function() {
+  const on = document.getElementById('bc-segmented').checked;
+  document.getElementById('bc-single-fields').style.display  = on ? 'none' : '';
+  document.getElementById('bc-segment-fields').style.display = on ? ''     : 'none';
+};
+
 window.bcSend = async function() {
   const toSub  = document.getElementById('bc-to-subscribers').checked;
   const toLead = document.getElementById('bc-to-leads').checked;
-  const subject = document.getElementById('bc-subject').value.trim();
-  const body    = document.getElementById('bc-body').value.trim();
-  const result  = document.getElementById('bc-result');
+  const result = document.getElementById('bc-result');
+  const isSegmented = document.getElementById('bc-segmented').checked;
 
   if (!toSub && !toLead) { toast('Select at least one audience'); return; }
-  if (!subject) { toast('Enter a subject line'); return; }
-  if (!body)    { toast('Enter an email body'); return; }
+
+  let payload;
+  if (isSegmented) {
+    const keys   = ['skincare','femininecare','mensgrooming','haircare'];
+    const labels = ['Skincare','Feminine Care',"Men's Grooming",'Hair Care'];
+    const segs   = {};
+    for (let i = 0; i < keys.length; i++) {
+      const subj = (document.getElementById('bc-seg-subj-' + keys[i])?.value || '').trim();
+      const body = (document.getElementById('bc-seg-body-' + keys[i])?.value || '').trim();
+      if (!subj) { toast(`Enter a subject line for ${labels[i]}`); return; }
+      if (!body) { toast(`Enter an email body for ${labels[i]}`); return; }
+      segs[keys[i]] = { subject: subj, body };
+    }
+    payload = { segments: segs, sendToSubscribers: toSub, sendToLeads: toLead };
+  } else {
+    const subject = (document.getElementById('bc-subject')?.value || '').trim();
+    const body    = (document.getElementById('bc-body')?.value || '').trim();
+    if (!subject) { toast('Enter a subject line'); return; }
+    if (!body)    { toast('Enter an email body'); return; }
+    payload = { subject, body, sendToSubscribers: toSub, sendToLeads: toLead };
+  }
 
   await bcLoadCounts();
   const count = (toSub ? _bcSubCount : 0) + (toLead ? _bcLeadCount : 0);
-  if (!confirm(`You are about to send to ${count} recipient${count !== 1 ? 's' : ''}. Continue?`)) return;
+  if (!confirm(`You are about to send to ${count} recipient${count !== 1 ? 's' : ''}${isSegmented ? ' (segmented by brand type)' : ''}. Continue?`)) return;
 
   const btn = document.getElementById('bc-send-btn');
   btn.disabled = true;
@@ -2810,7 +2872,7 @@ window.bcSend = async function() {
 
   try {
     const sendBroadcast = httpsCallable(functions, 'sendBroadcastEmail');
-    const res = await sendBroadcast({ subject, body, sendToSubscribers: toSub, sendToLeads: toLead });
+    const res = await sendBroadcast(payload);
     const { sent, failed } = res.data;
     result.style.display = 'block';
     result.style.background = failed === 0 ? '#D1FAE5' : '#FEF3C7';

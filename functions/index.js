@@ -597,6 +597,17 @@ function leadEmail2Html(name, brandType, unsubscribeUrl) {
     ];
     closing     = 'You don\'t need all three. Start with one litre of one product, put your label on it, and test your market.';
     ctaText     = 'WhatsApp me — I\'ll have a quote to you same day.';
+  } else if (bt === 'Hair Care' || bt === 'Hair care') {
+    subtitle    = 'What\'s Selling';
+    intro       = 'If you\'re building a hair care brand, here\'s what\'s actually selling:';
+    productsHeader = null;
+    products    = [
+      '🥇 <strong>Ayurvedic Hair Growth Oil</strong> — high demand, easy repeat sales. Clients reorder within weeks.',
+      '🥈 <strong>Hair Butter</strong> — consistent best-seller for natural hair clients. Strong retail margins.',
+      '🥉 <strong>Hair Mist</strong> — lightweight daily product, pairs well with the oil and butter as a full hair care set.',
+    ];
+    closing     = 'You don\'t need all three. Start with one product, put your label on it, and test your market.';
+    ctaText     = 'WhatsApp me — I\'ll have a quote to you same day.';
   } else if (bt === 'Feminine Care') {
     subtitle    = 'What\'s Selling';
     intro       = 'Women who find a feminine care brand they trust don\'t switch. That\'s the business you\'re building.';
@@ -665,16 +676,20 @@ function leadEmail3Html(name, brandType, unsubscribeUrl) {
     productRec = 'For a feminine care brand, start with the <strong>Yoni Foaming Wash</strong> — our fastest moving product and the easiest first sell.';
   } else if (bt === "Men's Grooming") {
     productRec = 'For a men\'s grooming brand, start with the <strong>Beard Oil</strong> — lowest barrier to entry, highest repeat purchase rate.';
+  } else if (bt === 'Hair Care' || bt === 'Hair care') {
+    productRec = 'For a hair care brand, start with the <strong>Ayurvedic Hair Growth Oil</strong> — high demand, strong repeat purchase, and almost no local private label competition in Jamaica.';
   } else {
     productRec = 'Message me right now and tell me what type of brand you\'re building. I\'ll recommend the right first product, give you the price, and your order can be ready in days.';
   }
 
-  // For all segments except fallback, the CTA para is the same; fallback folds it into productRec above.
-  const ctaPara = bt === 'Skincare' || bt === 'Feminine Care' || bt === "Men's Grooming"
+  const isKnownSegment = bt === 'Skincare' || bt === 'Feminine Care' || bt === "Men's Grooming" || bt === 'Hair Care' || bt === 'Hair care';
+
+  // For all known segments the CTA para is the same; fallback folds it into productRec above.
+  const ctaPara = isKnownSegment
     ? `<p style="margin:0 0 20px;color:#555;font-size:0.9rem;line-height:1.6;">Message me right now. I'll confirm your product, give you the price, and your order can be ready in days.</p>`
     : `<p style="margin:0 0 20px;color:#555;font-size:0.9rem;line-height:1.6;">${productRec}</p>`;
 
-  const productRecPara = bt === 'Skincare' || bt === 'Feminine Care' || bt === "Men's Grooming"
+  const productRecPara = isKnownSegment
     ? `<p style="margin:0 0 20px;color:#555;font-size:0.9rem;line-height:1.6;">${productRec}</p>`
     : '';
 
@@ -819,6 +834,8 @@ exports.onLeadCreated = onDocumentCreated({ document: 'leads/{id}', secrets: ['R
     'Skincare':       'The skincare products Jamaican brands are reordering every month',
     'Feminine Care':  'Feminine care is the most loyal niche in Jamaica right now',
     "Men's Grooming": "Men's grooming in Jamaica — almost no local brands. That's your opportunity.",
+    'Hair Care':      'The hair care products Jamaican brands are selling right now',
+    'Hair care':      'The hair care products Jamaican brands are selling right now',
   };
   const email2Subject = email2SubjectMap[brandType] || 'The products Jamaican brands are reordering every month';
 
@@ -925,10 +942,21 @@ exports.sendScheduledEmails = onSchedule(
 // Returns: { sent, failed }
 
 exports.sendBroadcastEmail = onCall({ cors: true, secrets: ['RESEND_API_KEY'] }, async (request) => {
-  const { subject, body, sendToSubscribers, sendToLeads } = request.data || {};
+  const { subject, body, sendToSubscribers, sendToLeads, segments } = request.data || {};
 
-  if (!subject || !body) {
-    throw new HttpsError('invalid-argument', 'subject and body are required');
+  const isSegmented = !!segments;
+
+  if (isSegmented) {
+    const required = ['skincare', 'femininecare', 'mensgrooming', 'haircare'];
+    for (const key of required) {
+      if (!segments[key] || !segments[key].subject || !segments[key].body) {
+        throw new HttpsError('invalid-argument', `Missing subject or body for segment: ${key}`);
+      }
+    }
+  } else {
+    if (!subject || !body) {
+      throw new HttpsError('invalid-argument', 'subject and body are required');
+    }
   }
   if (!sendToSubscribers && !sendToLeads) {
     throw new HttpsError('invalid-argument', 'select at least one audience');
@@ -962,9 +990,18 @@ exports.sendBroadcastEmail = onCall({ cors: true, secrets: ['RESEND_API_KEY'] },
       if (!data.email) return;
       // Avoid duplicates if same email is in both collections
       if (!recipients.some(r => r.email === data.email)) {
-        recipients.push({ id: d.id, col: 'leads', name: data.name || '', email: data.email });
+        recipients.push({ id: d.id, col: 'leads', name: data.name || '', email: data.email, brandType: data.brandType || '' });
       }
     });
+  }
+
+  // Pick the right segment for a recipient based on their brandType
+  function pickSegment(brandType) {
+    const bt = (brandType || '').trim();
+    if (bt === 'Feminine Care' || bt === 'Feminine care') return segments.femininecare;
+    if (bt === "Men's Grooming" || bt === "Men's grooming" || bt === 'Mencare') return segments.mensgrooming;
+    if (bt === 'Hair Care' || bt === 'Hair care') return segments.haircare;
+    return segments.skincare; // default: Skincare + any unknown/missing brandType
   }
 
   let sent = 0;
@@ -986,8 +1023,13 @@ exports.sendBroadcastEmail = onCall({ cors: true, secrets: ['RESEND_API_KEY'] },
     try {
       const unsubscribeUrl = `${UNSUBSCRIBE_BASE}?col=${r.col}&id=${r.id}`;
       const greeting = r.name ? `Hi ${r.name},` : 'Hi there,';
+
+      // Segmented: pick per-recipient subject + body; unsegmented: use global values
+      const recipSubject = isSegmented ? pickSegment(r.brandType).subject : subject;
+      const recipBody    = isSegmented ? pickSegment(r.brandType).body    : body;
+
       // Preserve line breaks from plain-text body
-      const bodyHtml = body
+      const bodyHtml = recipBody
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -996,7 +1038,7 @@ exports.sendBroadcastEmail = onCall({ cors: true, secrets: ['RESEND_API_KEY'] },
         .join('\n');
 
       const html = wrapEmail('Message from Najah Chemist', `
-        <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">${subject}</h2>
+        <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">${recipSubject}</h2>
         <p style="margin:0 0 20px;font-size:1rem;">${greeting}</p>
         ${bodyHtml}
       `, unsubscribeUrl);
@@ -1010,7 +1052,7 @@ exports.sendBroadcastEmail = onCall({ cors: true, secrets: ['RESEND_API_KEY'] },
         body: JSON.stringify({
           from: 'Najah Chemist <orders@najahchemistja.com>',
           to: [r.email],
-          subject,
+          subject: recipSubject,
           html
         })
       });
