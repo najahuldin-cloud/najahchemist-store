@@ -806,35 +806,6 @@ exports.onLeadCreated = onDocumentCreated({ document: 'leads/{id}', secrets: ['R
   const brandType = data.brandType || '';
   const unsubUrl  = `${UNSUBSCRIBE_BASE}?col=leads&id=${encodeURIComponent(docId)}`;
 
-  // Owner notification — fires first, before sequence emails
-  const ownerName      = data.name      || 'Unknown';
-  const ownerEmail     = data.email     || 'No email';
-  const ownerWa        = data.whatsapp  || 'Not provided';
-  const ownerBrandType = data.brandType || 'Not specified';
-  const ownerBudget    = data.budget    || 'Not provided';
-  const ownerHtml = `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#fff;border:1px solid #e8e3d8;border-radius:8px;"><p style="font-size:0.85rem;color:#777;margin:0 0 4px;">New lead from /start</p><h2 style="font-family:Georgia,serif;font-size:1.4rem;color:#1a1a1a;margin:0 0 20px;">New Lead Submitted</h2><table style="width:100%;border-collapse:collapse;font-size:0.9rem;"><tr><td style="padding:8px 0;color:#777;width:120px;">Name</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${ownerName}</td></tr><tr><td style="padding:8px 0;color:#777;">WhatsApp</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${ownerWa}</td></tr><tr><td style="padding:8px 0;color:#777;">Email</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${ownerEmail}</td></tr><tr><td style="padding:8px 0;color:#777;">Brand type</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${ownerBrandType}</td></tr><tr><td style="padding:8px 0;color:#777;">Budget</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${ownerBudget}</td></tr></table><p style="margin:20px 0 0;font-size:0.8rem;color:#bbb;">Lead ID: ${docId}</p></div>`;
-  console.log('Sending owner notification to start@najahchemistja.com');
-  try {
-    const ownerRes = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: 'Najah Chemist <orders@najahchemistja.com>',
-        to: ['start@najahchemistja.com'],
-        subject: `New lead: ${ownerName} — ${ownerBrandType}`,
-        html: ownerHtml
-      })
-    });
-    const ownerBody = await ownerRes.json().catch(() => ({}));
-    if (ownerRes.ok) {
-      console.log(`[onLeadCreated] owner-notif sent OK — id:${ownerBody.id}`);
-    } else {
-      console.error(`[onLeadCreated] owner-notif FAILED — status:${ownerRes.status} body:${JSON.stringify(ownerBody)}`);
-    }
-  } catch (err) {
-    console.error(`[onLeadCreated] owner-notif exception:`, err.message);
-  }
-
   // Email 1: send immediately (separate from send-guide.js PDF email)
   try {
     await sendResendEmail(email, `You're one step closer, ${first} 🌿`, leadEmail1Html(name, unsubUrl));
