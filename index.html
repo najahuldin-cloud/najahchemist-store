@@ -4943,10 +4943,17 @@ window.sfCheckoutFygaro = function() {
   const date = new Date().toLocaleString('en-JM');
   const productsStr = sfCart.map(i=>`${i.name} (${i.size} x${i.qty})`).join(' | ');
   const cartSnapshot = [...sfCart];
+  const items = sfCart.map(i=>`  * ${i.name} (${i.size}) x${i.qty} = J$${(i.price*i.qty).toLocaleString()}`).join('\n');
+  const discountNote = sfDiscountAmount > 0 ? '\nDISCOUNT (' + sfDiscountLabel + '): -J$' + sfDiscountAmount.toLocaleString() : '';
 
   // 1. Open Fygaro IMMEDIATELY — synchronous to avoid browser popup block
   const FYGARO_URL = 'https://www.fygaro.com/en/pb/817f634a-4ee0-41c7-9ad2-6508ae2048c2/';
   window.open(FYGARO_URL + '?amount=' + cardTotal + '&clientnote=' + encodeURIComponent(orderId), '_blank');
+
+  // 1b. Open WhatsApp notification — same user gesture, fires alongside Fygaro
+  const WA = window.WA_NUMBER || '18768851099';
+  const waMsg = 'Hi Najah Chemist! I would like to place an order.\n\nORDER ID: ' + orderId + '\n\nCUSTOMER\nName: ' + name + (phone ? '\nPhone: ' + phone : '') + '\n\nORDER\n' + items + '\n\nSUBTOTAL: J$' + rawSub.toLocaleString() + discountNote + '\nSHIPPING: ' + shipDetail + '\nTOTAL: J$' + cardTotal.toLocaleString() + ' (incl. 15% card fee)\n\nPAYMENT\nPaying by card via Fygaro.\n\nPlease confirm my order. Thank you!';
+  window.open('https://wa.me/' + WA + '?text=' + encodeURIComponent(waMsg), '_blank');
 
   // 2. Show confirmation modal
   document.getElementById('cf-order-id').textContent = orderId;
