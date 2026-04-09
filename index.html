@@ -5316,9 +5316,13 @@ window.sfAddUpsellItem = async function(productId, discPrice, btn) {
 
     var sizeKey   = sfMinKey(p.pricing) || Object.keys(p.pricing||{})[0] || '';
     var sizeLabel = sfSizeLabel(sizeKey) || 'Standard';
+    var existingProduct = snap.docs[0].data().product || '';
+    var updatedProduct = existingProduct + (existingProduct ? ' | ' : '') + p.name + ' (' + sizeLabel + ' x1)';
 
+    console.log('adding upsell item to order', _sfUpsellOrderId, p.name);
     await updateDoc(doc(db,'orders', snap.docs[0].id), {
-      upsellItems: arrayUnion({name:p.name, size:sizeLabel, qty:1, price:discPrice, upsellDiscount:true}),
+      items: arrayUnion({name:p.name, size:sizeLabel, qty:1, price:discPrice, upsellDiscount:true}),
+      product: updatedProduct,
       total: increment(discPrice)
     });
 
