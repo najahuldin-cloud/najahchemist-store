@@ -2417,7 +2417,11 @@ async function loadFromDB() {
           if(typeof sfRenderStarterKit==='function') sfRenderStarterKit();
           if(typeof renderBestSellers==='function') renderBestSellers();
         }
-        if(!settled){ settled=true; resolve(); }
+        if(!settled){
+          var _openPid = new URLSearchParams(window.location.search).get('openProduct');
+          if(_openPid && typeof window.sfOpenProduct==='function') window.sfOpenProduct(_openPid);
+          settled=true; resolve();
+        }
       }, function(e){
         console.log('[Najah] Products listener error:', e.message);
         if(!settled){ settled=true; resolve(); }
