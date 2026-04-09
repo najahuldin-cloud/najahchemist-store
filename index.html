@@ -666,7 +666,7 @@ tr:hover td{background:var(--warm);}
     <div style="max-width:1200px;margin:0 auto;">
       <div class="sf-section-label">Save More</div>
       <h2 class="sf-section-h2">Build your starter kit — <em>Select exactly 3 products</em></h2>
-      <p class="sf-section-sub">Choose exactly 3 products and save 10% on your total order</p>
+      <p class="sf-section-sub">Choose exactly 3 products and save 5% on your total order</p>
       <button id="sk-toggle-btn" onclick="skTogglePanel()" style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.85rem 1.75rem;background:#0F0E0D;color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.9rem;font-weight:700;cursor:pointer;letter-spacing:0.02em;margin-bottom:1.25rem;">Choose Your 3 Products <span id="sk-toggle-arrow" style="font-size:0.75rem;transition:transform 0.2s;">▼</span></button>
       <div id="sk-panel" style="display:none;">
         <div id="sk-limit-msg" style="display:none;background:#FEF2F2;border:1.5px solid #FECACA;border-radius:10px;padding:0.65rem 1rem;font-size:0.82rem;color:#DC2626;font-weight:600;margin-bottom:0.75rem;">You can only select 3 products</div>
@@ -1237,7 +1237,7 @@ tr:hover td{background:var(--warm);}
       <div style="background:linear-gradient(135deg,#B45309,#92400E);padding:1.4rem 1.5rem;text-align:center;position:relative;">
         <div style="font-size:1.5rem;margin-bottom:0.35rem;">⚡</div>
         <h2 style="color:white;font-family:'Playfair Display',serif;font-size:1.2rem;margin-bottom:0.3rem;">Wait! Complete Your Routine</h2>
-        <p style="color:rgba(255,255,255,0.88);font-size:0.8rem;margin-bottom:0.4rem;">Add these to your order now and save 15% — no extra shipping</p>
+        <p style="color:rgba(255,255,255,0.88);font-size:0.8rem;margin-bottom:0.4rem;">Add these to your order now and save 5% — no extra shipping</p>
         <p style="color:#FCD34D;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">⏰ This offer is only available right now</p>
         <button onclick="sfCloseUpsell()" style="position:absolute;top:0.9rem;right:1rem;background:rgba(255,255,255,0.2);border:none;color:white;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:1rem;line-height:1;display:flex;align-items:center;justify-content:center;">✕</button>
       </div>
@@ -4252,7 +4252,7 @@ function skUpdateSummary() {
   if (!count) { summary.style.display = 'none'; return; }
   var runningTotal = selections.reduce(function(s, x){ return s + x.price; }, 0);
   var allPicked = count === 3;
-  var discount = allPicked ? Math.round(runningTotal * 0.10) : 0;
+  var discount = allPicked ? Math.round(runningTotal * 0.05) : 0;
   var finalTotal = runningTotal - discount;
   var rows = selections.map(function(x) {
     return '<div style="display:flex;justify-content:space-between;font-size:0.82rem;color:#4B4846;margin-bottom:0.3rem;">' +
@@ -4261,10 +4261,10 @@ function skUpdateSummary() {
   }).join('');
   var subtotalRow = '<div style="display:flex;justify-content:space-between;font-size:0.82rem;color:#4B4846;padding-top:0.5rem;border-top:1px solid #d1fae5;margin-top:0.4rem;margin-bottom:0.3rem;"><span>Subtotal</span><span style="font-weight:600;">J$' + runningTotal.toLocaleString() + '</span></div>';
   var discountRow = allPicked
-    ? '<div style="display:flex;justify-content:space-between;font-size:0.82rem;color:#059669;margin-bottom:0.3rem;"><span>Kit discount (10%)</span><span style="font-weight:600;">\u2212J$' + discount.toLocaleString() + '</span></div>'
-    : '<div style="font-size:0.78rem;color:#8A8480;margin-bottom:0.4rem;">Select ' + (3 - count) + ' more product' + ((3 - count) !== 1 ? 's' : '') + ' to unlock 10% discount</div>';
+    ? '<div style="display:flex;justify-content:space-between;font-size:0.82rem;color:#059669;margin-bottom:0.3rem;"><span>Kit discount (5%)</span><span style="font-weight:600;">\u2212J$' + discount.toLocaleString() + '</span></div>'
+    : '<div style="font-size:0.78rem;color:#8A8480;margin-bottom:0.4rem;">Select ' + (3 - count) + ' more product' + ((3 - count) !== 1 ? 's' : '') + ' to unlock 5% discount</div>';
   var totalRow = allPicked
-    ? '<div style="display:flex;justify-content:space-between;font-size:1rem;font-weight:800;border-top:1px solid #bbf7d0;padding-top:0.6rem;margin-top:0.4rem;"><span>Total (after 10% off)</span><span style="color:#0F0E0D;">J$' + finalTotal.toLocaleString() + '</span></div>'
+    ? '<div style="display:flex;justify-content:space-between;font-size:1rem;font-weight:800;border-top:1px solid #bbf7d0;padding-top:0.6rem;margin-top:0.4rem;"><span>Total (after 5% off)</span><span style="color:#0F0E0D;">J$' + finalTotal.toLocaleString() + '</span></div>'
     : '';
   var addBtn = allPicked
     ? '<button onclick="skAddToCart()" style="margin-top:1rem;width:100%;padding:0.9rem;background:#0F0E0D;color:white;border:none;border-radius:10px;font-family:\'Outfit\',sans-serif;font-size:0.92rem;font-weight:700;cursor:pointer;letter-spacing:0.02em;">\uD83D\uDED2 Add Kit to Cart</button>'
@@ -4285,8 +4285,8 @@ window.skAddToCart = function() {
     else { sfCart.push({_key:key, id:x.p.id, name:x.p.name, size:sizeLabel, price:x.price, qty:1, emoji:x.p.emoji||'\uD83E\uDDF4', cat:x.p.cat}); }
   });
   sfDiscountApplied = true;
-  sfDiscountAmount = Math.round(kitTotal * 0.10);
-  sfDiscountLabel = 'Starter Kit \u221210%';
+  sfDiscountAmount = Math.round(kitTotal * 0.05);
+  sfDiscountLabel = 'Starter Kit \u22125%';
   sfUpdateCartBtn();
   sfOpenCart();
   sfShowToast('\u2713 Starter kit added to cart');
@@ -5267,7 +5267,7 @@ function sfRenderUpsellPopup(products) {
   var container = document.getElementById('sf-upsell-cards');
   container.innerHTML = products.map(function(p) {
     var basePrice = sfUpsellBasePrice(p);
-    var discPrice = Math.round(basePrice * 0.85);
+    var discPrice = Math.round(basePrice * 0.95);
     var imgHtml = p.img
       ? '<img src="'+p.img+'" alt="'+p.name+'" style="width:60px;height:60px;object-fit:cover;border-radius:10px;flex-shrink:0;">'
       : '<div style="width:60px;height:60px;border-radius:10px;background:#F5F2ED;display:flex;align-items:center;justify-content:center;font-size:1.8rem;flex-shrink:0;">'+(p.emoji||'🧴')+'</div>';
@@ -5279,7 +5279,7 @@ function sfRenderUpsellPopup(products) {
         +'<div style="display:flex;align-items:center;gap:0.45rem;">'
           +'<span style="font-size:0.7rem;color:#8A8480;text-decoration:line-through;">J$'+basePrice.toLocaleString()+'</span>'
           +'<span style="font-size:0.88rem;font-weight:700;color:#059669;">J$'+discPrice.toLocaleString()+'</span>'
-          +'<span style="background:#D1FAE5;color:#065F46;font-size:0.6rem;font-weight:700;padding:0.1rem 0.35rem;border-radius:20px;">−15%</span>'
+          +'<span style="background:#D1FAE5;color:#065F46;font-size:0.6rem;font-weight:700;padding:0.1rem 0.35rem;border-radius:20px;">−5%</span>'
         +'</div>'
       +'</div>'
       +'<button onclick="sfAddUpsellItem(\''+p.id+'\','+discPrice+',this)" style="background:#B45309;color:white;border:none;border-radius:8px;padding:0.5rem 0.65rem;font-family:\'Outfit\',sans-serif;font-size:0.7rem;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;line-height:1.4;">Add to<br>My Order</button>'
