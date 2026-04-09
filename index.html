@@ -2470,6 +2470,7 @@ async function loadFromDB() {
 // Expose for storefront script to save orders to Firestore silently
 async function saveOrderSilent(order) {
   try {
+    console.log('saving order to Firestore', order.id);
     const orderRef = await addDoc(collection(db,'orders'),{...order,createdAt:serverTimestamp()});
     linkOrderToClient(orderRef.id, order).catch(e=>console.error('[client-link]',e.message));
   }
@@ -4902,7 +4903,6 @@ window.sfCheckoutWA = function() {
   document.getElementById('cf-ship').textContent = 'J$' + deliveryFee.toLocaleString();
   document.getElementById('cf-total').textContent = 'J$' + total.toLocaleString();
   document.getElementById('sf-confirm-overlay').classList.add('open');
-  sfShowUpsell(cartSnapshot, orderId);
 
   // 3. Clear cart immediately
   sfCart = [];
@@ -4922,11 +4922,13 @@ window.sfCheckoutWA = function() {
         body: JSON.stringify({orderId:orderId, date:date, customerName:name, phone:phone, products:productsStr, deliveryLocation:deliveryLocation, deliveryFee:deliveryFee, total:total, status:'NEW'})
       });
     } catch(e) { console.error('Order save failed:', e); }
-    // Save to Firestore so order appears in admin panel
+    // Save to Firestore so order appears in admin panel — upsell triggers only after this succeeds
     if (typeof window.saveOrderSilent === 'function') {
       const totalQty = cartSnapshot.reduce(function(s,i){return s+i.qty;},0);
       await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Unpaid',status:'Pending',date:date,total:total,payMethod:'Bank/Lynk',phone:phone||'—',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee,knutsfordBranch:knutsfordBranch,zipmailLocation:zipmailLocation,deliveryAddress:deliveryAddress,shippingDetail:shippingDetail});
     }
+    // Show upsell AFTER Firestore save so sfAddUpsellItem can find the order
+    try { sfShowUpsell(cartSnapshot, orderId); } catch(e) { console.error('[upsell]', e); }
     if (custEmail) {
       try { await saveSubscriber(name, custEmail, 'checkout'); } catch(e) {}
       try {
@@ -4996,7 +4998,6 @@ window.sfCheckoutFygaro = function() {
   document.getElementById('cf-ship').textContent = 'J$' + deliveryFee.toLocaleString();
   document.getElementById('cf-total').textContent = 'J$' + cardTotal.toLocaleString() + ' (incl. 15% card fee)';
   document.getElementById('sf-confirm-overlay').classList.add('open');
-  sfShowUpsell(cartSnapshot, orderId);
 
   // 3. Clear cart
   sfCart = [];
@@ -5016,10 +5017,13 @@ window.sfCheckoutFygaro = function() {
         body: JSON.stringify({orderId, date, customerName:name, phone, products:productsStr, deliveryLocation, deliveryFee, total:cardTotal, status:'Awaiting Payment'})
       });
     } catch(e) { console.error('Order save failed:', e); }
+    // Save to Firestore so order appears in admin panel — upsell triggers only after this succeeds
     if (typeof window.saveOrderSilent === 'function') {
       const totalQty = cartSnapshot.reduce(function(s,i){return s+i.qty;},0);
       await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Awaiting Payment',status:'Pending',date:date,total:cardTotal,payMethod:'Fygaro Card',phone:phone||'—',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee,knutsfordBranch:knutsfordBranch,zipmailLocation:zipmailLocation,deliveryAddress:deliveryAddress,shippingDetail:shippingDetail});
     }
+    // Show upsell AFTER Firestore save so sfAddUpsellItem can find the order
+    try { sfShowUpsell(cartSnapshot, orderId); } catch(e) { console.error('[upsell]', e); }
     if (custEmail) {
       try { await saveSubscriber(name, custEmail, 'checkout'); } catch(e) {}
       try {
