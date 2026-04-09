@@ -1370,17 +1370,7 @@ tr:hover td{background:var(--warm);}
         </div>
       </div>
 
-      <!-- Discount code section -->
-      <div id="sf-discount-section" style="margin:0 1.4rem 0.75rem;">
-        <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#8A8480;margin-bottom:0.4rem;">Discount Code</div>
-        <div style="display:flex;gap:0.5rem;">
-          <input id="sf-discount-input" class="sf-fi" placeholder="Enter code" style="flex:1;margin-bottom:0;" autocomplete="off">
-          <button onclick="sfApplyDiscount()" style="padding:0.5rem 0.9rem;background:#0F0E0D;color:white;border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.78rem;font-weight:700;cursor:pointer;white-space:nowrap;">Apply</button>
-        </div>
-        <div id="sf-discount-msg" style="font-size:0.72rem;margin-top:0.35rem;display:none;"></div>
-      </div>
-
-      </div><!-- end sf-cart-body -->
+</div><!-- end sf-cart-body -->
 
       <!-- Cart footer — content injected by JS -->
       <div id="sf-cart-footer" style="display:none;flex-shrink:0;"></div>
@@ -3946,7 +3936,7 @@ let sfSelectedPayment = 'wa'; // 'wa' = bank/lynk, 'card' = Fygaro
 let sfTermsChecked = false;
 let sfDiscountApplied = false;
 let sfDiscountAmount = 0;
-let sfDiscountLabel = 'START2026 −10%';
+let sfDiscountLabel = '';
 let sfCartStep = 'cart';
 let sfSearchQuery = '';
 
@@ -4815,43 +4805,6 @@ window.sfSetPayment = function(method) {
   sfRenderCartFooter();
 };
 
-window.sfApplyDiscount = function() {
-  const input = document.getElementById('sf-discount-input');
-  const msgEl = document.getElementById('sf-discount-msg');
-  if (!input || !msgEl) return;
-  const code = input.value.trim().toUpperCase();
-  msgEl.style.display = 'block';
-  if (code !== 'START2026') {
-    msgEl.style.color = '#DC2626';
-    msgEl.textContent = 'Invalid discount code.';
-    return;
-  }
-  if (localStorage.getItem('nc_discount_used')) {
-    msgEl.style.color = '#DC2626';
-    msgEl.textContent = 'This code has already been used.';
-    return;
-  }
-  if (sfDiscountApplied) {
-    msgEl.style.color = '#059669';
-    msgEl.textContent = 'Discount already applied — 10% off your order.';
-    return;
-  }
-  const cartSub = sfCart.reduce((s,i)=>s+i.price*i.qty,0);
-  if (cartSub === 0) {
-    msgEl.style.color = '#DC2626';
-    msgEl.textContent = 'Add items to your cart first.';
-    return;
-  }
-  sfDiscountApplied = true;
-  sfDiscountAmount = Math.round(cartSub * 0.10);
-  sfDiscountLabel = 'START2026 −10%';
-  localStorage.setItem('nc_discount_used', '1');
-  msgEl.style.color = '#059669';
-  msgEl.textContent = 'START2026 applied — 10% off your order!';
-  input.disabled = true;
-  sfRenderCartFooter();
-};
-
 // ── Checkout ─────────────────────────────────────────
 window.sfCheckoutWA = function() {
   const name = (document.getElementById('sf-cust-name')?.value||'').trim();
@@ -4891,7 +4844,7 @@ window.sfCheckoutWA = function() {
   const productsStr = sfCart.map(i=>`${i.name} (${i.size} x${i.qty})`).join(' | ');
   const items = sfCart.map(i=>`  * ${i.name} (${i.size}) x${i.qty} = J$${(i.price*i.qty).toLocaleString()}`).join('\n');
   const cartSnapshot = [...sfCart];
-  const discountNote = sfDiscountAmount > 0 ? '\nDISCOUNT (START2026 -10%): -J$' + sfDiscountAmount.toLocaleString() : '';
+  const discountNote = sfDiscountAmount > 0 ? '\nDISCOUNT (' + sfDiscountLabel + '): -J$' + sfDiscountAmount.toLocaleString() : '';
 
   // 1. Open WhatsApp IMMEDIATELY - synchronous to avoid browser popup block
   const WA = window.WA_NUMBER || '18768851099';
