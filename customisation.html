@@ -1,0 +1,528 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Product Customisation — Najah Chemist</title>
+<meta name="description" content="Customise texture, actives, fragrance and color for your private label skincare brand. Najah Chemist builds formulas designed specifically for your brand goals."/>
+<link rel="canonical" href="https://najahchemistja.com/customise"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{--gold:#c9a96e;--gold-dark:#a07840;--gold-bg:#fdf8ef;--dark:#1a1a1a;--dark2:#2d2d2d;--body:#444;--muted:#777;--light:#999;--border:#e8e3d8;--border-light:#f0ece3;--bg:#ffffff;--bg2:#fafaf8;--bg3:#f5f3ee;--green:#25d366;--green-dark:#1da851;--success:#1d9e75;--radius:12px;--radius-sm:8px;--shadow:0 2px 16px rgba(0,0,0,.06);--shadow-md:0 4px 24px rgba(0,0,0,.10)}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--dark);font-family:'Inter',sans-serif;font-weight:400;line-height:1.7;-webkit-font-smoothing:antialiased}
+nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.97);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:64px}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.nav-logo-mark{width:36px;height:36px;background:var(--dark);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:14px;color:var(--gold);font-weight:600;flex-shrink:0}
+.nav-logo-text{font-size:14px;font-weight:600;color:var(--dark)}
+.nav-links{display:flex;align-items:center;gap:8px;list-style:none}
+.nav-links a{font-size:13px;font-weight:500;color:var(--body);text-decoration:none;padding:8px 14px;border-radius:6px;transition:background .15s}
+.nav-links a:hover{background:var(--bg3)}
+.nav-active{color:var(--gold-dark)!important;font-weight:600!important}
+.nav-cta{background:var(--dark)!important;color:#fff!important;padding:9px 18px!important;border-radius:8px!important}
+.hero-full{background:var(--dark);padding:88px 32px 80px;text-align:center}
+.hero-full-inner{max-width:680px;margin:0 auto}
+.hero-eyebrow{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:18px;display:flex;align-items:center;justify-content:center;gap:10px}
+.hero-eyebrow::before,.hero-eyebrow::after{content:'';display:block;width:24px;height:2px;background:var(--gold);border-radius:2px}
+.hero-h1{font-family:'Playfair Display',serif;font-size:clamp(28px,4.5vw,46px);font-weight:600;color:#fff;line-height:1.12;margin-bottom:18px}
+.hero-h1 em{font-style:italic;color:var(--gold)}
+.hero-sub{font-size:16px;color:rgba(255,255,255,.58);line-height:1.75;margin-bottom:36px}
+.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn-gold{display:inline-flex;align-items:center;gap:6px;background:var(--gold);color:var(--dark);font-size:14px;font-weight:700;padding:15px 32px;border-radius:var(--radius-sm);text-decoration:none;transition:background .15s}
+.btn-gold:hover{background:var(--gold-dark);color:#fff}
+.btn-outline-light{display:inline-flex;align-items:center;gap:6px;background:transparent;color:rgba(255,255,255,.75);font-size:14px;font-weight:600;padding:14px 28px;border-radius:var(--radius-sm);text-decoration:none;border:1.5px solid rgba(255,255,255,.22);transition:border-color .15s,color .15s}
+.btn-outline-light:hover{border-color:rgba(255,255,255,.45);color:#fff}
+.section{padding:64px 32px;border-bottom:1px solid var(--border-light)}
+.section-inner{max-width:900px;margin:0 auto}
+.section-alt{background:var(--bg2)}
+.section-gold{background:var(--gold-bg)}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold-dark);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.eyebrow::before{content:'';display:block;width:18px;height:2px;background:var(--gold);border-radius:2px}
+h2{font-family:'Playfair Display',serif;font-size:clamp(22px,3vw,30px);font-weight:600;line-height:1.2;color:var(--dark);margin-bottom:14px}
+h2 em{font-style:italic;color:var(--gold-dark)}
+.body-text{font-size:15px;color:var(--body);line-height:1.8;margin-bottom:16px}
+.who-list{list-style:none;display:flex;flex-direction:column;gap:10px;margin:16px 0}
+.who-list li{display:flex;gap:12px;align-items:flex-start;font-size:14px;color:var(--body);line-height:1.5;padding:14px 18px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm)}
+.who-list li::before{content:'→';color:var(--gold-dark);font-weight:700;flex-shrink:0;margin-top:1px}
+.custom-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:24px}
+.custom-card{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius);padding:26px;transition:box-shadow .2s,border-color .2s}
+.custom-card:hover{box-shadow:var(--shadow);border-color:var(--gold)}
+.custom-icon{font-size:26px;margin-bottom:12px}
+.custom-title{font-size:16px;font-weight:600;color:var(--dark);margin-bottom:8px}
+.custom-body{font-size:13px;color:var(--muted);line-height:1.65}
+.custom-fee{display:inline-block;margin-top:12px;font-size:11px;font-weight:700;color:var(--gold-dark);background:var(--gold-bg);padding:4px 12px;border-radius:100px;border:1px solid var(--border)}
+.goal-chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.goal-chip{font-size:13px;font-weight:500;color:var(--dark);background:var(--bg);border:1.5px solid var(--border);padding:8px 18px;border-radius:100px;transition:border-color .15s,background .15s}
+.goal-chip:hover{border-color:var(--gold);background:#fff;cursor:default}
+.price-table{width:100%;border-collapse:collapse;margin-top:20px;font-size:14px;border-radius:var(--radius);overflow:hidden;border:1.5px solid var(--border)}
+.price-table th{text-align:left;padding:13px 18px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);background:var(--bg3);border-bottom:2px solid var(--border)}
+.price-table td{padding:14px 18px;border-bottom:1px solid var(--border-light);color:var(--body);vertical-align:middle}
+.price-table tbody tr:last-child td{border-bottom:none}
+.price-table td:last-child{font-weight:600;color:var(--dark);text-align:right;white-space:nowrap}
+.price-table tbody tr:hover td{background:var(--bg2)}
+.table-note{font-size:12px;color:var(--muted);margin-top:14px;padding:12px 16px;background:var(--bg3);border-radius:var(--radius-sm);border-left:3px solid var(--gold);line-height:1.6}
+.steps{display:flex;flex-direction:column}
+.step{display:flex;gap:18px;padding:20px 0;border-bottom:1px solid var(--border-light);align-items:flex-start}
+.step:last-child{border-bottom:none}
+.step-num{width:40px;height:40px;background:var(--dark);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:14px;color:var(--gold);font-weight:600;flex-shrink:0;margin-top:2px}
+.step-text{font-size:14px;color:var(--body);line-height:1.75}
+.step-text strong{color:var(--dark);font-weight:600}
+.form-card{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius);padding:40px;box-shadow:var(--shadow)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:22px}
+.form-full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-label{font-size:13px;font-weight:600;color:var(--dark);line-height:1.4}
+.form-label .opt{font-weight:400;color:var(--muted)}
+.form-input,.form-select,.form-textarea{font-family:'Inter',sans-serif;font-size:14px;color:var(--dark);background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:11px 14px;width:100%;transition:border-color .15s,box-shadow .15s;outline:none;appearance:none}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,169,110,.14)}
+.form-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+.form-textarea{min-height:120px;resize:vertical;line-height:1.65}
+.prefix-wrap{display:flex;align-items:stretch}
+.prefix-label{display:flex;align-items:center;padding:0 13px;background:var(--bg3);border:1.5px solid var(--border);border-right:none;border-radius:var(--radius-sm) 0 0 var(--radius-sm);font-size:14px;color:var(--muted);font-weight:500;white-space:nowrap;flex-shrink:0}
+.prefix-wrap .form-input{border-radius:0 var(--radius-sm) var(--radius-sm) 0}
+.checkbox-group{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.cb-item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--body);cursor:pointer;padding:8px 14px;background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--radius-sm);transition:border-color .15s,background .15s;user-select:none}
+.cb-item:hover{border-color:var(--gold);background:var(--gold-bg)}
+.cb-item input{accent-color:var(--gold-dark);width:14px;height:14px;cursor:pointer;flex-shrink:0}
+.radio-group{display:flex;gap:10px;margin-top:4px;flex-wrap:wrap}
+.rb-item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--body);cursor:pointer;padding:8px 18px;background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--radius-sm);transition:border-color .15s,background .15s;user-select:none}
+.rb-item:hover{border-color:var(--gold);background:var(--gold-bg)}
+.rb-item input{accent-color:var(--gold-dark);width:14px;height:14px;cursor:pointer;flex-shrink:0}
+.field-err .form-input,.field-err .form-select,.field-err .form-textarea,.field-err .prefix-wrap .form-input{border-color:#DC2626}
+.err-msg{font-size:12px;color:#DC2626;margin-top:3px;display:none}
+.err-msg.show{display:block}
+.submit-btn{width:100%;padding:16px;background:var(--dark);color:#fff;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;border:none;border-radius:var(--radius-sm);cursor:pointer;transition:background .15s;margin-top:10px}
+.submit-btn:hover:not(:disabled){background:var(--dark2)}
+.submit-btn:disabled{opacity:.55;cursor:not-allowed}
+.form-note{font-size:12px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.5}
+.form-success{display:none;text-align:center;padding:56px 32px}
+.form-success.show{display:block}
+.success-icon{font-size:48px;margin-bottom:16px}
+.success-title{font-family:'Playfair Display',serif;font-size:24px;font-weight:600;color:var(--dark);margin-bottom:12px}
+.success-body{font-size:15px;color:var(--muted);line-height:1.75;max-width:440px;margin:0 auto}
+.final-cta{background:var(--dark);padding:72px 32px;text-align:center}
+.final-inner{max-width:480px;margin:0 auto}
+.final-eyebrow{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px}
+.final-eyebrow::before,.final-eyebrow::after{content:'';display:block;width:24px;height:2px;background:var(--gold);border-radius:2px}
+.final-h2{font-family:'Playfair Display',serif;font-size:clamp(22px,3vw,30px);font-weight:600;color:#fff;margin-bottom:10px;line-height:1.2}
+.final-sub{font-size:14px;color:rgba(255,255,255,.45);margin-bottom:28px;line-height:1.65}
+footer{background:var(--dark2);padding:28px 32px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;border-top:1px solid rgba(255,255,255,.06)}
+.footer-logo{display:flex;align-items:center;gap:8px;text-decoration:none}
+.footer-logo-mark{width:30px;height:30px;background:rgba(255,255,255,.08);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:12px;color:var(--gold);font-weight:600}
+.footer-logo-text{font-size:13px;font-weight:600;color:rgba(255,255,255,.65)}
+.footer-links{display:flex;gap:20px;list-style:none;flex-wrap:wrap}
+.footer-links a{font-size:12px;color:rgba(255,255,255,.4);text-decoration:none}
+.footer-links a:hover{color:var(--gold)}
+.footer-copy{font-size:11px;color:rgba(255,255,255,.22)}
+@media(max-width:900px){.custom-grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.form-full{grid-column:1}}
+@media(max-width:640px){nav{padding:0 20px}.nav-links{display:none}.section{padding:44px 20px}.hero-full{padding:60px 20px 56px}.final-cta{padding:56px 20px}.form-card{padding:24px 18px}footer{padding:24px 20px;flex-direction:column;align-items:flex-start}.checkbox-group{flex-direction:column}.radio-group{flex-direction:column}}
+</style>
+<meta property="og:title" content="Product Customisation — Najah Chemist"/>
+<meta property="og:description" content="Customise texture, actives, fragrance and color for your private label skincare brand."/>
+<meta property="og:url" content="https://najahchemistja.com/customise"/>
+<meta property="og:type" content="website"/>
+<meta property="og:site_name" content="Najah Chemist"/>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo"><div class="nav-logo-mark">Nc</div><span class="nav-logo-text">Najah Chemist</span></a>
+  <ul class="nav-links">
+    <li><a href="/">Home</a></li>
+    <li><a href="/skincare-manufacturer-jamaica">Manufacturing</a></li>
+    <li><a href="/customise" class="nav-active">Customise</a></li>
+    <li><a href="/start" class="nav-cta">Start Your Brand</a></li>
+  </ul>
+</nav>
+
+<div class="hero-full">
+  <div class="hero-full-inner">
+    <div class="hero-eyebrow">Product Customisation</div>
+    <h1 class="hero-h1">Build a Formula Designed for <em>Your Brand</em></h1>
+    <p class="hero-sub">Go beyond private label. Customise texture, actives, fragrance, and color to create a product that's uniquely yours.</p>
+    <div class="hero-btns">
+      <a href="#form" class="btn-gold">Request a Consultation →</a>
+      <a href="/" class="btn-outline-light">Browse Base Products →</a>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-inner">
+    <div class="eyebrow">Who this is for</div>
+    <h2>Customisation is right for you if <em>any of these fit</em></h2>
+    <ul class="who-list">
+      <li>You want your own version of an existing Najah Chemist product</li>
+      <li>You want to add specific actives for targeted results</li>
+      <li>You want a unique scent, color, or texture</li>
+      <li>You're building a serious long-term brand and need something different from standard private label</li>
+    </ul>
+  </div>
+</div>
+
+<div class="section section-alt">
+  <div class="section-inner">
+    <div class="eyebrow">Customisation options</div>
+    <h2>What you can <em>customise</em></h2>
+    <div class="custom-grid">
+      <div class="custom-card">
+        <div class="custom-icon">⚗️</div>
+        <div class="custom-title">Texture &amp; Consistency</div>
+        <p class="custom-body">Thicker creams, lightweight lotions, gel or oil-based textures, more or less foam in cleansers. We adjust the formula so your product delivers exactly the user experience your customers expect.</p>
+      </div>
+      <div class="custom-card">
+        <div class="custom-icon">🔬</div>
+        <div class="custom-title">Active Ingredients</div>
+        <p class="custom-body">Add brightening agents (Kojic Acid, Mandelic Acid, Vitamin C), acne actives (Salicylic Acid, Niacinamide), hydration boosters, or targeted treatments for stretch marks, anti-aging, and skin repair.</p>
+        <span class="custom-fee">J$4,000 per active added</span>
+      </div>
+      <div class="custom-card">
+        <div class="custom-icon">🌸</div>
+        <div class="custom-title">Fragrance &amp; Scent</div>
+        <p class="custom-body">Choose from our in-stock fragrances at no extra charge. Exotic or specialty fragrances (vanilla, luxury blends) start from J$1,500 per gallon. Fragrance-free versions available on request.</p>
+        <span class="custom-fee">In-stock: free &nbsp;·&nbsp; Specialty: from J$1,500/gal</span>
+      </div>
+      <div class="custom-card">
+        <div class="custom-icon">🎨</div>
+        <div class="custom-title">Color &amp; Appearance</div>
+        <p class="custom-body">Natural tones or vibrant color options. Clean minimal look or bold product appeal. Color customisation is available at no extra charge when using in-stock colorants.</p>
+        <span class="custom-fee">In-stock colorants: free</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section section-gold">
+  <div class="section-inner">
+    <div class="eyebrow">Function-based formulation</div>
+    <h2>Or tell us your goal — <em>we'll engineer the formula</em></h2>
+    <p class="body-text">Don't know exactly what to change? Tell us your target skin concern and customer and we'll recommend the right actives and formulation adjustments.</p>
+    <div class="goal-chips">
+      <span class="goal-chip">Brightening &amp; even tone</span>
+      <span class="goal-chip">Acne control</span>
+      <span class="goal-chip">Skin repair</span>
+      <span class="goal-chip">Deep hydration</span>
+      <span class="goal-chip">Stretch mark care</span>
+      <span class="goal-chip">Anti-aging</span>
+      <span class="goal-chip">Sensitive skin</span>
+      <span class="goal-chip">Men's grooming</span>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-inner">
+    <div class="eyebrow">Transparent pricing</div>
+    <h2>Customisation <em>fees</em></h2>
+    <table class="price-table">
+      <thead><tr><th>Service</th><th style="text-align:right">Cost</th></tr></thead>
+      <tbody>
+        <tr><td>Adding actives (per active)</td><td>J$4,000 per batch</td></tr>
+        <tr><td>Fragrance change (in-stock)</td><td>Included</td></tr>
+        <tr><td>Exotic / specialty fragrance</td><td>From J$1,500 per gallon</td></tr>
+        <tr><td>Color change (in-stock)</td><td>Included</td></tr>
+        <tr><td>Ingredient sourcing fee</td><td>J$2,000 per batch</td></tr>
+        <tr><td>Ingredient cost + shipping</td><td>Client's responsibility</td></tr>
+      </tbody>
+    </table>
+    <p class="table-note">All fees are per batch. Minimum order: 1 gallon or 8 lbs for most products. Soaps minimum: 60 bars.</p>
+  </div>
+</div>
+
+<div class="section section-alt">
+  <div class="section-inner">
+    <div class="eyebrow">Process</div>
+    <h2>How it <em>works</em></h2>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-text"><strong>Submit your consultation request below</strong> — tell us exactly what you want, the base product, and your target customer and skin concern.</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-text"><strong>We review and confirm feasibility,</strong> then send you a quote within 24 hours via WhatsApp.</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-text"><strong>You approve and make payment</strong> via NCB bank transfer, Fygaro (card), or Lynk.</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-text"><strong>We produce your customised batch</strong> — ready in 2–3 business days after payment confirmation. Island-wide delivery available.</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="section section-gold" id="form">
+  <div class="section-inner">
+    <div class="eyebrow">Get started</div>
+    <h2>Request a Customisation <em>Consultation</em></h2>
+    <p class="body-text" style="margin-bottom:32px;">Tell us exactly what you need. The more detail you provide, the faster we can quote you.</p>
+    <div class="form-card">
+      <form id="consult-form" novalidate>
+        <div class="form-grid">
+
+          <div class="form-group">
+            <label class="form-label" for="cf-name">Full Name *</label>
+            <input type="text" id="cf-name" class="form-input" placeholder="Your full name" autocomplete="name"/>
+            <span class="err-msg" id="err-name">Please enter your name</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="cf-wa">WhatsApp Number *</label>
+            <div class="prefix-wrap">
+              <span class="prefix-label">+1</span>
+              <input type="tel" id="cf-wa" class="form-input" placeholder="876 885 1099" autocomplete="tel"/>
+            </div>
+            <span class="err-msg" id="err-wa">Please enter your WhatsApp number</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="cf-email">Email Address *</label>
+            <input type="email" id="cf-email" class="form-input" placeholder="you@yourbrand.com" autocomplete="email"/>
+            <span class="err-msg" id="err-email">Please enter a valid email address</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="cf-brand">Brand / Business Name *</label>
+            <input type="text" id="cf-brand" class="form-input" placeholder="Your brand name"/>
+            <span class="err-msg" id="err-brand">Please enter your brand name</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="cf-product">Base Product to Customise *</label>
+            <select id="cf-product" class="form-select">
+              <option value="">Loading products…</option>
+            </select>
+            <span class="err-msg" id="err-product">Please select a base product</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="cf-concern">Target Skin Concern *</label>
+            <select id="cf-concern" class="form-select">
+              <option value="">Select concern…</option>
+              <option>Brightening</option>
+              <option>Acne Control</option>
+              <option>Hydration</option>
+              <option>Anti-aging</option>
+              <option>Skin Repair</option>
+              <option>Stretch Marks</option>
+              <option>Sensitive Skin</option>
+              <option>Men's Grooming</option>
+              <option>Other</option>
+            </select>
+            <span class="err-msg" id="err-concern">Please select a skin concern</span>
+          </div>
+
+          <div class="form-group form-full">
+            <label class="form-label">Type of Customisation * <span class="opt">(select all that apply)</span></label>
+            <div class="checkbox-group" id="custom-types">
+              <label class="cb-item"><input type="checkbox" name="customType" value="Add Actives"/> Add Actives</label>
+              <label class="cb-item"><input type="checkbox" name="customType" value="Change Texture"/> Change Texture</label>
+              <label class="cb-item"><input type="checkbox" name="customType" value="Change Fragrance"/> Change Fragrance</label>
+              <label class="cb-item"><input type="checkbox" name="customType" value="Change Color"/> Change Color</label>
+              <label class="cb-item"><input type="checkbox" name="customType" value="Function-Based Formula"/> Function-Based Formula</label>
+              <label class="cb-item"><input type="checkbox" name="customType" value="Other"/> Other</label>
+            </div>
+            <span class="err-msg" id="err-types">Please select at least one customisation type</span>
+          </div>
+
+          <div class="form-group form-full">
+            <label class="form-label" for="cf-desc">Describe exactly what you want *</label>
+            <textarea id="cf-desc" class="form-textarea" placeholder="e.g. I want to add Kojic Acid and Niacinamide to the Brightening Body Butter for a dark spot treatment targeting women 25–45…"></textarea>
+            <span class="err-msg" id="err-desc">Please describe what you want</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="cf-customer">Target Customer <span class="opt">(optional)</span></label>
+            <select id="cf-customer" class="form-select">
+              <option value="">Select…</option>
+              <option>Women</option>
+              <option>Men</option>
+              <option>Both</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="cf-qty">Quantity Needed <span class="opt">(optional)</span></label>
+            <select id="cf-qty" class="form-select">
+              <option value="">Select…</option>
+              <option>1 Gallon / 8 lbs</option>
+              <option>2 Gallons / 16 lbs</option>
+              <option>5 Gallons / 40 lbs</option>
+              <option>60 bars (soaps)</option>
+              <option>Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Ordered from Najah Chemist before? <span class="opt">(optional)</span></label>
+            <div class="radio-group">
+              <label class="rb-item"><input type="radio" name="orderedBefore" value="Yes"/> Yes</label>
+              <label class="rb-item"><input type="radio" name="orderedBefore" value="No"/> No</label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="cf-budget">Budget Range <span class="opt">(optional)</span></label>
+            <select id="cf-budget" class="form-select">
+              <option value="">Select…</option>
+              <option>Under J$10,000</option>
+              <option>J$10,000–J$25,000</option>
+              <option>J$25,000–J$50,000</option>
+              <option>J$50,000+</option>
+            </select>
+          </div>
+
+        </div>
+        <button type="submit" class="submit-btn" id="submit-btn">Submit Consultation Request →</button>
+        <p class="form-note">We'll review your request and reply on WhatsApp within 24 hours. No spam — ever.</p>
+      </form>
+      <div class="form-success" id="form-success">
+        <div class="success-icon">✅</div>
+        <div class="success-title">Request Submitted!</div>
+        <p class="success-body">Your consultation request has been submitted! We will review it and get back to you on WhatsApp within 24 hours.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="final-cta">
+  <div class="final-inner">
+    <div class="final-eyebrow">Standard private label</div>
+    <h2 class="final-h2">Not ready for customisation?</h2>
+    <p class="final-sub">Start with our standard private label products. Same quality, ready faster, lower minimum order.</p>
+    <a href="/" class="btn-gold">Browse Products →</a>
+  </div>
+</div>
+
+<footer>
+  <a href="/" class="footer-logo"><div class="footer-logo-mark">Nc</div><span class="footer-logo-text">Najah Chemist</span></a>
+  <ul class="footer-links">
+    <li><a href="/">Shop Wholesale</a></li>
+    <li><a href="/start">Start Your Brand</a></li>
+    <li><a href="/customise">Customise</a></li>
+    <li><a href="/cost-skincare-business-jamaica">Startup Costs</a></li>
+    <li><a href="/skincare-manufacturer-jamaica">Our Manufacturing</a></li>
+    <li><a href="https://wa.me/18768851099">WhatsApp</a></li>
+  </ul>
+  <span class="footer-copy">© 2026 Najah Chemist · najahchemistja.com</span>
+</footer>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+import { getFirestore, collection, addDoc, getDocs, orderBy, query, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+const app = initializeApp({
+  apiKey: "AIzaSyDYdt_0wJNcfGl2WbIKPiESdVcmc-cqZgM",
+  authDomain: "najahchemistja.com",
+  projectId: "najah-chemist",
+  storageBucket: "najah-chemist.firebasestorage.app",
+  messagingSenderId: "89819999556",
+  appId: "1:89819999556:web:4e6eb5c0c881da5e763b11"
+});
+const db = getFirestore(app);
+
+// ── Product dropdown ──────────────────────────────────
+const FALLBACK_PRODUCTS = [
+  'Ayurvedic Growth Oil','Beard Balm','Beard Oil','Beard Shampoo',
+  'Boric Acid Capsules','Boric Acid Probiotics Cleanser',
+  'Brightening Body Butter','Brightening Body Scrub',
+  'Foaming Scrub','Glycolic Acid Soap','Glycolic Acid Toner',
+  'Hair Butter','Hair Mist','Hydrating Moisturiser',
+  'Lightening Serum','Luxury Body Oil',
+  'Niacinamide & Hyaluronic Serum','Papaya Oil','Papaya Serum','Papaya Soap',
+  'Peeling Oil','Rose Facial Serum','Ryfle Wash','Salicylic Acid Soap',
+  'Skin Lightening Bar Soap','Soothing Rose Toner','Spot Remover',
+  'Strong Lightening Cream','Turmeric Facial Cleanser','Turmeric Facial Mask',
+  'Turmeric Facial Scrub','Turmeric Kojic Brightening Scrub','Turmeric Kojic Soap',
+  'Turmeric Only Soap','Vagimist','Vitamin C Soap',
+  'Yoni Anti-Itch Cream','Yoni Cleanser','Yoni Foaming Scrub',
+  'Yoni Oil','Yoni Steam Herbs'
+];
+
+(async function loadProducts() {
+  const sel = document.getElementById('cf-product');
+  const opts = (names) =>
+    '<option value="">Select a product…</option>' +
+    names.map(n => `<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
+  try {
+    const snap = await getDocs(query(collection(db, 'products'), orderBy('name')));
+    const names = snap.docs.map(d => d.data().name).filter(Boolean).sort();
+    sel.innerHTML = opts(names.length ? names : FALLBACK_PRODUCTS);
+  } catch(e) {
+    sel.innerHTML = opts(FALLBACK_PRODUCTS);
+  }
+})();
+
+// ── Form submission ───────────────────────────────────
+document.getElementById('consult-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const get  = id => document.getElementById(id);
+  const val  = id => get(id).value.trim();
+
+  const name        = val('cf-name');
+  const whatsapp    = val('cf-wa');
+  const email       = val('cf-email');
+  const brandName   = val('cf-brand');
+  const baseProduct = val('cf-product');
+  const customTypes = [...document.querySelectorAll('input[name="customType"]:checked')].map(c => c.value);
+  const description = val('cf-desc');
+  const skinConcern = val('cf-concern');
+  const targetCustomer = val('cf-customer');
+  const quantity    = val('cf-qty');
+  const orderedBefore = document.querySelector('input[name="orderedBefore"]:checked')?.value || '';
+  const budget      = val('cf-budget');
+
+  // Clear previous errors
+  document.querySelectorAll('.err-msg').forEach(el => el.classList.remove('show'));
+  document.querySelectorAll('.field-err').forEach(el => el.classList.remove('field-err'));
+
+  // Validate required fields
+  let ok = true;
+  function fail(inputId, errId) {
+    const el = get(inputId);
+    if (el) el.closest('.form-group').classList.add('field-err');
+    get(errId).classList.add('show');
+    ok = false;
+  }
+  if (!name)                           fail('cf-name',    'err-name');
+  if (!whatsapp)                       fail('cf-wa',      'err-wa');
+  if (!email || !email.includes('@'))  fail('cf-email',   'err-email');
+  if (!brandName)                      fail('cf-brand',   'err-brand');
+  if (!baseProduct)                    fail('cf-product', 'err-product');
+  if (customTypes.length === 0)      { get('err-types').classList.add('show'); ok = false; }
+  if (!description)                    fail('cf-desc',    'err-desc');
+  if (!skinConcern)                    fail('cf-concern', 'err-concern');
+  if (!ok) return;
+
+  // Build WhatsApp message — open SYNCHRONOUSLY from user gesture
+  const waMsg =
+    'New Customisation Consultation\n\n' +
+    'Name: ' + name + '\n' +
+    'WhatsApp: +1 ' + whatsapp + '\n' +
+    'Email: ' + email + '\n' +
+    'Brand: ' + brandName + '\n\n' +
+    'Base Product: ' + baseProduct + '\n' +
+    'Customisation: ' + customTypes.join(', ') + '\n' +
+    'Skin Concern: ' + skinConcern + '\n' +
+    (targetCustomer ? 'Target Customer: ' + targetCustomer + '\n' : '') +
+    (quantity       ? 'Quantity: ' + quantity + '\n'               : '') +
+    (orderedBefore  ? 'Ordered Before: ' + orderedBefore + '\n'    : '') +
+    (budget         ? 'Budget: ' + budget + '\n'                   : '') +
+    '\nDescription:\n' + description;
+
+  window.open('https://wa.me/18768851099?text=' + encodeURIComponent(waMsg), '_blank');
+
+  // Disable button
+  const btn = get('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+
+  // Save to Firestore (non-blocking)
+  addDoc(collection(db, 'consultations'), {
+    name, whatsapp: '+1 ' + whatsapp, email, brandName, baseProduct,
+    customisationTypes: customTypes, description, skinConcern,
+    targetCustomer: targetCustomer || null,
+    quantity: quantity || null,
+    orderedBefore: orderedBefore || null,
+    budget: budget || null,
+    createdAt: serverTimestamp(),
+    status: 'New'
+  }).catch(err => console.error('[consult] Firestore save failed:', err));
+
+  // Show success state
+  get('consult-form').style.display = 'none';
+  get('form-success').classList.add('show');
+});
+</script>
+</body></html>
