@@ -977,7 +977,12 @@ tr:hover td{background:var(--warm);}
             <button onclick="sfSubmitReview()" style="width:100%;padding:0.65rem;background:#0F0E0D;color:white;border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.82rem;font-weight:700;cursor:pointer;">Submit Review</button>
           </div>
         </div>
-        <button style="width:100%;padding:0.82rem;background:#0F0E0D;color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.92rem;font-weight:700;cursor:pointer;margin-bottom:0.5rem;letter-spacing:0.02em;" onclick="sfAddToCart()">🛒 Add to Cart</button>
+        <button id="sf-modal-add-btn" style="width:100%;padding:0.82rem;background:#0F0E0D;color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.92rem;font-weight:700;cursor:pointer;margin-bottom:0.5rem;letter-spacing:0.02em;" onclick="sfAddToCart()">🛒 Add to Cart</button>
+        <div id="sf-modal-oos-msg" style="display:none;padding:1rem;background:#FEF2F2;border:1.5px solid #FECACA;border-radius:10px;margin-bottom:0.5rem;text-align:center;">
+          <div style="font-weight:700;color:#DC2626;font-size:0.88rem;margin-bottom:0.4rem;">This product is currently out of stock.</div>
+          <div style="font-size:0.82rem;color:#4B4846;margin-bottom:0.75rem;">Join the waitlist on WhatsApp to be notified when it's back.</div>
+          <a href="https://wa.me/18768851099" target="_blank" style="display:inline-block;padding:0.65rem 1.5rem;background:#25D366;color:white;border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.82rem;font-weight:700;text-decoration:none;">Join Waitlist on WhatsApp</a>
+        </div>
       </div>
     </div>
   </div>
@@ -4029,8 +4034,9 @@ function sfRenderProducts(filter) {
     const learnMoreHtml = learnMoreUrl
       ? `<a href="${learnMoreUrl}" target="_blank" onclick="event.stopPropagation()" style="display:inline-block;font-size:0.68rem;color:#8A8480;text-decoration:none;margin-top:0.2rem;margin-bottom:0.9rem;letter-spacing:0.01em;" onmouseover="this.style.color='#B45309'" onmouseout="this.style.color='#8A8480'">Learn More →</a>`
       : '';
+    const oos = !!p.outOfStock;
     return `<div class="sf-card" onclick="sfOpenProduct('${p.id}')">
-      <div class="sf-card-img ${SF_IMG_CLASS[p.cat]||'img-cream'}">${imgHtml}${p.tag?`<span class="sf-card-badge">${p.tag}</span>`:''}</div>
+      <div class="sf-card-img ${SF_IMG_CLASS[p.cat]||'img-cream'}">${imgHtml}${p.tag&&!oos?`<span class="sf-card-badge">${p.tag}</span>`:''}${oos?'<span class="sf-card-badge" style="background:#DC2626;">Out of Stock</span>':''}</div>
       <div class="sf-card-body">
         <div class="sf-card-cat" style="display:flex;justify-content:space-between;align-items:center;">${SF_CAT_LABEL[p.cat]||p.cat}${starHtml}</div>
         <div class="sf-card-name">${p.name}</div>
@@ -4039,7 +4045,7 @@ function sfRenderProducts(filter) {
         ${learnMoreHtml}
         <div class="sf-card-footer">
           <div class="sf-card-moq">${moq}</div>
-          <button class="sf-card-btn" onclick="event.stopPropagation();sfOpenProduct('${p.id}')">Details</button>
+          <button class="sf-card-btn" onclick="event.stopPropagation();sfOpenProduct('${p.id}')" ${oos?'disabled style="background:#9CA3AF;cursor:not-allowed;opacity:0.75;"':''}>${oos?'Out of Stock':'Details'}</button>
         </div>
       </div>
     </div>`;
@@ -4400,6 +4406,19 @@ function sfOpenProduct(id) {
   if (revForm) revForm.style.display = 'none';
   sfSetStars(0);
   sfRenderModalReviews(id);
+
+  // Out-of-stock: show waitlist message, hide Add to Cart
+  const addBtn = document.getElementById('sf-modal-add-btn');
+  const oosMsg = document.getElementById('sf-modal-oos-msg');
+  if (addBtn && oosMsg) {
+    if (p.outOfStock) {
+      addBtn.style.display = 'none';
+      oosMsg.style.display = 'block';
+    } else {
+      addBtn.style.display = '';
+      oosMsg.style.display = 'none';
+    }
+  }
 
   const modal = document.getElementById('sf-modal');
   if (modal) { modal.classList.add('open'); document.body.style.overflow='hidden'; }

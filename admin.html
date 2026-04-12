@@ -79,6 +79,7 @@ tr:hover td{background:var(--off);}
 .b-refund{background:#EDE9FE;color:#5B21B6;}
 .b-visible{background:#D1FAE5;color:#065F46;}
 .b-hidden{background:#F3F4F6;color:#6B7280;}
+.b-oos{background:#FEE2E2;color:#DC2626;}
 
 /* ── BUTTONS ── */
 .btn{display:inline-flex;align-items:center;gap:0.35rem;padding:0.5rem 1rem;border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;border:none;transition:all 0.15s;}
@@ -1854,10 +1855,11 @@ function renderProductsTable(){
       <td><strong>${p.name||'—'}</strong><br><span class="text-sm">${p.tagline||''}</span></td>
       <td><span class="pill">${p.cat||'—'}</span></td>
       <td>${fromPrice}</td>
-      <td><span class="badge ${p.hidden?'b-hidden':'b-visible'}">${p.hidden?'Hidden':'Visible'}</span></td>
+      <td><span class="badge ${p.hidden?'b-hidden':'b-visible'}">${p.hidden?'Hidden':'Visible'}</span>${p.outOfStock?'&nbsp;<span class="badge b-oos">OUT OF STOCK</span>':''}</td>
       <td class="btn-group">
         <button class="btn btn-sm btn-ol" onclick="editProduct('${p.id||p._docId}')">Edit</button>
         <button class="btn btn-sm" style="background:${p.hidden?'#6B7280':'#059669'};color:white;border:none;padding:0.3rem 0.6rem;font-size:0.72rem;border-radius:6px;cursor:pointer;" onclick="toggleHidden('${p.id||p._docId}',${!p.hidden})">${p.hidden?'Show':'Hide'}</button>
+        <button class="btn btn-sm" style="background:${p.outOfStock?'#059669':'#DC2626'};color:white;border:none;padding:0.3rem 0.6rem;font-size:0.72rem;border-radius:6px;cursor:pointer;" onclick="toggleOutOfStock('${p.id||p._docId}',${!p.outOfStock})">${p.outOfStock?'Back in Stock':'Out of Stock'}</button>
         <button class="btn btn-sm btn-rd" onclick="deleteProduct('${p.id||p._docId}')">🗑</button>
       </td>
     </tr>`;
@@ -2022,6 +2024,16 @@ window.toggleHidden = async function(id, newHidden){
   try {
     await updateDoc(doc(db,'products',docId),{hidden:newHidden});
     toast(newHidden?'Product hidden':'Product visible');
+  } catch(e){ toast('Error: '+e.message); }
+};
+
+window.toggleOutOfStock = async function(id, newOos){
+  const p = PRODUCTS.find(x=>(x.id||x._docId)===id);
+  if(!p) return;
+  const docId = p._docId||p.id;
+  try {
+    await updateDoc(doc(db,'products',docId),{outOfStock:newOos});
+    toast(newOos?'Marked out of stock':'Back in stock');
   } catch(e){ toast('Error: '+e.message); }
 };
 
