@@ -650,11 +650,39 @@ function leadEmail2Html(name, brandType, unsubscribeUrl) {
     .map(p => `<p style="margin:0 0 10px;color:#555;font-size:0.9rem;line-height:1.6;">${p}</p>`)
     .join('');
 
+  let bundleHtml = '';
+  if (bt === 'Skincare') {
+    bundleHtml = `<div style="background:#fdf8ef;border:1px solid #c9a96e;border-radius:10px;padding:16px 20px;margin:20px 0;">
+      <p style="margin:0 0 8px;font-size:0.88rem;font-weight:700;color:#1a1a1a;">⭐ Or skip the guesswork entirely</p>
+      <p style="margin:0 0 10px;color:#555;font-size:0.9rem;line-height:1.6;">Our <strong>HydraGlow Skincare Bundle</strong> gives you 6 of each product, ready to label and sell, for <strong>J$25,200</strong>. Retail value J$60,000+. That's a <strong>J$34,800 profit</strong> from your first order.</p>
+      <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">👉 Reply YES and I'll send you the bundle details.</p>
+    </div>`;
+  } else if (bt === 'Feminine Care') {
+    bundleHtml = `<div style="background:#fdf8ef;border:1px solid #c9a96e;border-radius:10px;padding:16px 20px;margin:20px 0;">
+      <p style="margin:0 0 8px;font-size:0.88rem;font-weight:700;color:#1a1a1a;">⭐ Or start with our Feminine Care Starter Kit</p>
+      <p style="margin:0 0 10px;color:#555;font-size:0.9rem;line-height:1.6;">6 Yoni Washes, 6 VagiMists, 6 Steam Herbs, and 6 packs of Yoni Pops, all ready to label and sell, for <strong>J$12,500</strong>. Retail value J$30,000+. That's <strong>J$17,500 profit</strong> from your first order.</p>
+      <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">👉 Reply YES and I'll send you the bundle details.</p>
+    </div>`;
+  } else if (bt === "Men's Grooming") {
+    bundleHtml = `<div style="background:#fdf8ef;border:1px solid #c9a96e;border-radius:10px;padding:16px 20px;margin:20px 0;">
+      <p style="margin:0 0 8px;font-size:0.88rem;font-weight:700;color:#1a1a1a;">⭐ Or start with our Mencare Bundle</p>
+      <p style="margin:0 0 10px;color:#555;font-size:0.9rem;line-height:1.6;">6 Intimate Washes, 6 Beard Balms, and 6 Beard Shampoos, all ready to label and sell, for <strong>J$11,000</strong>. Retail value J$28,000+. That's <strong>J$17,000 profit</strong> from your first order.</p>
+      <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">👉 Reply YES and I'll send you the bundle details.</p>
+    </div>`;
+  } else if (bt === 'Hair Care' || bt === 'Hair care') {
+    bundleHtml = `<div style="background:#fdf8ef;border:1px solid #c9a96e;border-radius:10px;padding:16px 20px;margin:20px 0;">
+      <p style="margin:0 0 8px;font-size:0.88rem;font-weight:700;color:#1a1a1a;">⭐ Start with 1 litre of Ayurvedic Hair Growth Oil</p>
+      <p style="margin:0 0 10px;color:#555;font-size:0.9rem;line-height:1.6;">Fills 16 × 2oz bottles. At J$2,000 retail that's <strong>J$32,000 revenue</strong> from one <strong>J$7,500 order</strong>.</p>
+      <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">👉 Reply YES and I'll send you the details.</p>
+    </div>`;
+  }
+
   return wrapEmail(subtitle, `
     <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">Hey ${first},</h2>
     <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">${intro}</p>
     ${productsHeaderHtml}
     <div style="margin:0 0 20px;">${productsHtml}</div>
+    ${bundleHtml}
     <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">${closing}</p>
     <p style="margin:0 0 20px;color:#555;font-size:0.9rem;line-height:1.6;">${ctaText}</p>
     <div style="text-align:center;margin:28px 0;">
@@ -693,12 +721,24 @@ function leadEmail3Html(name, brandType, unsubscribeUrl) {
     ? `<p style="margin:0 0 20px;color:#555;font-size:0.9rem;line-height:1.6;">${productRec}</p>`
     : '';
 
+  let day7BundlePara = '';
+  if (bt === 'Skincare') {
+    day7BundlePara = `<p style="margin:0 0 16px;font-size:0.9rem;font-weight:600;color:#1a1a1a;">The HydraGlow Bundle is J$25,200 — complete skincare line, ready to sell, profit of J$34,800.</p>`;
+  } else if (bt === 'Feminine Care') {
+    day7BundlePara = `<p style="margin:0 0 16px;font-size:0.9rem;font-weight:600;color:#1a1a1a;">The Feminine Care Starter Kit is J$12,500 — complete feminine care line, profit of J$17,500.</p>`;
+  } else if (bt === "Men's Grooming") {
+    day7BundlePara = `<p style="margin:0 0 16px;font-size:0.9rem;font-weight:600;color:#1a1a1a;">The Mencare Bundle is J$11,000 — complete men's grooming line, profit of J$17,000.</p>`;
+  } else if (bt === 'Hair Care' || bt === 'Hair care') {
+    day7BundlePara = `<p style="margin:0 0 16px;font-size:0.9rem;font-weight:600;color:#1a1a1a;">1 litre of Hair Growth Oil is J$7,500 — fills 16 bottles, retail value J$32,000.</p>`;
+  }
+
   return wrapEmail('Your First Order', `
     <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">Hey ${first},</h2>
     <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">You've had the Brand Launch Guide for a week. I want to make this as easy as possible for you.</p>
     <p style="margin:0 0 16px;color:#555;font-size:0.9rem;line-height:1.6;">Your first order is just 1 litre. No large investment, no bulk inventory, no risk.</p>
     ${productRecPara}
     ${ctaPara}
+    ${day7BundlePara}
     <div style="text-align:center;margin:28px 0;">
       <a href="https://wa.me/18768851099" style="display:inline-block;background:#1a1a1a;color:white;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:0.95rem;letter-spacing:0.02em;">
         WhatsApp Najahuldin →
@@ -831,11 +871,11 @@ exports.onLeadCreated = onDocumentCreated({ document: 'leads/{id}', secrets: ['R
 
   // Email 2 subject — segmented by brandType
   const email2SubjectMap = {
-    'Skincare':       'The skincare products Jamaican brands are reordering every month',
-    'Feminine Care':  'Feminine care is the most loyal niche in Jamaica right now',
-    "Men's Grooming": "Men's grooming in Jamaica — almost no local brands. That's your opportunity.",
-    'Hair Care':      'The hair care products Jamaican brands are selling right now',
-    'Hair care':      'The hair care products Jamaican brands are selling right now',
+    'Skincare':       'The fastest way to launch your skincare brand',
+    'Feminine Care':  'The fastest way to launch your feminine care brand',
+    "Men's Grooming": "The fastest way to launch your men's grooming brand",
+    'Hair Care':      'The fastest way to launch your hair care brand',
+    'Hair care':      'The fastest way to launch your hair care brand',
   };
   const email2Subject = email2SubjectMap[brandType] || 'The products Jamaican brands are reordering every month';
 
@@ -1008,16 +1048,31 @@ exports.sendBroadcastEmail = onCall({ cors: true, secrets: ['RESEND_API_KEY'] },
   let failed = 0;
   const failures = []; // { email, name, col, reason }
 
+  const testMode = recipients.length === 1;
+  if (testMode) {
+    console.log(`[sendBroadcastEmail] TEST MODE — single recipient: ${recipients[0].email}, isSegmented: ${isSegmented}`);
+  }
+
   // Create a broadcast run doc now so failures can reference a runId
-  const runRef = await db.collection('broadcastLogs').add({
-    subject,
-    sendToSubscribers: sendToSubscribers || false,
-    sendToLeads:       sendToLeads || false,
-    totalRecipients:   recipients.length,
-    startedAt:         FieldValue.serverTimestamp(),
-    status:            'running',
-  });
-  const runId = runRef.id;
+  // NOTE: subject is undefined for segmented broadcasts — use a safe fallback to avoid
+  // Firestore throwing "Cannot use undefined as a Firestore value"
+  let runRef, runId;
+  try {
+    runRef = await db.collection('broadcastLogs').add({
+      subject:           isSegmented ? '(segmented)' : subject,
+      isSegmented:       isSegmented || false,
+      sendToSubscribers: sendToSubscribers || false,
+      sendToLeads:       sendToLeads || false,
+      totalRecipients:   recipients.length,
+      startedAt:         FieldValue.serverTimestamp(),
+      status:            'running',
+    });
+    runId = runRef.id;
+    console.log(`[sendBroadcastEmail] broadcastLogs doc created: ${runId}`);
+  } catch (err) {
+    console.error(`[sendBroadcastEmail] FATAL: broadcastLogs.add() failed:`, err.message, err.stack);
+    throw new HttpsError('internal', `Failed to create broadcast log: ${err.message}`);
+  }
 
   for (const r of recipients) {
     try {
@@ -1025,8 +1080,13 @@ exports.sendBroadcastEmail = onCall({ cors: true, secrets: ['RESEND_API_KEY'] },
       const greeting = r.name ? `Hi ${r.name},` : 'Hi there,';
 
       // Segmented: pick per-recipient subject + body; unsegmented: use global values
-      const recipSubject = isSegmented ? pickSegment(r.brandType).subject : subject;
-      const recipBody    = isSegmented ? pickSegment(r.brandType).body    : body;
+      const seg          = isSegmented ? pickSegment(r.brandType) : null;
+      const recipSubject = isSegmented ? seg.subject : subject;
+      const recipBody    = isSegmented ? seg.body    : body;
+
+      if (testMode) {
+        console.log(`[sendBroadcastEmail] TEST recipient:`, JSON.stringify({ email: r.email, brandType: r.brandType || '(none)', recipSubject, bodySnippet: (recipBody || '').slice(0, 80) }));
+      }
 
       // Preserve line breaks from plain-text body
       const bodyHtml = recipBody
@@ -1043,18 +1103,24 @@ exports.sendBroadcastEmail = onCall({ cors: true, secrets: ['RESEND_API_KEY'] },
         ${bodyHtml}
       `, unsubscribeUrl);
 
+      const payload = {
+        from: 'Najah Chemist <orders@najahchemistja.com>',
+        to: [r.email],
+        subject: recipSubject,
+        html
+      };
+
+      if (testMode) {
+        console.log(`[sendBroadcastEmail] TEST Resend payload (no html):`, JSON.stringify({ from: payload.from, to: payload.to, subject: payload.subject }));
+      }
+
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${resendKey}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          from: 'Najah Chemist <orders@najahchemistja.com>',
-          to: [r.email],
-          subject: recipSubject,
-          html
-        })
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
@@ -1064,14 +1130,20 @@ exports.sendBroadcastEmail = onCall({ cors: true, secrets: ['RESEND_API_KEY'] },
         failures.push({ email: r.email, name: r.name, col: r.col, reason });
         failed++;
       } else {
+        if (testMode) {
+          const resData = await res.json().catch(() => ({}));
+          console.log(`[sendBroadcastEmail] TEST Resend success:`, JSON.stringify(resData));
+        }
         sent++;
       }
     } catch (err) {
       const reason = err.message || String(err);
-      console.error(`[sendBroadcastEmail] Error ${r.email}:`, reason);
+      console.error(`[sendBroadcastEmail] Error ${r.email}:`, reason, err.stack);
       failures.push({ email: r.email, name: r.name, col: r.col, reason });
       failed++;
     }
+    // Stay under Resend's 5 req/sec rate limit
+    await new Promise(resolve => setTimeout(resolve, 200));
   }
 
   // Write each failure as a sub-document under the run
