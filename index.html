@@ -591,7 +591,7 @@ tr:hover td{background:var(--warm);}
           <button class="sf-btn-wa" onclick="sfScroll('sf-products')">
             🛒 Shop Now
           </button>
-<a class="sf-btn-ol" href="/client-portal" style="padding:0.8rem 1.6rem;font-size:0.88rem;font-weight:600;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;">Place Your Order</a>
+<button class="sf-btn-ol" onclick="sfOpenReorder()">↩ Reorder</button>
 <a class="sf-btn-gold" href="/start">Start Your Brand</a>
         </div>
       </div>
@@ -988,6 +988,25 @@ tr:hover td{background:var(--warm);}
   </div>
 
 
+  <!-- ══ REORDER MODAL ══ -->
+  <div class="sf-overlay" id="sf-reorder-overlay" style="z-index:700;align-items:center;" onclick="if(event.target===this)sfCloseReorder()">
+    <div style="background:white;border-radius:16px;padding:2rem 1.5rem;max-width:420px;width:90%;position:relative;">
+      <button onclick="sfCloseReorder()" style="position:absolute;top:1rem;right:1.1rem;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#8A8480;line-height:1;">×</button>
+      <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:#B45309;margin-bottom:0.5rem;">Returning Customer</div>
+      <div style="font-family:'Playfair Display',serif;font-size:1.35rem;font-weight:700;color:#0F0E0D;margin-bottom:0.5rem;">Load Your Last Order</div>
+      <p style="font-size:0.82rem;color:#8A8480;margin-bottom:1.2rem;line-height:1.6;">Enter your WhatsApp number and we'll add your last order to your cart.</p>
+      <div style="display:flex;align-items:stretch;border:1.5px solid #E8E4DE;border-radius:8px;overflow:hidden;margin-bottom:0.5rem;">
+        <span style="padding:0.7rem 0.75rem;background:#F5F2ED;font-size:0.85rem;font-weight:600;color:#4B4846;border-right:1.5px solid #E8E4DE;white-space:nowrap;display:flex;align-items:center;">+1</span>
+        <input id="sf-reorder-phone" type="tel" placeholder="876 885 1099" style="flex:1;padding:0.7rem 0.75rem;border:none;outline:none;font-family:'Outfit',sans-serif;font-size:0.88rem;color:#1C1A18;background:white;min-width:0;" onkeydown="if(event.key==='Enter')sfLoadOrder()">
+      </div>
+      <div id="sf-reorder-msg" style="display:none;font-size:0.78rem;color:#DC2626;margin-bottom:0.5rem;padding:0.4rem 0;"></div>
+      <button id="sf-reorder-btn" onclick="sfLoadOrder()" style="width:100%;padding:0.82rem;background:#0F0E0D;color:white;border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;margin-bottom:0.9rem;margin-top:0.25rem;">Load My Order →</button>
+      <div style="text-align:center;">
+        <button onclick="sfCloseReorder();sfScroll('sf-products')" style="background:none;border:none;font-family:'Outfit',sans-serif;font-size:0.78rem;color:#8A8480;cursor:pointer;text-decoration:underline;padding:0;">New customer? Shop here →</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ══ ABOUT SECTION ══ -->
   <div id="sf-about" class="sf-about-wrap">
     <div class="sf-about-inner">
@@ -1267,6 +1286,7 @@ tr:hover td{background:var(--warm);}
       </div>
 
       <div class="sf-cart-body">
+      <div id="sf-reorder-success" style="display:none;margin:0.9rem 1.2rem 0;padding:0.7rem 1rem;background:#D1FAE5;border:1.5px solid #6EE7B7;border-radius:8px;font-size:0.8rem;color:#065F46;font-weight:500;line-height:1.5;">✓ Your last order has been loaded. Add more products or proceed to checkout.</div>
       <div class="sf-cart-items-wrap" id="sf-cart-items"></div>
 
       <!-- Customer Details -->
@@ -5342,6 +5362,136 @@ window.sfAddUpsellItem = async function(productId, discPrice, btn) {
 window.sfCloseUpsell = function() {
   var ov = document.getElementById('sf-upsell-overlay');
   if (ov) ov.style.display = 'none';
+};
+
+// ── Reorder ───────────────────────────────────────────
+window.sfOpenReorder = function() {
+  var inp = document.getElementById('sf-reorder-phone');
+  var msg = document.getElementById('sf-reorder-msg');
+  var btn = document.getElementById('sf-reorder-btn');
+  if (inp) inp.value = '';
+  if (msg) { msg.textContent = ''; msg.style.display = 'none'; }
+  if (btn) { btn.textContent = 'Load My Order →'; btn.disabled = false; }
+  var ov = document.getElementById('sf-reorder-overlay');
+  if (ov) ov.classList.add('open');
+  setTimeout(function(){ if (inp) inp.focus(); }, 150);
+};
+
+window.sfCloseReorder = function() {
+  var ov = document.getElementById('sf-reorder-overlay');
+  if (ov) ov.classList.remove('open');
+};
+
+window.sfLoadOrder = async function() {
+  var rawPhone = (document.getElementById('sf-reorder-phone')?.value || '').trim();
+  var msgEl = document.getElementById('sf-reorder-msg');
+  var btn = document.getElementById('sf-reorder-btn');
+
+  var showErr = function(txt) {
+    if (msgEl) { msgEl.textContent = txt; msgEl.style.display = 'block'; }
+    if (btn) { btn.textContent = 'Load My Order →'; btn.disabled = false; }
+  };
+
+  var digits = rawPhone.replace(/\D/g, '');
+  if (digits.length < 7) { showErr('Please enter a valid phone number.'); return; }
+
+  if (btn) { btn.textContent = 'Searching…'; btn.disabled = true; }
+  if (msgEl) { msgEl.style.display = 'none'; }
+
+  try {
+    var db = window._db;
+    if (!db) { showErr('Service not ready — please try again.'); return; }
+
+    var mod = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+    var collection = mod.collection, getDocs = mod.getDocs, query = mod.query,
+        orderBy = mod.orderBy, limit = mod.limit;
+
+    var snap = await getDocs(query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(300)));
+
+    // Find most recent order whose phone matches (normalize both sides to digits)
+    var matchOrder = null;
+    snap.forEach(function(d) {
+      if (matchOrder) return;
+      var o = d.data();
+      var stored = [o.phone, o.whatsapp, o.customerWhatsApp].filter(Boolean);
+      for (var i = 0; i < stored.length; i++) {
+        var s = stored[i].replace(/\D/g, '');
+        if (!s) continue;
+        // Match if either number ends with the other (handles country code differences)
+        if (s.endsWith(digits) || digits.endsWith(s) || s.slice(-7) === digits.slice(-7)) {
+          matchOrder = o;
+          break;
+        }
+      }
+    });
+
+    if (!matchOrder) {
+      sfCloseReorder();
+      sfShowToast('No previous order found for this number. Browse our products below.');
+      sfScroll('sf-products');
+      return;
+    }
+
+    // Rebuild cart items from the order's product string
+    // Format: "Name (Size xQty) | Name2 (Size2 xQty2)"
+    var products = window.PRODUCTS || [];
+    var productStr = matchOrder.product || '';
+    var parts = productStr.split(' | ');
+    var added = 0;
+
+    parts.forEach(function(part) {
+      var m = part.match(/^(.+) \((.+) x(\d+)\)$/);
+      if (!m) return;
+      var itemName = m[1].trim();
+      var sizeStr  = m[2].trim();  // may include scent, e.g. "1 Litre · Strawberry"
+      var qty      = parseInt(m[3]) || 1;
+      var baseSize = sizeStr.split(' · ')[0]; // strip scent/mint for key lookup
+
+      var prod = products.find(function(p) { return p.name === itemName; });
+      if (!prod) return;
+
+      var pricingKey = Object.keys(prod.pricing || {}).find(function(k) {
+        return sfSizeLabel(k) === baseSize;
+      }) || Object.keys(prod.pricing || {})[0];
+      if (!pricingKey) return;
+
+      var price = (prod.pricing[pricingKey] || {}).price || 0;
+      var cartKey = prod.id + '|' + sizeStr + '||';
+      var existing = sfCart.find(function(i) { return i._key === cartKey; });
+      if (existing) {
+        existing.qty += qty;
+      } else {
+        sfCart.push({
+          _key: cartKey, id: prod.id, name: prod.name,
+          size: sizeStr, price: price, qty: qty,
+          emoji: prod.emoji || '🧴', cat: prod.cat
+        });
+      }
+      added++;
+    });
+
+    sfCloseReorder();
+
+    if (added === 0) {
+      sfShowToast('Products from your last order are no longer available. Browse below.');
+      sfScroll('sf-products');
+      return;
+    }
+
+    sfUpdateCartBtn();
+    sfOpenCart();
+
+    // Show success banner in cart, auto-hide after 8 s
+    var banner = document.getElementById('sf-reorder-success');
+    if (banner) {
+      banner.style.display = 'block';
+      setTimeout(function() { banner.style.display = 'none'; }, 8000);
+    }
+
+  } catch(e) {
+    console.error('[reorder]', e);
+    showErr('Something went wrong — please try again.');
+  }
 };
 
 // ── Staff/Admin visibility — show buttons if ?staff=true in URL ───────────
