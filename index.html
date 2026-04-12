@@ -2461,35 +2461,9 @@ async function loadFromDB() {
   rebuildOrderProductSelect();
 }
 
-// Expose for storefront script to save orders to Firestore silently
-async function saveOrderSilent(order) {
-  try {
-    console.log('saveOrderSilent called', order.id);
-    const orderRef = await addDoc(collection(db,'orders'),{...order,createdAt:serverTimestamp()});
-    linkOrderToClient(orderRef.id, order).catch(e=>console.error('[client-link]',e));
-  }
-  catch(e){ console.error('[Najah] Firestore order save failed:', e); }
-}
-window.saveOrderSilent = saveOrderSilent;
-
-async function linkOrderToClient(orderDocId, orderData) {
-  const name = (orderData.client||orderData.customerName||'').trim();
-  const email = (orderData.email||orderData.customerEmail||'').trim().toLowerCase();
-  const phone = (orderData.phone||orderData.customerWhatsApp||orderData.wa||'').replace(/\D/g,'');
-  const clientId = email || phone || ('name_'+(name||'unknown')+'_'+Date.now()).toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
-  const clientRef = doc(db,'clients',clientId);
-  const existing = await getDoc(clientRef);
-  const base = existing.exists() ? {} : {created_at: serverTimestamp()};
-  const incomplete = !email && !phone;
-  await setDoc(clientRef, {
-    ...base,
-    name, email: email||'', phone: phone||'', whatsapp: phone||'',
-    orders: increment(1),
-    totalSpent: increment(parseFloat(orderData.total)||0),
-    ...(incomplete?{incomplete:true}:{})
-  }, {merge:true});
-  await updateDoc(doc(db,'orders',orderDocId), {client_id: clientId});
-}
+// saveOrderSilent and linkOrderToClient moved to the regular script below
+// (module-scope static imports caused them to silently disappear if the module
+//  had any load/init error — regular script + dynamic import is more reliable)
 
 // ═══ BEST SELLERS ═══
 const BS_IMG_CLASS={soap:'img-soap',yoni:'img-wash',skincare:'img-cream',mencare:'img-soap',haircare:'img-cream',bundle:'img-label',label:'img-label',cream:'img-cream',serum:'img-serum',wash:'img-wash',hair:'img-cream'};
@@ -4804,8 +4778,49 @@ window.sfSetPayment = function(method) {
   sfRenderCartFooter();
 };
 
+// ── Firestore Order Save ──────────────────────────────
+// Defined here (regular script) so it is always globally accessible regardless
+// of whether the module script loaded cleanly. Uses dynamic import + window._db,
+// the same self-contained pattern as saveSubscriber.
+async function linkOrderToClient(orderDocId, orderData) {
+  var db = window._db;
+  if (!db) return;
+  var mod = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+  var _doc = mod.doc, _getDoc = mod.getDoc, _setDoc = mod.setDoc,
+      _updateDoc = mod.updateDoc, _ts = mod.serverTimestamp, _inc = mod.increment;
+  var name = (orderData.client||orderData.customerName||'').trim();
+  var email = (orderData.email||orderData.customerEmail||'').trim().toLowerCase();
+  var phone = (orderData.phone||orderData.customerWhatsApp||orderData.wa||'').replace(/\D/g,'');
+  var clientId = email || phone || ('name_'+(name||'unknown')+'_'+Date.now()).toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  var clientRef = _doc(db,'clients',clientId);
+  var existing = await _getDoc(clientRef);
+  var base = existing.exists() ? {} : {created_at: _ts()};
+  var data = Object.assign({}, base, {
+    name: name, email: email||'', phone: phone||'', whatsapp: phone||'',
+    orders: _inc(1),
+    totalSpent: _inc(parseFloat(orderData.total)||0)
+  });
+  if (!email && !phone) data.incomplete = true;
+  await _setDoc(clientRef, data, {merge:true});
+  await _updateDoc(_doc(db,'orders',orderDocId), {client_id: clientId});
+}
+
+async function saveOrderSilent(order) {
+  console.log('saveOrderSilent REACHED', order.id);
+  try {
+    var db = window._db;
+    if (!db) { console.warn('[Najah] saveOrderSilent: db not ready on window._db'); return; }
+    var mod = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+    var addDoc = mod.addDoc, collection = mod.collection, serverTimestamp = mod.serverTimestamp;
+    var orderRef = await addDoc(collection(db,'orders'), Object.assign({}, order, {createdAt: serverTimestamp()}));
+    linkOrderToClient(orderRef.id, order).catch(function(e){ console.error('[client-link]', e); });
+  } catch(e) { console.error('[Najah] Firestore order save failed:', e); }
+}
+window.saveOrderSilent = saveOrderSilent;
+
 // ── Checkout ─────────────────────────────────────────
 window.sfCheckoutWA = function() {
+  console.log('CHECKOUT CALLED');
   const name = (document.getElementById('sf-cust-name')?.value||'').trim();
   const phone = (document.getElementById('sf-cust-phone')?.value||'').trim();
   const custEmail = (document.getElementById('sf-cust-email')?.value||'').trim();
