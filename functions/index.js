@@ -655,25 +655,29 @@ function leadEmail2Html(name, brandType, unsubscribeUrl) {
     bundleHtml = `<div style="background:#fdf8ef;border:1px solid #c9a96e;border-radius:10px;padding:16px 20px;margin:20px 0;">
       <p style="margin:0 0 8px;font-size:0.88rem;font-weight:700;color:#1a1a1a;">⭐ Or skip the guesswork entirely</p>
       <p style="margin:0 0 10px;color:#555;font-size:0.9rem;line-height:1.6;">Our <strong>HydraGlow Skincare Bundle</strong> gives you 6 of each product, ready to label and sell, for <strong>J$25,200</strong>. Retail value J$60,000+. That's a <strong>J$34,800 profit</strong> from your first order.</p>
-      <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">👉 Reply YES and I'll send you the bundle details.</p>
+      <p style="margin:0 0 8px;color:#555;font-size:0.9rem;line-height:1.6;">👉 Reply YES and I'll send you the bundle details.</p>
+      <p style="margin:0;font-size:0.8rem;color:#888;font-style:italic;">Note: Bundles are pre-set and cannot be customised. For a custom product mix, visit <a href="https://najahchemistja.com/customise" style="color:#888;">najahchemistja.com/customise</a></p>
     </div>`;
   } else if (bt === 'Feminine Care') {
     bundleHtml = `<div style="background:#fdf8ef;border:1px solid #c9a96e;border-radius:10px;padding:16px 20px;margin:20px 0;">
       <p style="margin:0 0 8px;font-size:0.88rem;font-weight:700;color:#1a1a1a;">⭐ Or start with our Feminine Care Starter Kit</p>
       <p style="margin:0 0 10px;color:#555;font-size:0.9rem;line-height:1.6;">6 Yoni Washes, 6 VagiMists, 6 Steam Herbs, and 6 packs of Yoni Pops, all ready to label and sell, for <strong>J$12,500</strong>. Retail value J$30,000+. That's <strong>J$17,500 profit</strong> from your first order.</p>
-      <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">👉 Reply YES and I'll send you the bundle details.</p>
+      <p style="margin:0 0 8px;color:#555;font-size:0.9rem;line-height:1.6;">👉 Reply YES and I'll send you the bundle details.</p>
+      <p style="margin:0;font-size:0.8rem;color:#888;font-style:italic;">Note: Bundles are pre-set and cannot be customised. For a custom product mix, visit <a href="https://najahchemistja.com/customise" style="color:#888;">najahchemistja.com/customise</a></p>
     </div>`;
   } else if (bt === "Men's Grooming") {
     bundleHtml = `<div style="background:#fdf8ef;border:1px solid #c9a96e;border-radius:10px;padding:16px 20px;margin:20px 0;">
       <p style="margin:0 0 8px;font-size:0.88rem;font-weight:700;color:#1a1a1a;">⭐ Or start with our Mencare Bundle</p>
       <p style="margin:0 0 10px;color:#555;font-size:0.9rem;line-height:1.6;">6 Intimate Washes, 6 Beard Balms, and 6 Beard Shampoos, all ready to label and sell, for <strong>J$11,000</strong>. Retail value J$28,000+. That's <strong>J$17,000 profit</strong> from your first order.</p>
-      <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">👉 Reply YES and I'll send you the bundle details.</p>
+      <p style="margin:0 0 8px;color:#555;font-size:0.9rem;line-height:1.6;">👉 Reply YES and I'll send you the bundle details.</p>
+      <p style="margin:0;font-size:0.8rem;color:#888;font-style:italic;">Note: Bundles are pre-set and cannot be customised. For a custom product mix, visit <a href="https://najahchemistja.com/customise" style="color:#888;">najahchemistja.com/customise</a></p>
     </div>`;
   } else if (bt === 'Hair Care' || bt === 'Hair care') {
     bundleHtml = `<div style="background:#fdf8ef;border:1px solid #c9a96e;border-radius:10px;padding:16px 20px;margin:20px 0;">
       <p style="margin:0 0 8px;font-size:0.88rem;font-weight:700;color:#1a1a1a;">⭐ Start with 1 litre of Ayurvedic Hair Growth Oil</p>
       <p style="margin:0 0 10px;color:#555;font-size:0.9rem;line-height:1.6;">Fills 16 × 2oz bottles. At J$2,000 retail that's <strong>J$32,000 revenue</strong> from one <strong>J$7,500 order</strong>.</p>
-      <p style="margin:0;color:#555;font-size:0.9rem;line-height:1.6;">👉 Reply YES and I'll send you the details.</p>
+      <p style="margin:0 0 8px;color:#555;font-size:0.9rem;line-height:1.6;">👉 Reply YES and I'll send you the details.</p>
+      <p style="margin:0;font-size:0.8rem;color:#888;font-style:italic;">Note: Bundles are pre-set and cannot be customised. For a custom product mix, visit <a href="https://najahchemistja.com/customise" style="color:#888;">najahchemistja.com/customise</a></p>
     </div>`;
   }
 
@@ -723,13 +727,13 @@ function leadEmail3Html(name, brandType, unsubscribeUrl) {
 
   let day7BundlePara = '';
   if (bt === 'Skincare') {
-    day7BundlePara = `<p style="margin:0 0 16px;font-size:0.9rem;font-weight:600;color:#1a1a1a;">The HydraGlow Bundle is J$25,200 — complete skincare line, ready to sell, profit of J$34,800.</p>`;
+    day7BundlePara = `<p style="margin:0 0 8px;font-size:0.9rem;font-weight:600;color:#1a1a1a;">The HydraGlow Bundle is J$25,200 — complete skincare line, ready to sell, profit of J$34,800.</p><p style="margin:0 0 16px;font-size:0.8rem;color:#888;font-style:italic;">Note: Bundles are pre-set and cannot be customised. For a custom product mix, visit <a href="https://najahchemistja.com/customise" style="color:#888;">najahchemistja.com/customise</a></p>`;
   } else if (bt === 'Feminine Care') {
-    day7BundlePara = `<p style="margin:0 0 16px;font-size:0.9rem;font-weight:600;color:#1a1a1a;">The Feminine Care Starter Kit is J$12,500 — complete feminine care line, profit of J$17,500.</p>`;
+    day7BundlePara = `<p style="margin:0 0 8px;font-size:0.9rem;font-weight:600;color:#1a1a1a;">The Feminine Care Starter Kit is J$12,500 — complete feminine care line, profit of J$17,500.</p><p style="margin:0 0 16px;font-size:0.8rem;color:#888;font-style:italic;">Note: Bundles are pre-set and cannot be customised. For a custom product mix, visit <a href="https://najahchemistja.com/customise" style="color:#888;">najahchemistja.com/customise</a></p>`;
   } else if (bt === "Men's Grooming") {
-    day7BundlePara = `<p style="margin:0 0 16px;font-size:0.9rem;font-weight:600;color:#1a1a1a;">The Mencare Bundle is J$11,000 — complete men's grooming line, profit of J$17,000.</p>`;
+    day7BundlePara = `<p style="margin:0 0 8px;font-size:0.9rem;font-weight:600;color:#1a1a1a;">The Mencare Bundle is J$11,000 — complete men's grooming line, profit of J$17,000.</p><p style="margin:0 0 16px;font-size:0.8rem;color:#888;font-style:italic;">Note: Bundles are pre-set and cannot be customised. For a custom product mix, visit <a href="https://najahchemistja.com/customise" style="color:#888;">najahchemistja.com/customise</a></p>`;
   } else if (bt === 'Hair Care' || bt === 'Hair care') {
-    day7BundlePara = `<p style="margin:0 0 16px;font-size:0.9rem;font-weight:600;color:#1a1a1a;">1 litre of Hair Growth Oil is J$7,500 — fills 16 bottles, retail value J$32,000.</p>`;
+    day7BundlePara = `<p style="margin:0 0 8px;font-size:0.9rem;font-weight:600;color:#1a1a1a;">1 litre of Hair Growth Oil is J$7,500 — fills 16 bottles, retail value J$32,000.</p><p style="margin:0 0 16px;font-size:0.8rem;color:#888;font-style:italic;">Note: Bundles are pre-set and cannot be customised. For a custom product mix, visit <a href="https://najahchemistja.com/customise" style="color:#888;">najahchemistja.com/customise</a></p>`;
   }
 
   return wrapEmail('Your First Order', `
