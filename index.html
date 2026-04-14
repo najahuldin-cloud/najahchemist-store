@@ -4925,33 +4925,38 @@ window.sfCheckoutWA = function() {
 
   // 4. Save to Sheets + Firestore + email in background (non-blocking)
   setTimeout(async function() {
-    sfMarkCartRecovered();
     try {
-      await fetch('/.netlify/functions/create-order', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({orderId:orderId, date:date, customerName:name, phone:phone, products:productsStr, deliveryLocation:deliveryLocation, deliveryFee:deliveryFee, total:total, status:'NEW'})
-      });
-    } catch(e) { console.error('Order save failed:', e); }
-    // Save to Firestore so order appears in admin panel — upsell triggers only after this succeeds
-    console.log('[Najah] sfCheckoutWA: attempting Firestore save', orderId, typeof window.saveOrderSilent);
-    if (typeof window.saveOrderSilent === 'function') {
-      const totalQty = cartSnapshot.reduce(function(s,i){return s+i.qty;},0);
-      await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Unpaid',status:'Pending',date:date,total:total,payMethod:'Bank/Lynk',phone:phone||'—',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee,knutsfordBranch:knutsfordBranch,zipmailLocation:zipmailLocation,deliveryAddress:deliveryAddress,shippingDetail:shippingDetail});
-    } else {
-      console.warn('[Najah] saveOrderSilent not available on window — Firestore save SKIPPED');
-    }
-    // Show upsell AFTER Firestore save so sfAddUpsellItem can find the order
-    try { sfShowUpsell(cartSnapshot, orderId); } catch(e) { console.error('[upsell]', e); }
-    if (custEmail) {
-      try { await saveSubscriber(name, custEmail, 'checkout'); } catch(e) {}
+      sfMarkCartRecovered();
       try {
-        await fetch('/.netlify/functions/send-receipt', {
+        await fetch('/.netlify/functions/create-order', {
           method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({orderId:orderId, customerName:name, email:custEmail,
-            items:cartSnapshot.map(function(i){return {name:i.name,size:i.size,qty:i.qty,price:i.price};}),
-            subtotal:sub, deliveryFee:deliveryFee, total:total, shipDetail:shipDetail})
+          body: JSON.stringify({orderId:orderId, date:date, customerName:name, phone:phone, products:productsStr, deliveryLocation:deliveryLocation, deliveryFee:deliveryFee, total:total, status:'NEW'})
         });
-      } catch(e) {}
+      } catch(e) { console.error('Order save failed:', e); }
+      // Save to Firestore so order appears in admin panel — upsell triggers only after this succeeds
+      console.log('[Najah] sfCheckoutWA: attempting Firestore save', orderId, typeof window.saveOrderSilent);
+      if (typeof window.saveOrderSilent === 'function') {
+        const totalQty = cartSnapshot.reduce(function(s,i){return s+i.qty;},0);
+        console.log('CHECKPOINT: about to save order', orderId);
+        await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Unpaid',status:'Pending',date:date,total:total,payMethod:'Bank/Lynk',phone:phone||'—',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee,knutsfordBranch:knutsfordBranch,zipmailLocation:zipmailLocation,deliveryAddress:deliveryAddress,shippingDetail:shippingDetail});
+      } else {
+        console.warn('[Najah] saveOrderSilent not available on window — Firestore save SKIPPED');
+      }
+      // Show upsell AFTER Firestore save so sfAddUpsellItem can find the order
+      try { sfShowUpsell(cartSnapshot, orderId); } catch(e) { console.error('[upsell]', e); }
+      if (custEmail) {
+        try { await saveSubscriber(name, custEmail, 'checkout'); } catch(e) {}
+        try {
+          await fetch('/.netlify/functions/send-receipt', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({orderId:orderId, customerName:name, email:custEmail,
+              items:cartSnapshot.map(function(i){return {name:i.name,size:i.size,qty:i.qty,price:i.price};}),
+              subtotal:sub, deliveryFee:deliveryFee, total:total, shipDetail:shipDetail})
+          });
+        } catch(e) {}
+      }
+    } catch(e) {
+      console.error('[Najah] sfCheckoutWA background error:', e.message, e.stack);
     }
   }, 100);
 };
@@ -5030,34 +5035,39 @@ window.sfCheckoutFygaro = function() {
 
   // 4. Save to Sheets + Firestore + email in background
   setTimeout(async function() {
-    sfMarkCartRecovered();
     try {
-      await fetch('/.netlify/functions/create-order', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({orderId, date, customerName:name, phone, products:productsStr, deliveryLocation, deliveryFee, total:cardTotal, status:'Awaiting Payment'})
-      });
-    } catch(e) { console.error('Order save failed:', e); }
-    // Save to Firestore so order appears in admin panel — upsell triggers only after this succeeds
-    console.log('[Najah] sfCheckoutFygaro: attempting Firestore save', orderId, typeof window.saveOrderSilent);
-    if (typeof window.saveOrderSilent === 'function') {
-      const totalQty = cartSnapshot.reduce(function(s,i){return s+i.qty;},0);
-      await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Awaiting Payment',status:'Pending',date:date,total:cardTotal,payMethod:'Fygaro Card',phone:phone||'—',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee,knutsfordBranch:knutsfordBranch,zipmailLocation:zipmailLocation,deliveryAddress:deliveryAddress,shippingDetail:shippingDetail});
-    } else {
-      console.warn('[Najah] saveOrderSilent not available on window — Firestore save SKIPPED');
-    }
-    // Show upsell AFTER Firestore save so sfAddUpsellItem can find the order
-    try { sfShowUpsell(cartSnapshot, orderId); } catch(e) { console.error('[upsell]', e); }
-    if (custEmail) {
-      try { await saveSubscriber(name, custEmail, 'checkout'); } catch(e) {}
+      sfMarkCartRecovered();
       try {
-        await fetch('/.netlify/functions/send-receipt', {
+        await fetch('/.netlify/functions/create-order', {
           method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({orderId, customerName:name, email:custEmail,
-            items:cartSnapshot.map(function(i){return {name:i.name,size:i.size,qty:i.qty,price:i.price};}),
-            subtotal:sub, deliveryFee, total:cardTotal, shipDetail,
-            note:'Payment via Fygaro card — total includes 15% processing fee'})
+          body: JSON.stringify({orderId, date, customerName:name, phone, products:productsStr, deliveryLocation, deliveryFee, total:cardTotal, status:'Awaiting Payment'})
         });
-      } catch(e) {}
+      } catch(e) { console.error('Order save failed:', e); }
+      // Save to Firestore so order appears in admin panel — upsell triggers only after this succeeds
+      console.log('[Najah] sfCheckoutFygaro: attempting Firestore save', orderId, typeof window.saveOrderSilent);
+      if (typeof window.saveOrderSilent === 'function') {
+        const totalQty = cartSnapshot.reduce(function(s,i){return s+i.qty;},0);
+        console.log('CHECKPOINT: about to save order', orderId);
+        await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Awaiting Payment',status:'Pending',date:date,total:cardTotal,payMethod:'Fygaro Card',phone:phone||'—',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee,knutsfordBranch:knutsfordBranch,zipmailLocation:zipmailLocation,deliveryAddress:deliveryAddress,shippingDetail:shippingDetail});
+      } else {
+        console.warn('[Najah] saveOrderSilent not available on window — Firestore save SKIPPED');
+      }
+      // Show upsell AFTER Firestore save so sfAddUpsellItem can find the order
+      try { sfShowUpsell(cartSnapshot, orderId); } catch(e) { console.error('[upsell]', e); }
+      if (custEmail) {
+        try { await saveSubscriber(name, custEmail, 'checkout'); } catch(e) {}
+        try {
+          await fetch('/.netlify/functions/send-receipt', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({orderId, customerName:name, email:custEmail,
+              items:cartSnapshot.map(function(i){return {name:i.name,size:i.size,qty:i.qty,price:i.price};}),
+              subtotal:sub, deliveryFee, total:cardTotal, shipDetail,
+              note:'Payment via Fygaro card — total includes 15% processing fee'})
+          });
+        } catch(e) {}
+      }
+    } catch(e) {
+      console.error('[Najah] sfCheckoutFygaro background error:', e.message, e.stack);
     }
   }, 100);
 };
