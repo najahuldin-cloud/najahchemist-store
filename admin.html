@@ -333,6 +333,7 @@ select.finp{cursor:pointer;}
       <div class="section-title">Orders
         <button class="btn btn-gold" onclick="openM('m-new-order')">+ New Order</button>
       </div>
+      <div id="orders-health-check" style="margin-bottom:0.75rem;padding:0.6rem 0.9rem;border-radius:8px;font-size:0.78rem;background:#F0FDF4;border:1px solid #BBF7D0;color:#166534;display:none;"></div>
       <div class="filter-bar">
         <button class="filter-btn on" onclick="filterOrders('all',this)">All</button>
         <button class="filter-btn" onclick="filterOrders('Pending',this)">Pending</button>
@@ -1083,6 +1084,7 @@ async function initAdmin() {
         renderLabelsTable();
         updateDashStats();
       }
+      updateOrdersHealthCheck();
       const pending = ORDERS.filter(o => o.status === 'Pending' || o.status === 'pending').length;
       const badge = document.getElementById('nb-orders-badge');
       badge.textContent = pending;
@@ -1253,6 +1255,44 @@ function statusBadgeClass(s){
 
 // ── ORDERS ──
 let _ordersDateFilter = '';
+
+function updateOrdersHealthCheck() {
+  const el = document.getElementById('orders-health-check');
+  if (!el) return;
+  if (!ORDERS.length) { el.style.display = 'none'; return; }
+
+  // Find the most recently created order (by createdAt timestamp or fallback to date string)
+  let latest = null;
+  let latestTime = 0;
+  ORDERS.forEach(o => {
+    let t = 0;
+    if (o.createdAt && o.createdAt.toDate) t = o.createdAt.toDate().getTime();
+    else if (o.createdAt && o.createdAt.seconds) t = o.createdAt.seconds * 1000;
+    else if (o.date) t = new Date(o.date).getTime() || 0;
+    if (t > latestTime) { latestTime = t; latest = o; }
+  });
+
+  if (!latest || !latestTime) { el.style.display = 'none'; return; }
+
+  const now = Date.now();
+  const hrs = (now - latestTime) / (1000 * 60 * 60);
+  const timeStr = new Date(latestTime).toLocaleString('en-JM', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const orderId = latest.id || latest.orderId || '—';
+
+  el.style.display = 'block';
+  if (hrs > 24) {
+    el.style.background = '#FFFBEB';
+    el.style.borderColor = '#FDE68A';
+    el.style.color = '#92400E';
+    el.innerHTML = `⚠️ No orders saved in 24hrs — last order was <strong>${orderId}</strong> at ${timeStr}. Check system.`;
+  } else {
+    el.style.background = '#F0FDF4';
+    el.style.borderColor = '#BBF7D0';
+    el.style.color = '#166534';
+    el.innerHTML = `✓ Last order saved: <strong>${orderId}</strong> at ${timeStr}`;
+  }
+}
+
 function renderOrdersTable(){
   const tbody = document.getElementById('orders-tbody');
   let list = [...ORDERS];
