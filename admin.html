@@ -2062,6 +2062,37 @@ window.toggleOutOfStock = async function(id, newOos){
   try {
     await updateDoc(doc(db,'products',docId),{outOfStock:newOos});
     toast(newOos?'Marked out of stock':'Back in stock');
+
+    // When restocking, notify all waitlist entries for this product
+    if (!newOos) {
+      try {
+        const productName = p.name || id;
+        const waitSnap = await getDocs(query(
+          collection(db, 'waitlist'),
+          where('productId', '==', id),
+          where('notified', '==', false)
+        ));
+        const entries = waitSnap.docs;
+        if (entries.length > 0) {
+          await Promise.all(entries.map(async (entry) => {
+            const d = entry.data();
+            try {
+              await fetch('/.netlify/functions/send-restock-notification', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: d.email, productName, productId: id })
+              });
+              await updateDoc(doc(db, 'waitlist', entry.id), { notified: true });
+            } catch(notifyErr) {
+              console.error('Restock notify failed for', d.email, notifyErr);
+            }
+          }));
+          alert(`Restock notifications sent to ${entries.length} client${entries.length !== 1 ? 's' : ''} for ${productName}`);
+        }
+      } catch(wlErr) {
+        console.error('Waitlist restock query failed:', wlErr);
+      }
+    }
   } catch(e){ toast('Error: '+e.message); }
 };
 
