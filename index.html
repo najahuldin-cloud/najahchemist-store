@@ -1269,6 +1269,25 @@ tr:hover td{background:var(--warm);}
         <p style="color:#FCD34D;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">⏰ This offer is only available right now</p>
         <button onclick="sfCloseUpsell()" style="position:absolute;top:0.9rem;right:1rem;background:rgba(255,255,255,0.2);border:none;color:white;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:1rem;line-height:1;display:flex;align-items:center;justify-content:center;">✕</button>
       </div>
+      <div id="sf-filling-section" style="display:none; padding:1.2rem 1.2rem 0;">
+        <div style="border:1px solid #b8860b; border-radius:10px; padding:16px; background:#fff8f0;">
+          <p style="font-weight:700; color:#333; margin:0 0 6px; font-size:15px;">🧴 Want us to fill your containers?</p>
+          <p style="color:#666; font-size:13px; margin:0 0 12px;">We'll fill your bottles/jars with your product for you. Fee: 15% of your product subtotal.</p>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:10px 14px; border:1px solid #ddd; border-radius:8px; flex:1; min-width:140px;">
+              <input type="radio" name="sf-filling-choice" value="yes" onchange="sfFillingChoiceChanged('yes')" style="accent-color:#b8860b;" />
+              <span style="font-size:14px;">✅ Yes, fill them for me</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:10px 14px; border:1px solid #ddd; border-radius:8px; flex:1; min-width:140px;">
+              <input type="radio" name="sf-filling-choice" value="no" checked onchange="sfFillingChoiceChanged('no')" style="accent-color:#b8860b;" />
+              <span style="font-size:14px;">❌ No thanks</span>
+            </label>
+          </div>
+          <div id="sf-filling-price" style="font-size:14px; color:#b8860b; font-weight:600; display:none;">
+            Filling fee: J$<span id="sf-filling-amount">0</span>
+          </div>
+        </div>
+      </div>
       <div id="sf-upsell-cards" style="padding:1.2rem;display:flex;flex-direction:column;gap:0.75rem;"></div>
       <div style="padding:0 1.2rem 1.2rem;">
         <button onclick="sfCloseUpsell()" style="width:100%;padding:0.7rem;background:none;border:none;color:#8A8480;font-family:'Outfit',sans-serif;font-size:0.8rem;cursor:pointer;text-decoration:underline;">No thanks, I'm done</button>
@@ -4907,7 +4926,8 @@ window.sfCheckoutWA = function() {
 
   // 1. Open WhatsApp IMMEDIATELY - synchronous to avoid browser popup block
   const WA = window.WA_NUMBER || '18768851099';
-  const msg = 'Hi Najah Chemist! I would like to place an order.\n\nORDER ID: ' + orderId + '\n\nCUSTOMER\nName: ' + name + (phone?'\nPhone: '+phone:'') + '\n\nORDER\n' + items + '\n\nSUBTOTAL: J$' + rawSub.toLocaleString() + discountNote + '\nSHIPPING: ' + shipDetail + '\nTOTAL: J$' + total.toLocaleString() + '\n\nPAYMENT\nI understand payment is required upfront (no COD).\nI will pay via bank transfer, Fygaro, or Lynk.\n\nPlease confirm my order. Thank you!';
+  const fillingLine = (window.sfFillingFee > 0) ? '\n🧴 Container Filling Service: J$' + window.sfFillingFee.toLocaleString() : '';
+  const msg = 'Hi Najah Chemist! I would like to place an order.\n\nORDER ID: ' + orderId + '\n\nCUSTOMER\nName: ' + name + (phone?'\nPhone: '+phone:'') + '\n\nORDER\n' + items + '\n\nSUBTOTAL: J$' + rawSub.toLocaleString() + discountNote + '\nSHIPPING: ' + shipDetail + '\nTOTAL: J$' + total.toLocaleString() + fillingLine + '\n\nPAYMENT\nI understand payment is required upfront (no COD).\nI will pay via bank transfer, Fygaro, or Lynk.\n\nPlease confirm my order. Thank you!';
   window.open('https://wa.me/' + WA + '?text=' + encodeURIComponent(msg), '_blank');
 
   // 2. Show confirmation modal immediately
@@ -5259,6 +5279,8 @@ function sfAddChatMsg(text, isUser, isTyping) {
 // ── Post-Purchase Upsell ─────────────────────────────
 var _sfUpsellOrderId = null;
 var _sfUpsellShown   = false;
+window.sfFillingFee  = 0;
+window._sfFillingFeeCalc = 0;
 
 function sfShowUpsell(cartSnap, orderId) {
   if (_sfUpsellShown) return;
@@ -5268,6 +5290,36 @@ function sfShowUpsell(cartSnap, orderId) {
   console.log('upsell triggered', products.length, 'products');
   if (!products.length) return;
   sfRenderUpsellPopup(products);
+
+  // Container filling upsell: show only if cart has both container + non-container items
+  var hasContainer = (cartSnap || []).some(function(i) {
+    return i.cat === 'containers' || /bottle|jar|container/i.test(i.name || '');
+  });
+  var hasNonContainer = (cartSnap || []).some(function(i) {
+    return i.cat !== 'containers' && !/bottle|jar|container/i.test(i.name || '');
+  });
+  var fillingSection = document.getElementById('sf-filling-section');
+  if (fillingSection) {
+    if (hasContainer && hasNonContainer) {
+      var productSub = (cartSnap || []).reduce(function(s, i) {
+        if (i.cat === 'containers' || /bottle|jar|container/i.test(i.name || '')) return s;
+        return s + (i.price * i.qty);
+      }, 0);
+      window._sfFillingFeeCalc = Math.round(productSub * 0.15);
+      var amountEl = document.getElementById('sf-filling-amount');
+      if (amountEl) amountEl.textContent = window._sfFillingFeeCalc.toLocaleString();
+      // Reset to "no"
+      document.querySelectorAll('input[name="sf-filling-choice"]').forEach(function(r) {
+        r.checked = (r.value === 'no');
+      });
+      var priceEl = document.getElementById('sf-filling-price');
+      if (priceEl) priceEl.style.display = 'none';
+      fillingSection.style.display = 'block';
+    } else {
+      fillingSection.style.display = 'none';
+    }
+  }
+
   var ov = document.getElementById('sf-upsell-overlay');
   if (ov) ov.style.display = 'flex';
 }
@@ -5422,6 +5474,26 @@ window.sfAddUpsellItem = async function(productId, discPrice, btn) {
 window.sfCloseUpsell = function() {
   var ov = document.getElementById('sf-upsell-overlay');
   if (ov) ov.style.display = 'none';
+  // Reset filling service state
+  window.sfFillingFee = 0;
+  document.querySelectorAll('input[name="sf-filling-choice"]').forEach(function(r) {
+    r.checked = (r.value === 'no');
+  });
+  var priceEl = document.getElementById('sf-filling-price');
+  if (priceEl) priceEl.style.display = 'none';
+  var fillingSection = document.getElementById('sf-filling-section');
+  if (fillingSection) fillingSection.style.display = 'none';
+};
+
+window.sfFillingChoiceChanged = function(val) {
+  var priceEl = document.getElementById('sf-filling-price');
+  if (val === 'yes') {
+    window.sfFillingFee = window._sfFillingFeeCalc || 0;
+    if (priceEl) priceEl.style.display = 'block';
+  } else {
+    window.sfFillingFee = 0;
+    if (priceEl) priceEl.style.display = 'none';
+  }
 };
 
 // ── Reorder ───────────────────────────────────────────
