@@ -978,10 +978,14 @@ tr:hover td{background:var(--warm);}
           </div>
         </div>
         <button id="sf-modal-add-btn" style="width:100%;padding:0.82rem;background:#0F0E0D;color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.92rem;font-weight:700;cursor:pointer;margin-bottom:0.5rem;letter-spacing:0.02em;" onclick="sfAddToCart()">🛒 Add to Cart</button>
-        <div id="sf-modal-oos-msg" style="display:none;padding:1rem;background:#FEF2F2;border:1.5px solid #FECACA;border-radius:10px;margin-bottom:0.5rem;text-align:center;">
-          <div style="font-weight:700;color:#DC2626;font-size:0.88rem;margin-bottom:0.4rem;">This product is currently out of stock.</div>
-          <div style="font-size:0.82rem;color:#4B4846;margin-bottom:0.75rem;">Join the waitlist on WhatsApp to be notified when it's back.</div>
-          <a href="https://wa.me/18768851099" target="_blank" style="display:inline-block;padding:0.65rem 1.5rem;background:#25D366;color:white;border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.82rem;font-weight:700;text-decoration:none;">Join Waitlist on WhatsApp</a>
+        <div id="sf-modal-oos-msg" style="display:none; padding:12px; background:#fff8f0; border-radius:8px; text-align:center;">
+          <p style="margin:0 0 8px; font-weight:600; color:#333;">This product is currently out of stock.</p>
+          <p style="margin:0 0 12px; font-size:13px; color:#666;">Enter your email to be notified when it's back.</p>
+          <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+            <input type="email" id="sf-waitlist-email" placeholder="your@email.com" style="padding:10px 14px; border:1px solid #ddd; border-radius:6px; font-size:14px; width:220px;" />
+            <button id="sf-waitlist-btn" onclick="sfJoinWaitlist()" style="padding:10px 20px; background:#b8860b; color:#fff; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer;">Notify Me</button>
+          </div>
+          <p id="sf-waitlist-msg" style="margin:10px 0 0; font-size:13px; color:#b8860b; display:none;"></p>
         </div>
       </div>
     </div>
@@ -4346,6 +4350,8 @@ function sfOpenProduct(id) {
   set('sf-modal-cat', SF_CAT_LABEL[p.cat]||p.cat);
   set('sf-modal-name', p.name);
   set('sf-modal-tl', p.tagline);
+  window.sfCurrentProductId = p.id;
+  window.sfCurrentProductName = p.name;
   set('sf-modal-ing', p.ingredients||'');
   set('sf-modal-use', p.usage||'');
   setHTML('sf-modal-benefits', (Array.isArray(p.benefits)?p.benefits:[p.benefits||'']).map(b=>`<span class="sf-modal-benefit">${b}</span>`).join(''));
@@ -5074,6 +5080,50 @@ window.sfCheckoutFygaro = function() {
 
 // ── Email Collection ──────────────────────────────────
 // (saveSubscriber is defined in the module script above line 3033)
+
+// ── Waitlist ──────────────────────────────────────────
+async function sfJoinWaitlist() {
+  const email = (document.getElementById('sf-waitlist-email')?.value||'').trim();
+  const msgEl = document.getElementById('sf-waitlist-msg');
+  const btn = document.getElementById('sf-waitlist-btn');
+
+  if (!email || !email.includes('@')) {
+    msgEl.textContent = 'Please enter a valid email address.';
+    msgEl.style.display = 'block';
+    return;
+  }
+
+  const productId = window.sfCurrentProductId || null;
+  const productName = window.sfCurrentProductName || 'this product';
+
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    const res = await fetch('/.netlify/functions/join-waitlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, productId, productName })
+    });
+    const data = await res.json();
+    if (data.success) {
+      msgEl.textContent = "You're on the list! We'll email you when it's back.";
+      msgEl.style.color = '#2e7d32';
+      msgEl.style.display = 'block';
+      document.getElementById('sf-waitlist-email').style.display = 'none';
+      btn.style.display = 'none';
+    } else {
+      throw new Error(data.error || 'Failed');
+    }
+  } catch(e) {
+    msgEl.textContent = 'Something went wrong. Please try again.';
+    msgEl.style.color = '#c62828';
+    msgEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Notify Me';
+  }
+}
+window.sfJoinWaitlist = sfJoinWaitlist;
 
 // ── Abandoned Cart ────────────────────────────────────
 const _sfSessionId = Math.random().toString(36).slice(2) + Date.now().toString(36);

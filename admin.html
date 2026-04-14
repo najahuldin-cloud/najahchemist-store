@@ -234,6 +234,7 @@ select.finp{cursor:pointer;}
     <button class="nb" onclick="nav('leads',this)"><span class="nb-icon">🌱</span>Leads</button>
     <button class="nb" onclick="nav('broadcast',this)"><span class="nb-icon">📣</span>Broadcast Email</button>
     <button class="nb" onclick="nav('productlookup',this)"><span class="nb-icon">🔍</span>Product Lookup</button>
+    <button class="nb" onclick="nav('waitlist',this)"><span class="nb-icon">🔔</span>Waitlist</button>
   </nav>
   <div class="sb-footer">
     <div class="sb-user" id="sb-user-email"></div>
@@ -665,6 +666,32 @@ select.finp{cursor:pointer;}
           </thead>
           <tbody id="leads-tbody">
             <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--mid);">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="view" id="v-waitlist">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:0.75rem;">
+        <div>
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--mid);margin-bottom:0.2rem;">Restock</div>
+          <div style="font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:700;">Waitlist</div>
+        </div>
+        <div id="waitlist-count" style="font-size:0.82rem;color:var(--mid);font-weight:600;"></div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Product</th>
+              <th>Date Signed Up</th>
+              <th>Notified</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="waitlist-tbody">
+            <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--mid);">Loading…</td></tr>
           </tbody>
         </table>
       </div>
@@ -1103,6 +1130,7 @@ window.nav = function(id, btn) {
     document.getElementById('v-client-profile').style.display='none';
   }
   if(id==='leads') loadLeads();
+  if(id==='waitlist') loadWaitlist();
 };
 
 window.openM = function(id){ document.getElementById(id).classList.add('open'); };
@@ -2800,6 +2828,55 @@ window.leadsExportCSV = function() {
   a.href = url; a.download = 'najah-leads-'+new Date().toISOString().slice(0,10)+'.csv';
   a.click(); URL.revokeObjectURL(url);
   toast('CSV exported ✓');
+};
+
+// ── WAITLIST ──
+window.loadWaitlist = async function() {
+  const tbody = document.getElementById('waitlist-tbody');
+  const countEl = document.getElementById('waitlist-count');
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--mid);">Loading…</td></tr>';
+  try {
+    const snap = await getDocs(query(collection(db, 'waitlist'), orderBy('createdAt', 'desc')));
+    const entries = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
+    countEl.textContent = entries.length + ' people waiting';
+    if (!entries.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--mid);">No waitlist entries yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = entries.map(e => {
+      const date = e.createdAt?.toDate ? e.createdAt.toDate().toLocaleDateString('en-JM', {day:'numeric',month:'short',year:'numeric'}) : '—';
+      const notifiedBadge = e.notified
+        ? '<span class="badge b-paid">Yes</span>'
+        : '<span class="badge b-unpaid">No</span>';
+      const btnHtml = e.notified
+        ? ''
+        : `<button class="btn btn-sm btn-ol" onclick="waitlistMarkNotified('${e._docId}', this)">Mark Notified</button>`;
+      return `<tr>
+        <td>${e.email||'—'}</td>
+        <td>${e.productName||e.productId||'—'}</td>
+        <td>${date}</td>
+        <td>${notifiedBadge}</td>
+        <td>${btnHtml}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:2rem;color:#DC2626;">Error: ${e.message}</td></tr>`;
+    console.error('loadWaitlist error:', e);
+  }
+};
+
+window.waitlistMarkNotified = async function(docId, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    await updateDoc(doc(db, 'waitlist', docId), { notified: true });
+    toast('Marked as notified ✓');
+    loadWaitlist();
+  } catch(e) {
+    toast('Error: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = 'Mark Notified';
+  }
 };
 
 // ── BROADCAST EMAIL ──
