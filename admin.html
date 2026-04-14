@@ -1887,7 +1887,8 @@ function renderProductsTable(){
       <td class="btn-group">
         <button class="btn btn-sm btn-ol" onclick="editProduct('${p.id||p._docId}')">Edit</button>
         <button class="btn btn-sm" style="background:${p.hidden?'#6B7280':'#059669'};color:white;border:none;padding:0.3rem 0.6rem;font-size:0.72rem;border-radius:6px;cursor:pointer;" onclick="toggleHidden('${p.id||p._docId}',${!p.hidden})">${p.hidden?'Show':'Hide'}</button>
-        <button class="btn btn-sm" style="background:${p.outOfStock?'#059669':'#DC2626'};color:white;border:none;padding:0.3rem 0.6rem;font-size:0.72rem;border-radius:6px;cursor:pointer;" onclick="toggleOutOfStock('${p.id||p._docId}',${!p.outOfStock})">${p.outOfStock?'Back in Stock':'Out of Stock'}</button>
+        <button class="btn btn-sm" style="background:#DC2626;color:white;border:none;padding:0.3rem 0.6rem;font-size:0.72rem;border-radius:6px;cursor:pointer;${p.outOfStock?'display:none;':''}" onclick="toggleOutOfStock('${p.id||p._docId}',true)">Out of Stock</button>
+        ${p.outOfStock?`<button class="btn btn-sm" style="background:#059669;color:white;border:none;padding:0.3rem 0.7rem;font-size:0.72rem;border-radius:6px;cursor:pointer;font-weight:700;" onclick="restockProduct('${p.id||p._docId}')">✓ Mark Restocked</button>`:''}
         <button class="btn btn-sm btn-rd" onclick="deleteProduct('${p.id||p._docId}')">🗑</button>
       </td>
     </tr>`;
@@ -2094,6 +2095,54 @@ window.toggleOutOfStock = async function(id, newOos){
       }
     }
   } catch(e){ toast('Error: '+e.message); }
+};
+
+window.restockProduct = async function(id) {
+  const p = PRODUCTS.find(x=>(x.id||x._docId)===id);
+  if (!p) return;
+  const docId = p._docId||p.id;
+  const productName = p.name || id;
+
+  try {
+    // a. Mark product back in stock
+    await updateDoc(doc(db,'products',docId), { outOfStock: false });
+    toast('Back in stock ✓');
+
+    // b. Query waitlist for unnotified entries for this product
+    const waitSnap = await getDocs(query(
+      collection(db, 'waitlist'),
+      where('productId', '==', id),
+      where('notified', '==', false)
+    ));
+    const entries = waitSnap.docs;
+
+    if (entries.length === 0) {
+      alert(`${productName} marked as restocked. No waitlist entries to notify.`);
+      return;
+    }
+
+    // c. Send restock notification to each waitlist entry
+    await Promise.all(entries.map(async (entry) => {
+      const d = entry.data();
+      try {
+        await fetch('/.netlify/functions/send-restock-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: d.email, productName, productId: id })
+        });
+        // d. Mark waitlist doc as notified
+        await updateDoc(doc(db, 'waitlist', entry.id), { notified: true });
+      } catch(notifyErr) {
+        console.error('Restock notify failed for', d.email, notifyErr);
+      }
+    }));
+
+    // e. Confirm to admin
+    alert(`Restocked! ${entries.length} waitlist client${entries.length !== 1 ? 's' : ''} have been notified by email.`);
+  } catch(e) {
+    toast('Error: ' + e.message);
+    console.error('restockProduct error:', e);
+  }
 };
 
 window.deleteProduct = async function(id){

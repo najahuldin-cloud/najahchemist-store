@@ -14,6 +14,9 @@ const db = getFirestore();
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 exports.handler = async (event) => {
+  console.log('Waitlist function called');
+  console.log('RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
+
   if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method not allowed' };
 
   try {
@@ -30,10 +33,12 @@ exports.handler = async (event) => {
       .get();
 
     if (!existing.empty) {
-      return { statusCode: 200, body: JSON.stringify({ success: true }) }; // silent duplicate
+      console.log('Duplicate entry — already on waitlist:', email, productId);
+      return { statusCode: 200, body: JSON.stringify({ success: true }) };
     }
 
     // Save to Firestore
+    console.log('Saving to Firestore...');
     await db.collection('waitlist').add({
       email,
       productId,
@@ -41,9 +46,10 @@ exports.handler = async (event) => {
       createdAt: new Date(),
       notified: false
     });
+    console.log('Firestore save complete');
 
     // Send confirmation email to client
-    console.log('Sending confirmation email to:', email);
+    console.log('Sending email to:', email);
     try {
       await resend.emails.send({
         from: 'Najah Chemist <start@najahchemistja.com>',
@@ -66,9 +72,9 @@ exports.handler = async (event) => {
           </div>
         `
       });
-      console.log('Confirmation email sent successfully to:', email);
+      console.log('Email sent successfully');
     } catch(emailErr) {
-      console.error('Confirmation email failed (Firestore save succeeded):', emailErr);
+      console.error('EMAIL FAILED:', emailErr);
     }
 
     // Write a notification doc so admin can see the signup
