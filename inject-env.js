@@ -14,7 +14,7 @@ const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY || '';
 if (!FIREBASE_API_KEY)    console.warn('[inject-env] WARNING: FIREBASE_API_KEY is not set');
 if (!GOOGLE_MAPS_API_KEY) console.warn('[inject-env] WARNING: GOOGLE_MAPS_API_KEY is not set');
 
-const FILES = ['index.html', 'admin.html', 'start.html', 'track.html'];
+const FILES = ['index.html', 'admin.html', 'start.html', 'track.html', 'admin-module.js'];
 
 let totalReplacements = 0;
 for (const file of FILES) {
