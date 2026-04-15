@@ -1353,6 +1353,7 @@ window.sfFillingFee  = 0;
 window._sfFillingFeeCalc = 0;
 
 function sfShowUpsell(cartSnap, orderId) {
+  console.log("CART ITEMS:", JSON.stringify(cartSnap.map(i => ({ name: i.name, category: i.category, id: i.id }))));
   if (_sfUpsellShown) return;
   _sfUpsellShown   = true;
   _sfUpsellOrderId = orderId;
