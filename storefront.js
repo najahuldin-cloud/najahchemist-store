@@ -934,6 +934,7 @@ async function linkOrderToClient(orderDocId, orderData) {
 }
 
 async function saveOrderSilent(order) {
+  console.log("SAVING NOW:", order.id);
   try {
     console.log('saveOrderSilent REACHED', order.id);
     var db = window._db;
