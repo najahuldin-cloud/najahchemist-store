@@ -1353,7 +1353,7 @@ window.sfFillingFee  = 0;
 window._sfFillingFeeCalc = 0;
 
 function sfShowUpsell(cartSnap, orderId) {
-  console.log("CART:", JSON.stringify(cartSnap.map(i => ({ name: i.name, cat: i.cat }))));
+  console.log("CART DATA:", JSON.stringify(cartSnap.map(i => ({ name: i.name, cat: i.cat }))));
   if (_sfUpsellShown) return;
   _sfUpsellShown   = true;
   _sfUpsellOrderId = orderId;
@@ -1366,6 +1366,7 @@ function sfShowUpsell(cartSnap, orderId) {
   var hasContainer = (cartSnap || []).some(function(i) {
     return i.cat === 'containers' || /bottle|jar|container/i.test(i.name || '');
   });
+  console.log("HAS CONTAINER:", cartSnap.some(i => i.cat === "containers"));
   var hasNonContainer = (cartSnap || []).some(function(i) {
     return i.cat !== 'containers' && !/bottle|jar|container/i.test(i.name || '');
   });
