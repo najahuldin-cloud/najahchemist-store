@@ -1359,9 +1359,6 @@ function sfShowUpsell(cartSnap, orderId) {
   _sfUpsellOrderId = orderId;
   var products = sfBuildUpsellProducts(cartSnap);
   console.log('upsell triggered', products.length, 'products');
-  if (!products.length) return;
-  sfRenderUpsellPopup(products);
-
   // Container filling upsell: show only if cart has both container + non-container items
   var hasContainer = (cartSnap || []).some(function(i) {
     return i.cat === 'containers' || /bottle|jar|container/i.test(i.name || '');
@@ -1370,6 +1367,8 @@ function sfShowUpsell(cartSnap, orderId) {
   var hasNonContainer = (cartSnap || []).some(function(i) {
     return i.cat !== 'containers' && !/bottle|jar|container/i.test(i.name || '');
   });
+  if (!products.length && !hasContainer) return;
+  sfRenderUpsellPopup(products);
   var fillingSection = document.getElementById('sf-filling-section');
   if (fillingSection) {
     if (hasContainer && hasNonContainer) {
