@@ -335,6 +335,20 @@ async function loadFromDB() {
   // ── 4. Render storefront ───────────────────────────────────────────────
   if (typeof sfRenderProducts === 'function') {
     sfRenderProducts('all');
+    var _cat = new URLSearchParams(window.location.search).get('category');
+    var _catMap = {
+      'skincare': 'skincare',
+      'feminine-care': 'yoni',
+      'mens-care': 'mencare',
+      'hair-care': 'haircare',
+      'soaps': 'soap',
+      'containers': 'containers'
+    };
+    if (_cat && _catMap[_cat] && typeof sfFilter === 'function') {
+      setTimeout(function() {
+        sfFilter(_catMap[_cat], null);
+      }, 800);
+    }
     if (typeof sfRenderHeroCards === 'function') sfRenderHeroCards();
     if (typeof sfRenderStarterKit === 'function') sfRenderStarterKit();
     sfRenderReviews();
