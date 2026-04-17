@@ -1705,26 +1705,25 @@ if (window.location.search.includes('staff=true')) {
 
 // URL category filter — reads ?cat= param on page load and activates filter
 (function() {
-  function initCatFilter() {
-    var params = new URLSearchParams(window.location.search);
-    var cat = params.get('cat');
-    if (!cat) return;
-    var attempts = 0;
-    var interval = setInterval(function() {
-      attempts++;
-      var grid = document.getElementById('sf-products-grid');
-      if (grid && grid.children.length > 0) {
-        clearInterval(interval);
-        sfFilter(cat, null);
-        var products = document.getElementById('sf-products');
-        if (products) products.scrollIntoView({ behavior: 'smooth' });
-      }
-      if (attempts > 20) clearInterval(interval);
-    }, 300);
+  var params = new URLSearchParams(window.location.search);
+  var cat = params.get('cat');
+  if (!cat) return;
+
+  function tryFilter() {
+    if (typeof sfFilter === 'function' && typeof window.PRODUCTS !== 'undefined' && window.PRODUCTS.length > 0) {
+      sfFilter(cat, null);
+      setTimeout(function() {
+        var el = document.getElementById('sf-products') || document.getElementById('sf-products-grid');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 200);
+    } else {
+      setTimeout(tryFilter, 200);
+    }
   }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initCatFilter);
+    document.addEventListener('DOMContentLoaded', tryFilter);
   } else {
-    initCatFilter();
+    tryFilter();
   }
 })();
