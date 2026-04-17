@@ -729,8 +729,8 @@ window._ncSaveLead = async function(data) {
   const _waMessage      = _waMsgs[_waSegment]     || _waMsgs.general;
   const _waFollowupMsg  = _waFollowups[_waSegment] || _waFollowups.general;
   const _waDigits       = (payload.whatsapp || '').replace(/\D/g, '');
-  const _waLink         = _waDigits ? 'https://wa.me/' + _waDigits + '?text=' + encodeURIComponent(_waMessage)     : '';
-  const _waFollowupLink = _waDigits ? 'https://wa.me/' + _waDigits + '?text=' + encodeURIComponent(_waFollowupMsg) : '';
+  const _waLink         = _waDigits ? 'https://wa.me/18768851099?text=' + encodeURIComponent(_waMessage)     : '';
+  const _waFollowupLink = _waDigits ? 'https://wa.me/18768851099?text=' + encodeURIComponent(_waFollowupMsg) : '';
   console.log('[StartPage] WA segment:', _waSegment, '| msg preview:', _waMessage.slice(0, 200));
 
   // Internal email notification — fire-and-forget, don't block
