@@ -1709,9 +1709,18 @@ if (window.location.search.includes('staff=true')) {
     var params = new URLSearchParams(window.location.search);
     var cat = params.get('cat');
     if (!cat) return;
-    sfFilter(cat, document.querySelector('.sf-cat') || null);
-    var products = document.getElementById('sf-products');
-    if (products) products.scrollIntoView({ behavior: 'smooth' });
+    var attempts = 0;
+    var interval = setInterval(function() {
+      attempts++;
+      var grid = document.getElementById('sf-products-grid');
+      if (grid && grid.children.length > 0) {
+        clearInterval(interval);
+        sfFilter(cat, null);
+        var products = document.getElementById('sf-products');
+        if (products) products.scrollIntoView({ behavior: 'smooth' });
+      }
+      if (attempts > 20) clearInterval(interval);
+    }, 300);
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initCatFilter);
