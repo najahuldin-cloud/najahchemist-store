@@ -146,6 +146,16 @@
   status = 200
 
 [[redirects]]
+  from = "/links"
+  to = "/links.html"
+  status = 200
+
+[[redirects]]
+  from = "/custom-products"
+  to = "/custom-products.html"
+  status = 200
+
+[[redirects]]
   from = "/calculator"
   to = "/calculator.html"
   status = 200

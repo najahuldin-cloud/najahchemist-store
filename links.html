@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quick Links | Najah Chemist Jamaica</title>
+<meta name="description" content="Quick access to all Najah Chemist pages — shop products, track orders, start your brand, and more.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://najahchemistja.com/links">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://najahchemistja.com/links">
+<meta property="og:title" content="Quick Links | Najah Chemist Jamaica">
+<meta property="og:description" content="Quick access to all Najah Chemist pages — shop products, track orders, start your brand, and more.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Tokens ── */
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --black:#0F0E0D;
+  --gold:#b8860b;
+  --gold-light:#e0a82e;
+  --gold-bg:#fdf8ef;
+  --gold-border:#e8d5a3;
+  --cream:#FAFAF8;
+  --border:#E8E4DE;
+  --text:#1C1A18;
+  --mid:#6B7280;
+  --white:#ffffff;
+}
+html{scroll-behavior:smooth;}
+body{font-family:'Outfit',sans-serif;background:var(--cream);color:var(--text);line-height:1.6;}
+
+/* ── Nav ── */
+#nc-nav{position:sticky;top:0;z-index:900;background:white;border-bottom:1px solid var(--border);padding:0.9rem 0;}
+.container{max-width:680px;margin:0 auto;padding:0 1.5rem;}
+.nav-inner{max-width:1080px;margin:0 auto;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;}
+.nav-logo{display:flex;align-items:center;gap:0.6rem;text-decoration:none;color:var(--text);}
+.nav-logo-nc{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;line-height:1;color:var(--gold);}
+.nav-logo-name{font-size:0.85rem;font-weight:600;letter-spacing:0.02em;}
+.nav-shop{font-size:0.85rem;font-weight:600;color:var(--gold);text-decoration:none;padding:0.5rem 1.1rem;border:1.5px solid var(--gold);border-radius:8px;transition:all 0.2s;}
+.nav-shop:hover{background:var(--gold);color:white;}
+
+/* ── Page header ── */
+#page-header{background:var(--black);padding:3.5rem 0 3rem;text-align:center;}
+.page-header-eyebrow{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:var(--gold);margin-bottom:0.65rem;}
+.page-header-title{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,5vw,2.6rem);font-weight:700;color:white;line-height:1.2;}
+.page-header-sub{font-size:0.92rem;color:rgba(255,255,255,0.55);margin-top:0.6rem;}
+
+/* ── Main content ── */
+#main{padding:3rem 0 5rem;}
+
+/* ── Section heading ── */
+.links-section{margin-bottom:2.5rem;}
+.links-section-title{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:var(--gold);margin-bottom:1rem;padding-bottom:0.5rem;border-bottom:1px solid var(--gold-border);}
+
+/* ── Link card ── */
+.link-card{display:flex;align-items:center;gap:1.1rem;background:white;border:1.5px solid var(--border);border-radius:14px;padding:1.1rem 1.25rem;text-decoration:none;color:var(--text);margin-bottom:0.75rem;transition:border-color 0.2s,box-shadow 0.2s,transform 0.15s;}
+.link-card:hover{border-color:var(--gold);box-shadow:0 4px 18px rgba(184,134,11,0.12);transform:translateY(-1px);}
+.link-card:last-child{margin-bottom:0;}
+.link-emoji{font-size:1.75rem;flex-shrink:0;width:44px;text-align:center;line-height:1;}
+.link-text{flex:1;min-width:0;}
+.link-title{font-size:0.97rem;font-weight:700;color:var(--text);line-height:1.3;}
+.link-desc{font-size:0.8rem;color:var(--mid);margin-top:0.15rem;line-height:1.4;}
+.link-arrow{color:var(--gold);font-size:1.1rem;flex-shrink:0;opacity:0.6;transition:opacity 0.2s,transform 0.2s;}
+.link-card:hover .link-arrow{opacity:1;transform:translateX(3px);}
+
+/* ── WhatsApp FAB ── */
+#wa-fab{position:fixed;bottom:1.5rem;right:1.5rem;z-index:800;width:56px;height:56px;background:#25D366;border-radius:50%;display:flex;align-items:center;justify-content:center;text-decoration:none;box-shadow:0 4px 20px rgba(0,0,0,0.25);transition:transform 0.2s,box-shadow 0.2s;}
+#wa-fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(0,0,0,0.3);}
+#wa-fab svg{width:28px;height:28px;fill:white;}
+
+/* ── Footer ── */
+#nc-footer{background:#0a0908;color:white;padding:2.5rem 0;}
+.footer-inner{display:flex;flex-direction:column;align-items:center;text-align:center;gap:0.75rem;}
+.footer-nc{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--gold);font-weight:700;}
+.footer-copy{font-size:0.78rem;color:rgba(255,255,255,0.4);}
+.footer-info{font-size:0.78rem;color:rgba(255,255,255,0.5);}
+.footer-links{display:flex;flex-wrap:wrap;justify-content:center;gap:1rem;margin-top:0.25rem;}
+.footer-links a{color:rgba(255,255,255,0.5);font-size:0.78rem;text-decoration:none;transition:color 0.2s;}
+.footer-links a:hover{color:var(--gold);}
+
+@media(max-width:480px){
+  .link-emoji{font-size:1.5rem;width:36px;}
+  .link-title{font-size:0.92rem;}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ NAV ═══ -->
+<nav id="nc-nav">
+  <div class="nav-inner">
+    <a class="nav-logo" href="https://najahchemistja.com">
+      <span class="nav-logo-nc">Nc</span>
+      <span class="nav-logo-name">Najah Chemist</span>
+    </a>
+    <a class="nav-shop" href="https://najahchemistja.com">Shop Wholesale</a>
+  </div>
+</nav>
+
+<!-- ═══ PAGE HEADER ═══ -->
+<div id="page-header">
+  <div class="page-header-eyebrow">Najah Chemist</div>
+  <h1 class="page-header-title">Quick Access Links</h1>
+  <p class="page-header-sub">Everything you need in one place</p>
+</div>
+
+<!-- ═══ MAIN ═══ -->
+<main id="main">
+  <div class="container">
+
+    <!-- Section 1: Quick Access Links -->
+    <div class="links-section">
+      <div class="links-section-title">Quick Access</div>
+
+      <a class="link-card" href="https://najahchemistja.com">
+        <span class="link-emoji">🛍️</span>
+        <div class="link-text">
+          <div class="link-title">Shop Our Products</div>
+          <div class="link-desc">Browse and order from our full product range</div>
+        </div>
+        <span class="link-arrow">›</span>
+      </a>
+
+      <a class="link-card" href="https://najahchemistja.com/track">
+        <span class="link-emoji">📦</span>
+        <div class="link-text">
+          <div class="link-title">Track Your Order</div>
+          <div class="link-desc">Enter your order ID to get a status update</div>
+        </div>
+        <span class="link-arrow">›</span>
+      </a>
+
+      <a class="link-card" href="https://najahchemistja.com/custom-products">
+        <span class="link-emoji">✨</span>
+        <div class="link-text">
+          <div class="link-title">Custom Product Development</div>
+          <div class="link-desc">Develop a brand new product for your brand</div>
+        </div>
+        <span class="link-arrow">›</span>
+      </a>
+
+      <a class="link-card" href="https://najahchemistja.com/customise">
+        <span class="link-emoji">⚙️</span>
+        <div class="link-text">
+          <div class="link-title">Customize an Existing Product</div>
+          <div class="link-desc">Add your own twist to one of our existing formulas</div>
+        </div>
+        <span class="link-arrow">›</span>
+      </a>
+
+      <a class="link-card" href="https://najahchemistja.com/start">
+        <span class="link-emoji">🚀</span>
+        <div class="link-text">
+          <div class="link-title">Start Your Brand</div>
+          <div class="link-desc">Ready to launch? Start here</div>
+        </div>
+        <span class="link-arrow">›</span>
+      </a>
+
+      <a class="link-card" href="https://najahchemistja.com/first-sale-system">
+        <span class="link-emoji">📗</span>
+        <div class="link-text">
+          <div class="link-title">The First Sale System</div>
+          <div class="link-desc">Learn how to get your first sale</div>
+        </div>
+        <span class="link-arrow">›</span>
+      </a>
+
+      <a class="link-card" href="https://wa.me/18768851099" target="_blank" rel="noopener">
+        <span class="link-emoji">💬</span>
+        <div class="link-text">
+          <div class="link-title">WhatsApp Us</div>
+          <div class="link-desc">Chat with us directly</div>
+        </div>
+        <span class="link-arrow">›</span>
+      </a>
+    </div>
+
+    <!-- Section 2: Learn & Research -->
+    <div class="links-section">
+      <div class="links-section-title">Learn &amp; Research</div>
+
+      <a class="link-card" href="https://najahchemistja.com/skincare-manufacturer-jamaica">
+        <span class="link-emoji">🏭</span>
+        <div class="link-text">
+          <div class="link-title">Skincare Manufacturer in Jamaica</div>
+        </div>
+        <span class="link-arrow">›</span>
+      </a>
+
+      <a class="link-card" href="https://najahchemistja.com/cost-skincare-business-jamaica">
+        <span class="link-emoji">💡</span>
+        <div class="link-text">
+          <div class="link-title">Cost of Starting a Skincare Business</div>
+        </div>
+        <span class="link-arrow">›</span>
+      </a>
+
+      <a class="link-card" href="https://najahchemistja.com/start-skincare-business-jamaica">
+        <span class="link-emoji">📘</span>
+        <div class="link-text">
+          <div class="link-title">Step-by-Step Guide to Starting a Skincare Business</div>
+        </div>
+        <span class="link-arrow">›</span>
+      </a>
+
+      <a class="link-card" href="https://najahchemistja.com/private-label-vs-white-label-skincare">
+        <span class="link-emoji">⚖️</span>
+        <div class="link-text">
+          <div class="link-title">Private Label vs White Label</div>
+        </div>
+        <span class="link-arrow">›</span>
+      </a>
+
+      <a class="link-card" href="https://najahchemistja.com/do-you-need-to-make-your-own-products-jamaica">
+        <span class="link-emoji">❓</span>
+        <div class="link-text">
+          <div class="link-title">Do You Need to Make Your Own Products?</div>
+        </div>
+        <span class="link-arrow">›</span>
+      </a>
+    </div>
+
+    <!-- Section 3: Browse by Category -->
+    <div class="links-section">
+      <div class="links-section-title">Browse Products by Category</div>
+
+      <a class="link-card" href="https://najahchemistja.com/?category=skincare">
+        <span class="link-emoji">🧴</span>
+        <div class="link-text">
+          <div class="link-title">Skincare</div>
+        </div>
+        <span class="link-arrow">›</span>
+      </a>
+
+      <a class="link-card" href="https://najahchemistja.com/?category=feminine-care">
+        <span class="link-emoji">🌸</span>
+        <div class="link-text">
+          <div class="link-title">Feminine Care</div>
+        </div>
+        <span class="link-arrow">›</span>
+      </a>
+
+      <a class="link-card" href="https://najahchemistja.com/?category=mens-care">
+        <span class="link-emoji">👨</span>
+        <div class="link-text">
+          <div class="link-title">Men's Care</div>
+        </div>
+        <span class="link-arrow">›</span>
+      </a>
+
+      <a class="link-card" href="https://najahchemistja.com/?category=hair-care">
+        <span class="link-emoji">💇</span>
+        <div class="link-text">
+          <div class="link-title">Hair Care</div>
+        </div>
+        <span class="link-arrow">›</span>
+      </a>
+
+      <a class="link-card" href="https://najahchemistja.com/?category=soaps">
+        <span class="link-emoji">🧼</span>
+        <div class="link-text">
+          <div class="link-title">Soaps</div>
+        </div>
+        <span class="link-arrow">›</span>
+      </a>
+
+      <a class="link-card" href="https://najahchemistja.com/?category=containers">
+        <span class="link-emoji">🫙</span>
+        <div class="link-text">
+          <div class="link-title">Containers</div>
+        </div>
+        <span class="link-arrow">›</span>
+      </a>
+    </div>
+
+  </div>
+</main>
+
+<!-- ═══ FOOTER ═══ -->
+<footer id="nc-footer">
+  <div class="container" style="max-width:1080px;">
+    <div class="footer-inner">
+      <div class="footer-nc">Nc</div>
+      <p class="footer-copy">© 2026 Najah Chemist · najahchemistja.com</p>
+      <p class="footer-info">start@najahchemistja.com · +1876-885-1099 · @najahchemist</p>
+      <div class="footer-links">
+        <a href="https://najahchemistja.com">Shop Wholesale</a>
+        <a href="https://wa.me/18768851099" target="_blank" rel="noopener">WhatsApp Us</a>
+        <a href="/start">Start Your Brand</a>
+        <a href="https://najahchemistja.com/#privacy">Privacy Policy</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- ═══ WHATSAPP FAB ═══ -->
+<a id="wa-fab" href="https://wa.me/18768851099" target="_blank" rel="noopener" aria-label="Chat on WhatsApp">
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+  </svg>
+</a>
+
+</body>
+</html>
