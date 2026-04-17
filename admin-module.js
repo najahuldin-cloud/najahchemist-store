@@ -9,7 +9,7 @@ import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateD
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "__FIREBASE_API_KEY__",
+  apiKey: "AIzaSyDYdt_0wJNcfGl2WbIKPiESdVcmc-cqZgM",
   authDomain: "najahchemistja.com",
   projectId: "najah-chemist",
   storageBucket: "najah-chemist.firebasestorage.app",
