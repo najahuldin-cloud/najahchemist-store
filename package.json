@@ -2,6 +2,10 @@
   "name": "najah-chemist-functions",
   "version": "1.0.0",
   "description": "Netlify functions — no external packages needed",
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "resend": "^3.0.0"
+  },
   "devDependencies": {
     "firebase": "^12.10.0"
   }
