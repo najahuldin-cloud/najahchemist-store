@@ -1709,12 +1709,9 @@ if (window.location.search.includes('staff=true')) {
     var params = new URLSearchParams(window.location.search);
     var cat = params.get('cat');
     if (!cat) return;
-    var btn = document.querySelector('[data-cat="' + cat + '"]');
-    if (btn) {
-      sfFilter(cat, btn);
-      var products = document.getElementById('sf-products');
-      if (products) products.scrollIntoView({ behavior: 'smooth' });
-    }
+    sfFilter(cat, document.querySelector('.sf-cat') || null);
+    var products = document.getElementById('sf-products');
+    if (products) products.scrollIntoView({ behavior: 'smooth' });
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initCatFilter);
