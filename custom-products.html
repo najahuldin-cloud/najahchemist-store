@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Custom Product Development | Najah Chemist Jamaica</title>
+<meta name="description" content="We develop brand-new custom skincare, feminine care, and hair care formulas from scratch. From concept to finished product — manufactured in Jamaica.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://najahchemistja.com/custom-products">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://najahchemistja.com/custom-products">
+<meta property="og:title" content="Custom Product Development | Najah Chemist Jamaica">
+<meta property="og:description" content="We develop brand-new custom skincare, feminine care, and hair care formulas from scratch. From concept to finished product — manufactured in Jamaica.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Tokens ── */
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --black:#0F0E0D;
+  --gold:#b8860b;
+  --gold-light:#e0a82e;
+  --gold-bg:#fdf8ef;
+  --gold-border:#e8d5a3;
+  --cream:#FAFAF8;
+  --warm:#F5F2ED;
+  --border:#E8E4DE;
+  --text:#1C1A18;
+  --mid:#6B7280;
+  --white:#ffffff;
+}
+html{scroll-behavior:smooth;}
+body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);line-height:1.6;}
+
+/* ── Utility ── */
+.container{max-width:1080px;margin:0 auto;padding:0 1.5rem;}
+.section{padding:5rem 0;}
+.section-label{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--gold);margin-bottom:0.75rem;}
+.section-title{font-family:'Playfair Display',serif;font-size:clamp(1.75rem,4vw,2.5rem);font-weight:700;line-height:1.2;margin-bottom:1rem;}
+.section-sub{font-size:1rem;color:var(--mid);max-width:560px;line-height:1.75;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.85rem 1.8rem;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.92rem;font-weight:700;cursor:pointer;text-decoration:none;border:none;transition:all 0.2s;white-space:nowrap;}
+.btn-gold{background:var(--gold);color:white;}
+.btn-gold:hover{background:#9a6f09;transform:translateY(-1px);box-shadow:0 6px 20px rgba(184,134,11,0.35);}
+.btn-outline-gold{background:transparent;color:var(--gold);border:2px solid var(--gold);}
+.btn-outline-gold:hover{background:var(--gold-bg);}
+.btn-dark{background:var(--black);color:white;}
+.btn-dark:hover{background:#2a2724;transform:translateY(-1px);}
+
+/* ── Nav ── */
+#nc-nav{position:sticky;top:0;z-index:900;background:white;border-bottom:1px solid var(--border);padding:0.9rem 0;}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;}
+.nav-logo{display:flex;align-items:center;gap:0.6rem;text-decoration:none;color:var(--text);}
+.nav-logo-nc{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;line-height:1;color:var(--gold);}
+.nav-logo-name{font-size:0.85rem;font-weight:600;letter-spacing:0.02em;}
+.nav-shop{font-size:0.85rem;font-weight:600;color:var(--gold);text-decoration:none;padding:0.5rem 1.1rem;border:1.5px solid var(--gold);border-radius:8px;transition:all 0.2s;}
+.nav-shop:hover{background:var(--gold);color:white;}
+
+/* ── Hero ── */
+#hero{background:var(--black);padding:6rem 0 5rem;}
+.hero-inner{max-width:640px;}
+.hero-eyebrow{display:inline-block;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:var(--gold);margin-bottom:1rem;}
+.hero-h1{font-family:'Playfair Display',serif;font-size:clamp(2rem,5vw,3.2rem);font-weight:700;line-height:1.15;color:white;margin-bottom:1.1rem;}
+.hero-h1 em{font-style:italic;color:var(--gold-light);}
+.hero-sub{font-size:1.05rem;color:rgba(255,255,255,0.72);line-height:1.75;margin-bottom:2rem;max-width:500px;}
+.hero-ctas{display:flex;flex-wrap:wrap;gap:0.85rem;}
+
+/* ── How It Works ── */
+#how-it-works{background:var(--cream);}
+.steps-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.5rem;margin-top:3rem;}
+.step-card{background:white;border:1.5px solid var(--border);border-radius:16px;padding:1.75rem 1.5rem;position:relative;}
+.step-number{width:40px;height:40px;border-radius:50%;background:var(--gold);color:white;font-weight:700;font-size:0.9rem;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;}
+.step-title{font-size:1rem;font-weight:700;margin-bottom:0.5rem;color:var(--text);}
+.step-body{font-size:0.85rem;color:var(--mid);line-height:1.7;}
+
+/* ── Pricing ── */
+#pricing{background:white;}
+.pricing-card{background:var(--black);border-radius:20px;padding:3rem;max-width:680px;margin:2.5rem auto 0;}
+.pricing-eyebrow{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:var(--gold);margin-bottom:1.5rem;}
+.pricing-row{display:flex;justify-content:space-between;align-items:center;padding:1rem 0;border-bottom:1px solid rgba(255,255,255,0.1);}
+.pricing-row:last-of-type{border-bottom:none;}
+.pricing-label{font-size:0.95rem;color:rgba(255,255,255,0.8);}
+.pricing-amount{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;color:var(--gold-light);}
+.pricing-notes{margin-top:1.75rem;display:flex;flex-direction:column;gap:0.6rem;}
+.pricing-note{font-size:0.82rem;color:rgba(255,255,255,0.55);display:flex;align-items:flex-start;gap:0.5rem;line-height:1.6;}
+.pricing-note strong{color:rgba(255,255,255,0.9);}
+.pricing-note::before{content:'•';color:var(--gold);flex-shrink:0;margin-top:0.05rem;}
+
+/* ── What We Can Create ── */
+#what-we-create{background:var(--gold-bg);}
+.categories-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem;margin-top:2.5rem;}
+.category-card{background:white;border:1.5px solid var(--gold-border);border-radius:14px;padding:1.5rem;}
+.category-icon{font-size:2rem;margin-bottom:0.75rem;}
+.category-title{font-size:1rem;font-weight:700;color:var(--text);margin-bottom:0.5rem;}
+.category-list{font-size:0.8rem;color:var(--mid);line-height:1.8;}
+
+/* ── Policies ── */
+#policies{background:white;}
+.policy-list{list-style:none;margin-top:2.5rem;max-width:720px;display:flex;flex-direction:column;gap:0.6rem;}
+.policy-list li{display:flex;align-items:flex-start;gap:0.75rem;font-size:0.92rem;color:var(--text);padding:0.8rem 1rem;background:var(--cream);border-radius:10px;border-left:3px solid var(--gold);line-height:1.6;}
+.policy-list li span{color:var(--gold);font-size:1rem;flex-shrink:0;margin-top:0.05rem;}
+
+/* ── CTA Section ── */
+#cta-section{background:var(--black);padding:5rem 0;text-align:center;}
+.cta-inner{max-width:580px;margin:0 auto;}
+.cta-title{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,4vw,2.6rem);font-weight:700;color:white;margin-bottom:0.75rem;}
+.cta-title em{font-style:italic;color:var(--gold-light);}
+.cta-sub{font-size:1rem;color:rgba(255,255,255,0.65);line-height:1.75;margin-bottom:2rem;}
+.cta-btns{display:flex;flex-wrap:wrap;justify-content:center;gap:0.85rem;}
+
+/* ── Footer ── */
+#nc-footer{background:#0a0908;color:white;padding:2.5rem 0;}
+.footer-inner{display:flex;flex-direction:column;align-items:center;text-align:center;gap:0.75rem;}
+.footer-nc{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--gold);font-weight:700;}
+.footer-copy{font-size:0.78rem;color:rgba(255,255,255,0.4);}
+.footer-info{font-size:0.78rem;color:rgba(255,255,255,0.5);}
+.footer-links{display:flex;flex-wrap:wrap;justify-content:center;gap:1rem;margin-top:0.25rem;}
+.footer-links a{color:rgba(255,255,255,0.5);font-size:0.78rem;text-decoration:none;transition:color 0.2s;}
+.footer-links a:hover{color:var(--gold);}
+
+/* ── Responsive ── */
+@media(max-width:900px){
+  .steps-grid{grid-template-columns:1fr 1fr;}
+  .categories-grid{grid-template-columns:1fr 1fr;}
+}
+@media(max-width:600px){
+  .section{padding:3.5rem 0;}
+  #hero{padding:4rem 0 3.5rem;}
+  .steps-grid{grid-template-columns:1fr;}
+  .categories-grid{grid-template-columns:1fr 1fr;}
+  .hero-ctas,.cta-btns{flex-direction:column;}
+  .hero-ctas .btn,.cta-btns .btn{width:100%;justify-content:center;}
+  .pricing-card{padding:2rem 1.5rem;}
+  .pricing-amount{font-size:1.2rem;}
+}
+@media(max-width:380px){
+  .categories-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ NAV ═══ -->
+<nav id="nc-nav">
+  <div class="container">
+    <div class="nav-inner">
+      <a class="nav-logo" href="https://najahchemistja.com">
+        <span class="nav-logo-nc">Nc</span>
+        <span class="nav-logo-name">Najah Chemist</span>
+      </a>
+      <a class="nav-shop" href="https://najahchemistja.com">Shop Wholesale</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══ 1. HERO ═══ -->
+<section id="hero">
+  <div class="container">
+    <div class="hero-inner">
+      <div class="hero-eyebrow">Custom Product Development · Made in Jamaica</div>
+      <h1 class="hero-h1">Create Your Own<br><em>Custom Product</em></h1>
+      <p class="hero-sub">From concept to finished formula — we develop your product from scratch using our professional ingredient stock.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-gold" href="https://wa.me/18768851099" target="_blank" rel="noopener">💬 Start Your Consultation</a>
+        <a class="btn btn-outline-gold" href="#how-it-works">See How It Works</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 2. HOW IT WORKS ═══ -->
+<section id="how-it-works" class="section">
+  <div class="container">
+    <div class="section-label">The Process</div>
+    <h2 class="section-title">How It Works</h2>
+    <p class="section-sub">Four straightforward steps from your idea to your finished product.</p>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-number">1</div>
+        <div class="step-title">Consultation</div>
+        <p class="step-body">We discuss your brand, target market, and product vision via WhatsApp or phone. No lab knowledge required — just tell us what you want to create.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-number">2</div>
+        <div class="step-title">Formula Development</div>
+        <p class="step-body">We develop a custom formula using our professional ingredient stock. Your formula is proprietary — it belongs to your brand.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-number">3</div>
+        <div class="step-title">Sample &amp; Review</div>
+        <p class="step-body">You receive a 2oz sample to test. Up to 2 adjustment rounds are included in the R&amp;D fee so you can fine-tune the product before going to bulk.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-number">4</div>
+        <div class="step-title">Bulk Production</div>
+        <p class="step-body">Once you approve the formula, place your bulk order. Minimum first order is 5 gallons. We manufacture, you brand and sell.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 3. PRICING ═══ -->
+<section id="pricing" class="section">
+  <div class="container">
+    <div class="section-label">Investment</div>
+    <h2 class="section-title">R&amp;D Pricing</h2>
+    <p class="section-sub">A one-time research and development fee covers the full process from consultation through to your approved sample.</p>
+    <div class="pricing-card">
+      <div class="pricing-eyebrow">Research &amp; Development Fee</div>
+      <div class="pricing-row">
+        <span class="pricing-label">First new product</span>
+        <span class="pricing-amount">J$120,000</span>
+      </div>
+      <div class="pricing-row">
+        <span class="pricing-label">Each additional product</span>
+        <span class="pricing-amount">J$90,000</span>
+      </div>
+      <div class="pricing-notes">
+        <p class="pricing-note"><strong>R&amp;D fee is non-refundable once development begins.</strong></p>
+        <p class="pricing-note"><strong>This fee covers consultation, formula development, 1 x 2oz sample, and up to 2 adjustment rounds.</strong></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 4. WHAT WE CAN CREATE ═══ -->
+<section id="what-we-create" class="section">
+  <div class="container">
+    <div class="section-label">Product Categories</div>
+    <h2 class="section-title">What We Can Create</h2>
+    <p class="section-sub">We develop across four core product categories using our in-house ingredient stock.</p>
+    <div class="categories-grid">
+      <div class="category-card">
+        <div class="category-icon">✨</div>
+        <div class="category-title">Skincare</div>
+        <div class="category-list">Serums · Moisturizers<br>Cleansers · Toners · Masks</div>
+      </div>
+      <div class="category-card">
+        <div class="category-icon">🌸</div>
+        <div class="category-title">Feminine Care</div>
+        <div class="category-list">Washes · Oils<br>Mists · Gels</div>
+      </div>
+      <div class="category-card">
+        <div class="category-icon">🧔</div>
+        <div class="category-title">Men's Care</div>
+        <div class="category-list">Beard Oils · Balms<br>Washes</div>
+      </div>
+      <div class="category-card">
+        <div class="category-icon">💆</div>
+        <div class="category-title">Hair Care</div>
+        <div class="category-list">Oils · Conditioners<br>Treatments</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 5. IMPORTANT POLICIES ═══ -->
+<section id="policies" class="section">
+  <div class="container">
+    <div class="section-label">Before You Start</div>
+    <h2 class="section-title">Important Policies</h2>
+    <ul class="policy-list">
+      <li><span>→</span> <div><strong>Minimum first bulk order:</strong> 5 gallons</div></li>
+      <li><span>→</span> <div><strong>Turnaround:</strong> 14–21 business days after R&amp;D fee is received</div></li>
+      <li><span>→</span> <div><strong>Payment:</strong> Bank transfer or Fygaro only — 100% upfront</div></li>
+      <li><span>→</span> <div><strong>Additional ingredients:</strong> If a required ingredient is not in our stock, the client pays the ingredient cost upfront. This cost is non-refundable.</div></li>
+      <li><span>→</span> <div><strong>Adjustment rounds:</strong> After 2 adjustment rounds, a new R&amp;D fee applies for further changes.</div></li>
+      <li><span>→</span> <div><strong>Regulatory testing:</strong> Stability testing, safety assessments, and any regulatory compliance requirements are the client's responsibility.</div></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══ 6. CTA ═══ -->
+<section id="cta-section">
+  <div class="container">
+    <div class="cta-inner">
+      <h2 class="cta-title">Ready to Build<br><em>Your Brand?</em></h2>
+      <p class="cta-sub">Download our New Client Package to get started, or reach out directly and we'll walk you through the process.</p>
+      <div class="cta-btns">
+        <a class="btn btn-gold" href="https://wa.me/18768851099" target="_blank" rel="noopener">💬 WhatsApp Us</a>
+        <a class="btn btn-outline-gold" href="mailto:start@najahchemistja.com">✉️ Email Us</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer id="nc-footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-nc">Nc</div>
+      <p class="footer-copy">© 2026 Najah Chemist · najahchemistja.com</p>
+      <p class="footer-info">start@najahchemistja.com · +1876-885-1099 · @najahchemist</p>
+      <div class="footer-links">
+        <a href="https://najahchemistja.com">Shop Wholesale</a>
+        <a href="https://wa.me/18768851099" target="_blank" rel="noopener">WhatsApp Us</a>
+        <a href="/start">Start Your Brand</a>
+        <a href="https://najahchemistja.com/#privacy">Privacy Policy</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
