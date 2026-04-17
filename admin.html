@@ -333,7 +333,11 @@ select.finp{cursor:pointer;}
       <div class="section-title">Orders
         <button class="btn btn-gold" onclick="openM('m-new-order')">+ New Order</button>
       </div>
-      <div id="orders-health-check" style="margin-bottom:0.75rem;padding:0.6rem 0.9rem;border-radius:8px;font-size:0.78rem;background:#F0FDF4;border:1px solid #BBF7D0;color:#166534;display:none;"></div>
+      <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.75rem;">
+        <div id="orders-health-check" style="flex:1;padding:0.6rem 0.9rem;border-radius:8px;font-size:0.78rem;background:#F0FDF4;border:1px solid #BBF7D0;color:#166534;display:none;"></div>
+        <button onclick="runTestOrder()" id="test-order-btn" style="flex-shrink:0;padding:0.45rem 1rem;background:#7C3AED;color:white;border:none;border-radius:8px;font-family:inherit;font-size:0.8rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:opacity 0.2s;">🧪 Send Test Order</button>
+        <div id="test-order-status" style="font-size:0.78rem;font-weight:600;display:none;"></div>
+      </div>
       <div class="filter-bar">
         <button class="filter-btn on" onclick="filterOrders('all',this)">All</button>
         <button class="filter-btn" onclick="filterOrders('Pending',this)">Pending</button>
@@ -3194,6 +3198,68 @@ window.plSearch = function() {
       <td><a href="${waHref}" target="_blank" title="Send referral WhatsApp" style="font-size:1.1rem;text-decoration:none;">💬</a></td>
     </tr>`;
   }).join('');
+};
+
+// ── Test Order ───────────────────────────────────────────────────────────────
+window.runTestOrder = function() {
+  const btn = document.getElementById('test-order-btn');
+  const statusEl = document.getElementById('test-order-status');
+
+  // Snapshot current order count and latest order ID before test
+  const ordersBefore = ORDERS.length;
+  const latestIdBefore = ORDERS.length ? (ORDERS[0].id || ORDERS[0].orderId || '') : '';
+
+  // Open storefront in new tab
+  window.open('https://najahchemistja.com', '_blank');
+
+  // Disable button and start countdown
+  btn.disabled = true;
+  btn.style.opacity = '0.5';
+  statusEl.style.display = 'inline-block';
+  statusEl.style.color = '#6B7280';
+
+  let secs = 30;
+  statusEl.textContent = `⏳ Check admin in ${secs}s…`;
+  const tick = setInterval(function() {
+    secs--;
+    if (secs > 0) {
+      statusEl.textContent = `⏳ Check admin in ${secs}s…`;
+    } else {
+      clearInterval(tick);
+
+      // Highlight the Orders tab
+      document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
+      const ordersNav = document.querySelector('.nb[onclick*="orders"]');
+      const ordersView = document.getElementById('v-orders');
+      if (ordersNav) ordersNav.classList.add('on');
+      if (ordersView) ordersView.classList.add('on');
+
+      // Wait a moment then check if a new order appeared
+      setTimeout(function() {
+        const ordersAfter = ORDERS.length;
+        const latestIdAfter = ORDERS.length ? (ORDERS[0].id || ORDERS[0].orderId || '') : '';
+        const newOrderAppeared = ordersAfter > ordersBefore || latestIdAfter !== latestIdBefore;
+
+        if (newOrderAppeared) {
+          statusEl.style.color = '#166534';
+          statusEl.textContent = '✅ New order saved successfully!';
+        } else {
+          statusEl.style.color = '#DC2626';
+          statusEl.textContent = '⚠️ No new order detected — check Firestore.';
+        }
+
+        btn.disabled = false;
+        btn.style.opacity = '1';
+
+        // Clear status after 10 seconds
+        setTimeout(function() {
+          statusEl.style.display = 'none';
+          statusEl.textContent = '';
+        }, 10000);
+      }, 2000);
+    }
+  }, 1000);
 };
 </script>
 </body>
