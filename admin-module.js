@@ -285,6 +285,8 @@ async function loadFromDB() {
         renderAdminProducts();
         if(typeof sfRenderProducts==='function'){
           sfRenderProducts('all');
+          var _catParam = new URLSearchParams(window.location.search).get('cat');
+          if (_catParam) sfFilter(_catParam, null);
           if(typeof sfRenderHeroCards==='function') sfRenderHeroCards();
           if(typeof sfRenderStarterKit==='function') sfRenderStarterKit();
           if(typeof renderBestSellers==='function') renderBestSellers();

@@ -1701,25 +1701,3 @@ if (window.location.search.includes('staff=true')) {
     if (el) el.style.setProperty('display', 'inline-flex', 'important');
   });
 }
-
-
-// URL category filter — hooks into sfRenderProducts so it fires the moment
-// Firestore products are loaded, regardless of how long that takes.
-(function() {
-  var cat = new URLSearchParams(window.location.search).get('cat');
-  if (!cat) return;
-  var _applied = false;
-  var _origRender = sfRenderProducts;
-  sfRenderProducts = function(filter) {
-    _origRender(filter);
-    if (!_applied && filter === 'all' && window.PRODUCTS && window.PRODUCTS.length > 0) {
-      _applied = true;
-      sfFilter(cat, null);
-      setTimeout(function() {
-        var el = document.getElementById('sf-products');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
-    }
-  };
-  window.sfRenderProducts = sfRenderProducts;
-})();
