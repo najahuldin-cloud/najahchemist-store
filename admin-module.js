@@ -347,6 +347,10 @@ async function loadFromDB() {
     if (_cat && _catMap[_cat] && typeof sfFilter === 'function') {
       setTimeout(function() {
         sfFilter(_catMap[_cat], null);
+        setTimeout(function() {
+          var el = document.querySelector('.sf-products-section') || document.getElementById('sf-products-grid') || document.getElementById('products');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }, 300);
       }, 800);
     }
     if (typeof sfRenderHeroCards === 'function') sfRenderHeroCards();
