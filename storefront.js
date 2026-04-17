@@ -934,7 +934,6 @@ async function linkOrderToClient(orderDocId, orderData) {
 }
 
 async function saveOrderSilent(order) {
-  console.log("SAVING NOW:", order.id);
   try {
     console.log('saveOrderSilent REACHED', order.id);
     var db = window._db;
@@ -951,7 +950,6 @@ window.saveOrderSilent = saveOrderSilent;
 
 // ── Checkout ─────────────────────────────────────────
 window.sfCheckoutWA = function() {
-  console.log('CHECKOUT CALLED');
   const name = (document.getElementById('sf-cust-name')?.value||'').trim();
   const phone = (document.getElementById('sf-cust-phone')?.value||'').trim();
   const custEmail = (document.getElementById('sf-cust-email')?.value||'').trim();
@@ -1354,7 +1352,6 @@ window.sfFillingFee  = 0;
 window._sfFillingFeeCalc = 0;
 
 function sfShowUpsell(cartSnap, orderId) {
-  console.log("CART DATA:", JSON.stringify(cartSnap.map(i => ({ name: i.name, cat: i.cat }))));
   if (_sfUpsellShown) return;
   _sfUpsellShown   = true;
   _sfUpsellOrderId = orderId;
@@ -1364,7 +1361,6 @@ function sfShowUpsell(cartSnap, orderId) {
   var hasContainer = (cartSnap || []).some(function(i) {
     return i.cat === 'containers' || /bottle|jar|container/i.test(i.name || '');
   });
-  console.log("HAS CONTAINER:", cartSnap.some(i => i.cat === "containers"));
   var hasNonContainer = (cartSnap || []).some(function(i) {
     return i.cat !== 'containers' && !/bottle|jar|container/i.test(i.name || '');
   });
