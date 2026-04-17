@@ -1703,27 +1703,23 @@ if (window.location.search.includes('staff=true')) {
 }
 
 
-// URL category filter — reads ?cat= param on page load and activates filter
+// URL category filter — hooks into sfRenderProducts so it fires the moment
+// Firestore products are loaded, regardless of how long that takes.
 (function() {
-  var params = new URLSearchParams(window.location.search);
-  var cat = params.get('cat');
+  var cat = new URLSearchParams(window.location.search).get('cat');
   if (!cat) return;
-
-  function tryFilter() {
-    if (typeof sfFilter === 'function' && typeof window.PRODUCTS !== 'undefined' && window.PRODUCTS.length > 0) {
+  var _applied = false;
+  var _origRender = sfRenderProducts;
+  sfRenderProducts = function(filter) {
+    _origRender(filter);
+    if (!_applied && filter === 'all' && window.PRODUCTS && window.PRODUCTS.length > 0) {
+      _applied = true;
       sfFilter(cat, null);
       setTimeout(function() {
-        var el = document.getElementById('sf-products') || document.getElementById('sf-products-grid');
+        var el = document.getElementById('sf-products');
         if (el) el.scrollIntoView({ behavior: 'smooth' });
-      }, 200);
-    } else {
-      setTimeout(tryFilter, 200);
+      }, 100);
     }
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', tryFilter);
-  } else {
-    tryFilter();
-  }
+  };
+  window.sfRenderProducts = sfRenderProducts;
 })();
