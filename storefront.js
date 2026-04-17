@@ -1702,3 +1702,23 @@ if (window.location.search.includes('staff=true')) {
   });
 }
 
+
+// URL category filter — reads ?cat= param on page load and activates filter
+(function() {
+  function initCatFilter() {
+    var params = new URLSearchParams(window.location.search);
+    var cat = params.get('cat');
+    if (!cat) return;
+    var btn = document.querySelector('[data-cat="' + cat + '"]');
+    if (btn) {
+      sfFilter(cat, btn);
+      var products = document.getElementById('sf-products');
+      if (products) products.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCatFilter);
+  } else {
+    initCatFilter();
+  }
+})();
