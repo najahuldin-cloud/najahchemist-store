@@ -1032,6 +1032,18 @@ window.sfCheckoutWA = function() {
     document.getElementById('cf-total').textContent = 'J$' + grandTotal.toLocaleString();
     document.getElementById('sf-confirm-overlay').classList.add('open');
 
+    // Store original order details for upsell updated message (before cart is cleared)
+    window._originalItems = cartSnapshot;
+    window._originalSubtotal = rawSub;
+    window._originalDiscount = sfDiscountAmount;
+    window._originalDiscountLabel = sfDiscountLabel;
+    window._originalShipping = shipDetail;
+    window._originalShippingCost = deliveryFee;
+    window._originalOrderId = orderId;
+    window._originalCustomerName = name;
+    window._originalCustomerPhone = phone;
+    window._originalGrandTotal = grandTotal;
+
     sfCart = [];
     sfTermsChecked = false;
     sfSelectedPayment = 'wa';
@@ -1514,6 +1526,38 @@ window.sfAddUpsellItem = async function(productId, discPrice, btn) {
   btn.disabled = true;
   btn.innerHTML = '…';
 
+  // Build and open updated WA message SYNCHRONOUSLY before any await (keeps browser popup unblocked)
+  var sizeKey   = sfMinKey(p.pricing) || Object.keys(p.pricing||{})[0] || '';
+  var sizeLabel = sfSizeLabel(sizeKey) || 'Standard';
+  var origItems = window._originalItems || [];
+  var origItemLines = origItems.map(function(i){
+    return '  * ' + i.name + ' (' + i.size + ') x' + i.qty + ' = J$' + (i.price * i.qty).toLocaleString();
+  }).join('\n');
+  var upsellLine = '  * ' + p.name + ' (' + sizeLabel + ') x1 = J$' + discPrice.toLocaleString();
+  var fillingFee = window.sfFillingFee || 0;
+  var fillingItemLine = fillingFee > 0 ? '\n  * 🧴 Container Filling Service = J$' + fillingFee.toLocaleString() : '';
+  var newRawSub = (window._originalSubtotal || 0) + discPrice;
+  var discount = window._originalDiscount || 0;
+  var discountLabel = window._originalDiscountLabel || '';
+  var newSub = newRawSub - discount;
+  var shipCost = window._originalShippingCost || 0;
+  var newTotal = newSub + shipCost + fillingFee;
+  var discountNote = discount > 0 ? '\nDISCOUNT (' + discountLabel + '): -J$' + discount.toLocaleString() : '';
+  var custName = window._originalCustomerName || '';
+  var custPhone = window._originalCustomerPhone || '';
+  var shipDetail = window._originalShipping || '';
+  var orderId = window._originalOrderId || _sfUpsellOrderId || '';
+  var waMsg = 'Hi Najah Chemist! I would like to place an order.'
+    + '\n\nORDER ID: ' + orderId + ' (UPDATED)'
+    + '\n\nCUSTOMER\nName: ' + custName + (custPhone ? '\nPhone: ' + custPhone : '')
+    + '\n\nORDER\n' + origItemLines + '\n' + upsellLine + fillingItemLine
+    + '\n\nSUBTOTAL: J$' + newRawSub.toLocaleString() + discountNote
+    + '\nSHIPPING: ' + shipDetail
+    + '\nTOTAL: J$' + newTotal.toLocaleString()
+    + '\n\nPAYMENT\nI understand payment is required upfront (no COD).\nI will pay via bank transfer, Fygaro, or Lynk.\n\nPlease confirm my updated order. Thank you!';
+  var WA = window.WA_NUMBER || '18768851099';
+  window.open('https://wa.me/' + WA + '?text=' + encodeURIComponent(waMsg), '_blank');
+
   try {
     var mod = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
     var collection = mod.collection, query = mod.query, where = mod.where,
@@ -1532,8 +1576,6 @@ window.sfAddUpsellItem = async function(productId, discPrice, btn) {
       return;
     }
 
-    var sizeKey   = sfMinKey(p.pricing) || Object.keys(p.pricing||{})[0] || '';
-    var sizeLabel = sfSizeLabel(sizeKey) || 'Standard';
     var existingProduct = snap.docs[0].data().product || '';
     var updatedProduct = existingProduct + (existingProduct ? ' | ' : '') + p.name + ' (' + sizeLabel + ' x1)';
 
