@@ -1542,6 +1542,12 @@ window.sfAddUpsellItem = async function(productId, discPrice, btn) {
 window.sfCloseUpsell = function() {
   var ov = document.getElementById('sf-upsell-overlay');
   if (ov) ov.style.display = 'none';
+  // If filling service was selected, open a follow-up WA message with the fee
+  if (window.sfFillingFee > 0) {
+    var _WA = window.WA_NUMBER || '18768851099';
+    var _fillingMsg = 'Hi! Adding to my order ' + (_sfUpsellOrderId || '') + ':\n🧴 Container Filling Service: J$' + window.sfFillingFee.toLocaleString() + '\nPlease add this to my order total. Thank you!';
+    window.open('https://wa.me/' + _WA + '?text=' + encodeURIComponent(_fillingMsg), '_blank');
+  }
   // Reset filling service state
   window.sfFillingFee = 0;
   document.querySelectorAll('input[name="sf-filling-choice"]').forEach(function(r) {
