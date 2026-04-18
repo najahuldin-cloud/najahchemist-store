@@ -948,6 +948,29 @@ async function saveOrderSilent(order) {
 }
 window.saveOrderSilent = saveOrderSilent;
 
+// ── Filling pre-modal (shown before WhatsApp opens) ──
+function sfShowFillingModal(fee, onDecision) {
+  if (!document.getElementById('sf-filling-modal-overlay')) {
+    var el = document.createElement('div');
+    el.id = 'sf-filling-modal-overlay';
+    el.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(15,14,13,0.72);z-index:960;align-items:center;justify-content:center;padding:1rem;';
+    el.innerHTML = '<div style="background:white;border-radius:16px;border:2px solid #b8860b;max-width:380px;width:100%;padding:1.5rem;text-align:center;font-family:\'Outfit\',sans-serif;box-shadow:0 8px 32px rgba(0,0,0,0.18);">'
+      + '<div style="font-size:2rem;margin-bottom:0.5rem;">🧴</div>'
+      + '<h3 style="font-size:1rem;font-weight:700;color:#0F0E0D;margin:0 0 0.4rem;">Want us to fill your containers?</h3>'
+      + '<p id="sf-filling-modal-desc" style="font-size:0.82rem;color:#4B4846;line-height:1.6;margin:0 0 1.2rem;"></p>'
+      + '<button id="sf-filling-modal-yes" style="display:block;width:100%;padding:0.75rem;background:#b8860b;color:white;border:none;border-radius:10px;font-family:\'Outfit\',sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer;margin-bottom:0.5rem;"></button>'
+      + '<button id="sf-filling-modal-no" style="display:block;width:100%;padding:0.65rem;background:none;border:none;color:#8A8480;font-family:\'Outfit\',sans-serif;font-size:0.8rem;cursor:pointer;text-decoration:underline;">No thanks, continue</button>'
+      + '</div>';
+    document.body.appendChild(el);
+  }
+  var ov = document.getElementById('sf-filling-modal-overlay');
+  document.getElementById('sf-filling-modal-desc').textContent = 'We\u2019ll fill your bottles/jars with your product. Fee: J$' + fee.toLocaleString();
+  document.getElementById('sf-filling-modal-yes').textContent = 'Yes, add filling service \u2014 J$' + fee.toLocaleString();
+  document.getElementById('sf-filling-modal-yes').onclick = function() { ov.style.display = 'none'; onDecision(fee); };
+  document.getElementById('sf-filling-modal-no').onclick = function() { ov.style.display = 'none'; onDecision(0); };
+  ov.style.display = 'flex';
+}
+
 // ── Checkout ─────────────────────────────────────────
 window.sfCheckoutWA = function() {
   const name = (document.getElementById('sf-cust-name')?.value||'').trim();
@@ -989,69 +1012,77 @@ window.sfCheckoutWA = function() {
   const cartSnapshot = [...sfCart];
   const discountNote = sfDiscountAmount > 0 ? '\nDISCOUNT (' + sfDiscountLabel + '): -J$' + sfDiscountAmount.toLocaleString() : '';
 
-  // 1. Open WhatsApp IMMEDIATELY - synchronous to avoid browser popup block
-  const WA = window.WA_NUMBER || '18768851099';
-  const fillingLine = (window.sfFillingFee > 0) ? '\n🧴 Container Filling Service: J$' + window.sfFillingFee.toLocaleString() : '';
-  const msg = 'Hi Najah Chemist! I would like to place an order.\n\nORDER ID: ' + orderId + '\n\nCUSTOMER\nName: ' + name + (phone?'\nPhone: '+phone:'') + '\n\nORDER\n' + items + '\n\nSUBTOTAL: J$' + rawSub.toLocaleString() + discountNote + '\nSHIPPING: ' + shipDetail + '\nTOTAL: J$' + total.toLocaleString() + fillingLine + '\n\nPAYMENT\nI understand payment is required upfront (no COD).\nI will pay via bank transfer, Fygaro, or Lynk.\n\nPlease confirm my order. Thank you!';
-  window.open('https://wa.me/' + WA + '?text=' + encodeURIComponent(msg), '_blank');
+  // Inner function — called synchronously from either the filling modal button or directly.
+  // window.open here is safe because it's always reachable from a real user click.
+  function proceed(fillingFee) {
+    window.sfFillingFee = fillingFee;
+    window._sfFillingHandled = true;
+    const WA = window.WA_NUMBER || '18768851099';
+    const fillingLine = fillingFee > 0 ? '\n🧴 Container Filling Service: J$' + fillingFee.toLocaleString() : '';
+    const grandTotal = total + fillingFee;
+    const msg = 'Hi Najah Chemist! I would like to place an order.\n\nORDER ID: ' + orderId + '\n\nCUSTOMER\nName: ' + name + (phone?'\nPhone: '+phone:'') + '\n\nORDER\n' + items + '\n\nSUBTOTAL: J$' + rawSub.toLocaleString() + discountNote + '\nSHIPPING: ' + shipDetail + fillingLine + '\nTOTAL: J$' + grandTotal.toLocaleString() + '\n\nPAYMENT\nI understand payment is required upfront (no COD).\nI will pay via bank transfer, Fygaro, or Lynk.\n\nPlease confirm my order. Thank you!';
+    window.open('https://wa.me/' + WA + '?text=' + encodeURIComponent(msg), '_blank');
 
-  // 2. Show confirmation modal immediately
-  document.getElementById('cf-order-id').textContent = orderId;
-  document.getElementById('cf-items').innerHTML = cartSnapshot.map(i=>
-    '<div style="display:flex;justify-content:space-between;"><span>'+i.name+' ('+i.size+') x'+i.qty+'</span><span>J$'+(i.price*i.qty).toLocaleString()+'</span></div>'
-  ).join('');
-  document.getElementById('cf-sub').textContent = 'J$' + sub.toLocaleString();
-  document.getElementById('cf-ship').textContent = 'J$' + deliveryFee.toLocaleString();
-  document.getElementById('cf-total').textContent = 'J$' + total.toLocaleString();
-  document.getElementById('sf-confirm-overlay').classList.add('open');
+    document.getElementById('cf-order-id').textContent = orderId;
+    document.getElementById('cf-items').innerHTML = cartSnapshot.map(i=>
+      '<div style="display:flex;justify-content:space-between;"><span>'+i.name+' ('+i.size+') x'+i.qty+'</span><span>J$'+(i.price*i.qty).toLocaleString()+'</span></div>'
+    ).join('');
+    document.getElementById('cf-sub').textContent = 'J$' + sub.toLocaleString();
+    document.getElementById('cf-ship').textContent = 'J$' + deliveryFee.toLocaleString();
+    document.getElementById('cf-total').textContent = 'J$' + grandTotal.toLocaleString();
+    document.getElementById('sf-confirm-overlay').classList.add('open');
 
-  // 3. Clear cart immediately
-  sfCart = [];
-  sfTermsChecked = false;
-  sfSelectedPayment = 'wa';
-  sfDiscountApplied = false;
-  sfDiscountAmount = 0;
-  sfUpdateCartBtn();
-  sfCloseCart();
+    sfCart = [];
+    sfTermsChecked = false;
+    sfSelectedPayment = 'wa';
+    sfDiscountApplied = false;
+    sfDiscountAmount = 0;
+    sfUpdateCartBtn();
+    sfCloseCart();
 
-  // 4. Save to Sheets + Firestore + email in background (non-blocking)
-  setTimeout(async function() {
-    // 1. SAVE ORDER FIRST — nothing before this
-    try {
-      const totalQty = cartSnapshot.reduce(function(s,i){return s+i.qty;},0);
-      await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Unpaid',status:'Pending',date:date,total:total,payMethod:'Bank/Lynk',phone:phone||'—',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee,knutsfordBranch:knutsfordBranch,zipmailLocation:zipmailLocation,deliveryAddress:deliveryAddress,shippingDetail:shippingDetail});
-      console.log('ORDER SAVED:', orderId);
-    } catch(e) {
-      console.error('SAVE FAILED:', e);
-    }
-
-    // 2. UPSELL POPUP — only after save completes
-    try {
-      sfShowUpsell(cartSnapshot, orderId);
-    } catch(e) {
-      console.error('UPSELL ERROR:', e);
-    }
-
-    // 3. Everything else — background tasks that must not block the save
-    try { sfMarkCartRecovered(); } catch(e) {}
-    try {
-      await fetch('/.netlify/functions/create-order', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({orderId:orderId, date:date, customerName:name, phone:phone, products:productsStr, deliveryLocation:deliveryLocation, deliveryFee:deliveryFee, total:total, status:'NEW'})
-      });
-    } catch(e) { console.error('Sheets save failed:', e); }
-    if (custEmail) {
-      try { await saveSubscriber(name, custEmail, 'checkout'); } catch(e) {}
+    setTimeout(async function() {
       try {
-        await fetch('/.netlify/functions/send-receipt', {
+        const totalQty = cartSnapshot.reduce(function(s,i){return s+i.qty;},0);
+        await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Unpaid',status:'Pending',date:date,total:grandTotal,payMethod:'Bank/Lynk',phone:phone||'—',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee,knutsfordBranch:knutsfordBranch,zipmailLocation:zipmailLocation,deliveryAddress:deliveryAddress,shippingDetail:shippingDetail});
+        console.log('ORDER SAVED:', orderId);
+      } catch(e) {
+        console.error('SAVE FAILED:', e);
+      }
+      try {
+        sfShowUpsell(cartSnapshot, orderId);
+      } catch(e) {
+        console.error('UPSELL ERROR:', e);
+      }
+      try { sfMarkCartRecovered(); } catch(e) {}
+      try {
+        await fetch('/.netlify/functions/create-order', {
           method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({orderId:orderId, customerName:name, email:custEmail,
-            items:cartSnapshot.map(function(i){return {name:i.name,size:i.size,qty:i.qty,price:i.price};}),
-            subtotal:sub, deliveryFee:deliveryFee, total:total, shipDetail:shipDetail})
+          body: JSON.stringify({orderId:orderId, date:date, customerName:name, phone:phone, products:productsStr, deliveryLocation:deliveryLocation, deliveryFee:deliveryFee, total:grandTotal, status:'NEW'})
         });
-      } catch(e) {}
-    }
-  }, 100);
+      } catch(e) { console.error('Sheets save failed:', e); }
+      if (custEmail) {
+        try { await saveSubscriber(name, custEmail, 'checkout'); } catch(e) {}
+        try {
+          await fetch('/.netlify/functions/send-receipt', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({orderId:orderId, customerName:name, email:custEmail,
+              items:cartSnapshot.map(function(i){return {name:i.name,size:i.size,qty:i.qty,price:i.price};}),
+              subtotal:sub, deliveryFee:deliveryFee, total:grandTotal, shipDetail:shipDetail})
+          });
+        } catch(e) {}
+      }
+    }, 100);
+  }
+
+  // If cart has containers + non-containers, ask about filling BEFORE opening WhatsApp
+  var hasContainer = cartSnapshot.some(function(i){ return i.cat === 'containers' || /bottle|jar|container/i.test(i.name||''); });
+  var hasNonContainer = cartSnapshot.some(function(i){ return i.cat !== 'containers' && !/bottle|jar|container/i.test(i.name||''); });
+  if (hasContainer && hasNonContainer) {
+    var productSub = cartSnapshot.reduce(function(s,i){ return (i.cat==='containers'||/bottle|jar|container/i.test(i.name||''))?s:s+i.price*i.qty; }, 0);
+    sfShowFillingModal(Math.round(productSub * 0.15), proceed);
+  } else {
+    proceed(0);
+  }
 };
 
 // ── Fygaro Card Checkout ─────────────────────────────
@@ -1368,24 +1399,8 @@ function sfShowUpsell(cartSnap, orderId) {
   sfRenderUpsellPopup(products);
   var fillingSection = document.getElementById('sf-filling-section');
   if (fillingSection) {
-    if (hasContainer && hasNonContainer) {
-      var productSub = (cartSnap || []).reduce(function(s, i) {
-        if (i.cat === 'containers' || /bottle|jar|container/i.test(i.name || '')) return s;
-        return s + (i.price * i.qty);
-      }, 0);
-      window._sfFillingFeeCalc = Math.round(productSub * 0.15);
-      var amountEl = document.getElementById('sf-filling-amount');
-      if (amountEl) amountEl.textContent = window._sfFillingFeeCalc.toLocaleString();
-      // Reset to "no"
-      document.querySelectorAll('input[name="sf-filling-choice"]').forEach(function(r) {
-        r.checked = (r.value === 'no');
-      });
-      var priceEl = document.getElementById('sf-filling-price');
-      if (priceEl) priceEl.style.display = 'none';
-      fillingSection.style.display = 'block';
-    } else {
-      fillingSection.style.display = 'none';
-    }
+    // Filling decision was already captured in the pre-modal before WhatsApp opened
+    fillingSection.style.display = 'none';
   }
 
   var ov = document.getElementById('sf-upsell-overlay');
@@ -1542,14 +1557,9 @@ window.sfAddUpsellItem = async function(productId, discPrice, btn) {
 window.sfCloseUpsell = function() {
   var ov = document.getElementById('sf-upsell-overlay');
   if (ov) ov.style.display = 'none';
-  // If filling service was selected, open a follow-up WA message with the fee
-  if (window.sfFillingFee > 0) {
-    var _WA = window.WA_NUMBER || '18768851099';
-    var _fillingMsg = 'Hi! Adding to my order ' + (_sfUpsellOrderId || '') + ':\n🧴 Container Filling Service: J$' + window.sfFillingFee.toLocaleString() + '\nPlease add this to my order total. Thank you!';
-    window.open('https://wa.me/' + _WA + '?text=' + encodeURIComponent(_fillingMsg), '_blank');
-  }
   // Reset filling service state
   window.sfFillingFee = 0;
+  window._sfFillingHandled = false;
   document.querySelectorAll('input[name="sf-filling-choice"]').forEach(function(r) {
     r.checked = (r.value === 'no');
   });
