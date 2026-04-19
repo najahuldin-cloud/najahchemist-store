@@ -1,23 +1,48 @@
-const { initializeApp, cert, getApps } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
 const { Resend } = require('resend');
 
-if (!getApps().length) {
-  initializeApp({
-    credential: cert({
-      projectId: "najah-chemist",
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
-    })
-  });
-}
+const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
+const PROJECT_ID = 'najah-chemist';
 
 if (!process.env.RESEND_API_KEY) {
   console.error('RESEND_API_KEY missing');
 }
 
-const db = getFirestore();
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+async function firestoreAdd(collection, data) {
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${collection}?key=${FIREBASE_API_KEY}`;
+  const fields = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (typeof v === 'string') fields[k] = { stringValue: v };
+    else if (typeof v === 'boolean') fields[k] = { booleanValue: v };
+    else if (typeof v === 'number') fields[k] = { integerValue: v };
+    else if (v instanceof Date) fields[k] = { timestampValue: v.toISOString() };
+  }
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields })
+  });
+  return res.json();
+}
+
+async function firestoreQuery(collection, field, value) {
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`;
+  const body = {
+    structuredQuery: {
+      from: [{ collectionId: collection }],
+      where: {
+        fieldFilter: {
+          field: { fieldPath: field },
+          op: 'EQUAL',
+          value: { stringValue: value }
+        }
+      }
+    }
+  };
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  return res.json();
+}
 
 exports.handler = async (event) => {
   console.log('Waitlist function called');
@@ -32,20 +57,20 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: 'Missing fields' }) };
     }
 
-    // Check for duplicate
-    const existing = await db.collection('waitlist')
-      .where('email', '==', email)
-      .where('productId', '==', productId)
-      .get();
+    // Check for duplicate — query by email, filter productId in JS
+    const existing = await firestoreQuery('waitlist', 'email', email);
+    const isDuplicate = Array.isArray(existing) && existing.some(r =>
+      r.document?.fields?.productId?.stringValue === productId
+    );
 
-    if (!existing.empty) {
+    if (isDuplicate) {
       console.log('Duplicate entry — already on waitlist:', email, productId);
       return { statusCode: 200, body: JSON.stringify({ success: true }) };
     }
 
     // Save to Firestore
     console.log('Saving to Firestore...');
-    await db.collection('waitlist').add({
+    await firestoreAdd('waitlist', {
       email,
       productId,
       productName,
@@ -85,7 +110,7 @@ exports.handler = async (event) => {
     console.log('Email sent successfully, id:', emailResult.data?.id);
 
     // Write a notification doc so admin can see the signup
-    await db.collection('notifications').add({
+    await firestoreAdd('notifications', {
       type: 'waitlist_signup',
       message: `New waitlist signup: ${email} wants ${productName}`,
       createdAt: new Date(),

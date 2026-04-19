@@ -1,19 +1,26 @@
-const { initializeApp, cert, getApps } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
 const { Resend } = require('resend');
 
-if (!getApps().length) {
-  initializeApp({
-    credential: cert({
-      projectId: "najah-chemist",
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
-    })
-  });
-}
+const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
+const PROJECT_ID = 'najah-chemist';
 
-const db = getFirestore();
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+async function firestoreAdd(collection, data) {
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${collection}?key=${FIREBASE_API_KEY}`;
+  const fields = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (typeof v === 'string') fields[k] = { stringValue: v };
+    else if (typeof v === 'boolean') fields[k] = { booleanValue: v };
+    else if (typeof v === 'number') fields[k] = { integerValue: v };
+    else if (v instanceof Date) fields[k] = { timestampValue: v.toISOString() };
+  }
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields })
+  });
+  return res.json();
+}
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method not allowed' };
@@ -23,7 +30,7 @@ exports.handler = async (event) => {
 
     // Send restock email
     await resend.emails.send({
-      from: 'Najah Chemist <start@najahchemistja.com>',
+      from: 'Najah Chemist <orders@najahchemistja.com>',
       to: email,
       subject: `${productName} is back in stock! 🎉`,
       html: `
@@ -48,7 +55,7 @@ exports.handler = async (event) => {
     });
 
     // Log notification in Firestore
-    await db.collection('notifications').add({
+    await firestoreAdd('notifications', {
       type: 'restock_notified',
       message: `Restock email sent to ${email} for ${productName}`,
       productId,
