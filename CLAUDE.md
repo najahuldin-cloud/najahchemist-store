@@ -145,6 +145,15 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
 - WhatsApp notification links: owner email now links to lead's number
 - Category filter: uses ?category= param with 800ms delay for Firestore load
 
+### Confirmed Working (April 2026)
+- Container filling service working end to end
+- Upsell updated order message working
+- Fixed Firestore rules for unauthenticated order saves
+- Built /links page category filtering working
+- Built repo memory system — CLAUDE.md now in repo root
+- Added admin test order button
+- Fixed WhatsApp notification links
+
 ### TODO (April 2026)
 1. Waitlist confirmation email not sending
 2. Add recommended retail prices to all product pages
