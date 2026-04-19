@@ -1026,8 +1026,7 @@ window.ncChatSend = async function() {
       budget         = '—';
     }
 
-    // 0. Build owner WA notification URL and open it now — MUST be before any await
-    //    or browsers will block the window.open as not triggered by a direct user gesture
+    // 0. Build owner WA notification URL — used as fallback href only, not auto-opened
     var waMsg = 'New lead \u2014 Name: ' + (nc.lead.name || '\u2014') +
       ' | WhatsApp: ' + (nc.lead.whatsapp || '\u2014') +
       ' | Email: ' + nc.lead.email +
@@ -1035,7 +1034,6 @@ window.ncChatSend = async function() {
       ' | Budget: ' + budget +
       ' | Guide sent automatically';
     var waUrl = 'https://wa.me/18768851099?text=' + encodeURIComponent(waMsg);
-    window.open(waUrl, '_blank');
 
     // 1. Save to Firestore (non-blocking — don't gate guide send on this)
     if (typeof window._ncSaveLead === 'function') {
