@@ -1133,6 +1133,8 @@ window.ncChatSend = async function() {
       card.appendChild(box);
 
       // WhatsApp button (href set via JS — no URL in innerHTML)
+      console.log('waUrl:', waUrl);
+      console.log('_ncLeadFollowupLink:', window._ncLeadFollowupLink);
       var waBtn = document.createElement('a');
       waBtn.href = window._ncLeadFollowupLink || waUrl;
       waBtn.target = '_blank';
