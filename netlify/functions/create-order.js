@@ -1,6 +1,6 @@
 // netlify/functions/create-order.js
 // Saves order to Google Sheets
-// Required env vars: GOOGLE_SERVICE_ACCOUNT, GOOGLE_SHEET_ID
+// Required env vars: GOOGLE_CLIENT_EMAIL, GOOGLE_PRIVATE_KEY, GOOGLE_SHEET_ID
 
 exports.handler = async (event) => {
   if (event.httpMethod === "HEAD") {
@@ -14,11 +14,11 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body);
     const { orderId, date, customerName, phone, products, deliveryLocation, deliveryFee, total, status } = body;
 
-    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
-
-    // Fix: Netlify stores \n as literal backslash-n in env vars — convert to real newlines
-    credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+    const credentials = {
+      client_email: process.env.GOOGLE_CLIENT_EMAIL,
+      private_key: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n')
+    };
 
     const token = await getAccessToken(credentials);
 
