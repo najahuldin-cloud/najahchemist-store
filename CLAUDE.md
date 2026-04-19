@@ -162,3 +162,28 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
 5. Vegan/ingredient tagging on products
 6. Garlic Lavender Soap page
 7. NC-76264 Rosheda Nixon — add to Firestore manually
+
+---
+
+## Session Update: April 19, 2026
+
+### Fixed
+- Waitlist confirmation email — was failing due to FIREBASE_SERVICE_ACCOUNT env var too large for Lambda. Fixed by switching join-waitlist.js and send-restock-notification.js to use Firestore REST API with FIREBASE_API_KEY instead of firebase-admin
+- Segmented WhatsApp message on /start completion card — was showing owner notification text. Fixed by injecting _ncLeadFollowupLink directly into completion card HTML at render time
+- Owner notification auto window.open removed from browser — lead no longer sees owner message pop up
+
+### Still Pending / Unconfirmed
+- Lead notification message still possibly going to clients — needs real client test to confirm
+- Discount text in segmented messages — may still say 10% instead of 5%, needs confirming
+- Button renames (Details → Add to Cart, Shop Wholesale → Shop Now, Reorder → My Orders) — not done yet
+
+### TODO (carry forward)
+1. Confirm lead segmented message working with real client
+2. Confirm discount text shows 5% not 10% in WhatsApp messages
+3. Rename confusing buttons (Details, Shop Wholesale, Reorder)
+4. Recommended retail prices on product pages
+5. Meta Business verification
+6. AOV / Business Intelligence dashboard in admin
+7. Vegan/ingredient tagging on products
+8. Garlic Lavender Soap page
+9. NC-76264 Rosheda Nixon missing order
