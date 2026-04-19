@@ -731,6 +731,7 @@ window._ncSaveLead = async function(data) {
   const _waDigits       = (payload.whatsapp || '').replace(/\D/g, '');
   const _waLink         = _waDigits ? 'https://wa.me/' + _waDigits + '?text=' + encodeURIComponent(_waMessage)     : '';
   const _waFollowupLink = _waDigits ? 'https://wa.me/' + _waDigits + '?text=' + encodeURIComponent(_waFollowupMsg) : '';
+  window._ncLeadFollowupLink = _waLink;
   console.log('[StartPage] WA segment:', _waSegment, '| msg preview:', _waMessage.slice(0, 200));
 
   // Internal email notification — fire-and-forget, don't block
@@ -1133,7 +1134,7 @@ window.ncChatSend = async function() {
 
       // WhatsApp button (href set via JS — no URL in innerHTML)
       var waBtn = document.createElement('a');
-      waBtn.href = waUrl;
+      waBtn.href = window._ncLeadFollowupLink || waUrl;
       waBtn.target = '_blank';
       waBtn.rel = 'noopener';
       waBtn.style.cssText = 'display:block;background:var(--green);color:white;font-size:0.78rem;font-weight:700;padding:0.55rem 0.75rem;border-radius:8px;text-decoration:none;text-align:center;';
