@@ -50,32 +50,33 @@ exports.handler = async (event) => {
 
     // Send confirmation email to client
     console.log('Sending email to:', email);
-    try {
-      await resend.emails.send({
-        from: 'Najah Chemist <start@najahchemistja.com>',
-        to: email,
-        subject: `You're on the waitlist — ${productName}`,
-        html: `
-          <div style="font-family:sans-serif; max-width:520px; margin:0 auto; padding:32px 24px;">
-            <img src="https://najahchemistja.com/images/logo.png" alt="Najah Chemist" style="height:48px; margin-bottom:24px;" />
-            <h2 style="color:#b8860b; margin:0 0 12px;">You're on the waitlist!</h2>
-            <p style="color:#333; font-size:15px; line-height:1.6;">
-              Hi there! We've saved your spot for <strong>${productName}</strong>.
-              The moment it's back in stock, you'll be the first to know.
-            </p>
-            <p style="color:#333; font-size:15px; line-height:1.6;">
-              In the meantime, browse our other available products at
-              <a href="https://najahchemistja.com" style="color:#b8860b;">najahchemistja.com</a>
-            </p>
-            <hr style="border:none; border-top:1px solid #eee; margin:24px 0;" />
-            <p style="color:#999; font-size:12px;">Najah Chemist · Kingston, Jamaica · najahchemistja.com</p>
-          </div>
-        `
-      });
-      console.log('Email sent successfully');
-    } catch(emailErr) {
-      console.error('EMAIL FAILED:', emailErr);
+    console.log('RESEND_API_KEY prefix:', process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.substring(0, 8) : 'MISSING');
+    const emailResult = await resend.emails.send({
+      from: 'Najah Chemist <orders@najahchemistja.com>',
+      to: email,
+      subject: `You're on the waitlist — ${productName}`,
+      html: `
+        <div style="font-family:sans-serif; max-width:520px; margin:0 auto; padding:32px 24px;">
+          <img src="https://najahchemistja.com/images/logo.png" alt="Najah Chemist" style="height:48px; margin-bottom:24px;" />
+          <h2 style="color:#b8860b; margin:0 0 12px;">You're on the waitlist!</h2>
+          <p style="color:#333; font-size:15px; line-height:1.6;">
+            Hi there! We've saved your spot for <strong>${productName}</strong>.
+            The moment it's back in stock, you'll be the first to know.
+          </p>
+          <p style="color:#333; font-size:15px; line-height:1.6;">
+            In the meantime, browse our other available products at
+            <a href="https://najahchemistja.com" style="color:#b8860b;">najahchemistja.com</a>
+          </p>
+          <hr style="border:none; border-top:1px solid #eee; margin:24px 0;" />
+          <p style="color:#999; font-size:12px;">Najah Chemist · Kingston, Jamaica · najahchemistja.com</p>
+        </div>
+      `
+    });
+    if (emailResult.error) {
+      console.error('EMAIL FAILED — Resend error:', JSON.stringify(emailResult.error));
+      return { statusCode: 500, body: JSON.stringify({ error: 'Email send failed', detail: emailResult.error }) };
     }
+    console.log('Email sent successfully, id:', emailResult.data?.id);
 
     // Write a notification doc so admin can see the signup
     await db.collection('notifications').add({
