@@ -187,3 +187,29 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
 7. Vegan/ingredient tagging on products
 8. Garlic Lavender Soap page
 9. NC-76264 Rosheda Nixon missing order
+
+---
+
+## Session Update: April 20, 2026
+
+### Fixed
+- Waitlist confirmation email — switched to Firestore REST API, removed firebase-admin dependency
+- FIREBASE_SERVICE_ACCOUNT env var removed — replaced with smaller FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY, then removed entirely in favour of REST API
+- Segmented WhatsApp messages on /start — lead now gets correct segment message, owner notification no longer shows to client
+- Bundle "Order This Bundle" buttons — all 4 bundles now add correct product to cart (skb2, gni1, mcb1, skb1)
+- Girls Night In bundle price corrected to J$13,000
+- Bundle product counts corrected — Skincare and Feminine Care: 24 products (4×6), Mencare: 18 products (3×6)
+- Body care segment message — removed wrong Ayurvedic Hair Growth Oil reference
+- Feminine care segment — updated to Girls Night In Luxury Bundle at J$13,000
+- Discount corrected to 5% no code in all segment messages
+- Client Portal button added to nav, Reorder button removed from hero
+
+### Still Pending
+- Confirm lead segmented message working with real client
+- Recommended retail prices on product pages
+- Meta Business verification
+- AOV / Business Intelligence dashboard
+- Vegan/ingredient tagging on products
+- Garlic Lavender Soap page
+- NC-76264 Rosheda Nixon missing order
+- /links page review
