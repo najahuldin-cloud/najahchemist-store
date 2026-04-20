@@ -1759,3 +1759,28 @@ if (window.location.search.includes('staff=true')) {
     if (el) el.style.setProperty('display', 'inline-flex', 'important');
   });
 }
+
+// ── ?bundle= — add product to cart and open cart ──────────────────────────
+(function() {
+  var bundleId = new URLSearchParams(window.location.search).get('bundle');
+  if (!bundleId) return;
+  var attempts = 0;
+  function tryAddBundle() {
+    var prod = (window.PRODUCTS || []).find(function(p) { return p.id === bundleId; });
+    if (!prod && attempts++ < 20) { setTimeout(tryAddBundle, 250); return; }
+    if (!prod) return;
+    var k = Object.keys(prod.pricing || {})[0];
+    if (!k) return;
+    var price = (prod.pricing[k] && prod.pricing[k].price) || 0;
+    var sizeLabel = typeof sfSizeLabel === 'function' ? sfSizeLabel(k) : k;
+    var cartKey = prod.id + '|' + sizeLabel + '||';
+    var ex = sfCart.find(function(i) { return i._key === cartKey; });
+    if (ex) { ex.qty += 1; } else {
+      sfCart.push({ _key: cartKey, id: prod.id, name: prod.name, size: sizeLabel, price: price, qty: 1, emoji: prod.emoji || '🧴', cat: prod.cat });
+    }
+    sfUpdateCartBtn();
+    sfOpenCart();
+    history.replaceState(null, '', window.location.pathname);
+  }
+  setTimeout(tryAddBundle, 300);
+})();
