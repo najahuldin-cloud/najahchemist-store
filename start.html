@@ -110,6 +110,8 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
 .brand-card.cream-bg{background:#FBF6EE;}
 .brand-card.pink-bg{background:#FDF4F7;}
 .brand-card.grey-bg{background:#F4F6F8;}
+.brand-card.teal-bg{background:#EFF7F2;}
+.brand-card.purple-bg{background:#F3F0F8;}
 .brand-card-header{display:flex;align-items:center;gap:0.85rem;margin-bottom:0.75rem;}
 .brand-card-icon{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,0.8);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;}
 .brand-card-title{font-size:1rem;font-weight:700;line-height:1.25;}
@@ -382,6 +384,30 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
           <img src="/assets/images/mencare-bundle.jpeg" alt="Men's Grooming Bundle" style="width:100%;max-height:220px;object-fit:cover;display:block;border-radius:10px;">
         </div>
         <div class="brand-card-products"><strong>Formulas we manufacture:</strong> Beard oil, 3-in-1 body wash, beard balm, supplements</div>
+        <a href="#" onclick="ncToggleChat();return false;" class="btn btn-green" style="width:100%;justify-content:center;">Start Your Brand</a>
+      </div>
+      <!-- Card 4: Body Care -->
+      <div class="brand-card teal-bg">
+        <div class="brand-card-header">
+          <div class="brand-card-icon">🧴</div>
+          <div>
+            <div class="brand-card-title">Body Care Formula Range</div>
+            <div class="brand-card-sub">Manufactured for entrepreneurs targeting the body care market</div>
+          </div>
+        </div>
+        <div class="brand-card-products"><strong>Formulas we manufacture:</strong> Body butter, body scrub, body oil, brightening lotion</div>
+        <a href="#" onclick="ncToggleChat();return false;" class="btn btn-green" style="width:100%;justify-content:center;">Start Your Brand</a>
+      </div>
+      <!-- Card 5: Hair Care -->
+      <div class="brand-card purple-bg">
+        <div class="brand-card-header">
+          <div class="brand-card-icon">💇</div>
+          <div>
+            <div class="brand-card-title">Hair Care Formula Range</div>
+            <div class="brand-card-sub">Manufactured for entrepreneurs targeting the hair care market</div>
+          </div>
+        </div>
+        <div class="brand-card-products"><strong>Formulas we manufacture:</strong> Hair growth oil, hair butter, hair mist, scalp treatment</div>
         <a href="#" onclick="ncToggleChat();return false;" class="btn btn-green" style="width:100%;justify-content:center;">Start Your Brand</a>
       </div>
     </div>
@@ -707,7 +733,7 @@ window._ncSaveLead = async function(data) {
   const _segmentMap = {
     'skincare':       'skincare',
     'body care':      'body',
-    'hair care':      'body',
+    'hair care':      'haircare',
     'feminine care':  'feminine',
     "men's grooming": 'mens'
   };
@@ -717,6 +743,7 @@ window._ncSaveLead = async function(data) {
     body:     'Hi ' + _waName + ' \uD83D\uDC4B\n\nI saw you\'re interested in starting your body care brand \u2014 strong market right now especially for glow and brightening products.\n\nBased on your budget, the best move is starting with 1\u20132 fast-moving products so you can test and make sales quickly.\n\nI\u2019d recommend:\n\u2022 Body Butter \u2014 sells consistently year round\n\u2022 Turmeric Kojic Scrub \u2014 very popular, high repeat purchase\n\nYou brand and package them under your own label. We handle the manufacturing.\n\nMost of our clients start here and have their first sales within the week.\n\n\uD83D\uDC49 Choose your products here: najahchemistja.com\nSelect 3 or more and get 5% off automatically — no code needed.\n\nStart with 1 litre of Ayurvedic Hair Growth Oil \u2014 J$7,500, fills 16 \u00d7 2oz bottles, retail value J$32,000.\n\nNote: Bundles are pre-set and cannot be customised. For a custom product mix, visit najahchemistja.com/customise\n\nAre you going for a small test start or building a fuller line right away?',
     feminine: 'Hi ' + _waName + ' \uD83D\uDC4B\n\nI saw you\'re interested in starting a feminine care brand \u2014 one of the highest-demand niches in Jamaica right now and it builds strong customer loyalty.\n\nTo start smart, I\u2019d recommend focusing on 1\u20132 core products that sell consistently.\n\nBest starting products:\n\u2022 Yoni Foaming Wash \u2014 daily use, high repeat purchase\n\u2022 Yoni Pops (Boric Acid) \u2014 very high demand, customers come back monthly\n\nYou brand them under your own business. We manufacture everything here in Jamaica.\n\n\uD83D\uDC49 Choose your starter here: najahchemistja.com\nSelect 3 or more and get 5% off automatically — no code needed.\n\nOur Girls Night In Luxury Bundle is J$13,000 \u2014 24 products (4 types \u00d7 6 pieces each) ready to label and sell. Retail value J$30,000+.\n\nNote: Bundles are pre-set and cannot be customised. For a custom product mix, visit najahchemistja.com/customise\n\nAre you looking to start with 1\u20132 products first or build a complete feminine care line?',
     mens:     'Hi ' + _waName + ' \uD83D\uDC4B\n\nI saw you\'re interested in starting a men\'s grooming brand \u2014 solid niche, strong demand and low competition locally.\n\nWith your budget, the best move is starting with 1\u20132 products you can sell quickly.\n\nI\u2019d recommend:\n\u2022 Beard Oil \u2014 consistent top seller\n\u2022 Beard Shampoo \u2014 pairs naturally, customers buy both together\n\nYou brand and package under your own name. We supply everything manufactured in Jamaica.\n\n\uD83D\uDC49 Choose your products here: najahchemistja.com\nSelect 3 or more and get 5% off automatically — no code needed.\n\nOur Mencare Bundle is J$11,000 \u2014 18 products (3 types \u00d7 6 pieces each) ready to label and sell. Retail value J$28,000+.\n\nNote: Bundles are pre-set and cannot be customised. For a custom product mix, visit najahchemistja.com/customise\n\nAre you starting small to test first or going in with a fuller line?',
+    haircare: 'Hi ' + _waName + ' \uD83D\uDC4B\n\nI saw you\'re interested in starting a hair care brand \u2014 strong and growing market in Jamaica right now.\n\nTo start smart, I\'d recommend focusing on 1\u20132 products with high repeat purchase.\n\nBest starting products:\n\u2022 Hair Growth Oil \u2014 high demand, customers reorder monthly\n\u2022 Hair Butter \u2014 pairs naturally, builds a complete hair care routine\n\nYou brand them under your own business. We manufacture everything here in Jamaica.\n\n\uD83D\uDC49 Choose your starter here: najahchemistja.com\nSelect 3 or more and get 5% off automatically \u2014 no code needed.\n\nOur Hair Care range starts from J$5,500 per litre \u2014 fills 16 \u00d7 2oz bottles, retail value J$32,000+.\n\nNote: For a custom product mix, visit najahchemistja.com/customise\n\nAre you looking to start with 1\u20132 products first or build a complete hair care line?',
     general:  'Hi ' + _waName + ' \uD83D\uDC4B\n\nI saw you\'re interested in starting a brand \u2014 great move, the market is moving fast right now.\n\nIf you\'re still deciding on a category, the easiest way to start is with high-demand products that are already proven to sell.\n\nMost people start with:\n\u2022 Turmeric + Kojic Soap \u2014 one of our top sellers\n\u2022 Dark Spot Corrector Cream \u2014 consistent demand island-wide\n\nYou\'ll brand and package them under your own business name. Everything is made locally and ready within 2\u20133 days.\n\nMost clients start with 2\u20133 products and make their first sales quickly.\n\n\uD83D\uDC49 Choose your starter here: najahchemistja.com\nSelect 3 or more products and get 5% off automatically — no code needed.\n\nAre you looking to start small first or build out a fuller line?'
   };
   const _waFollowups = {
@@ -724,6 +751,7 @@ window._ncSaveLead = async function(data) {
     body:     'Hi ' + _waName + ', just checking in! If you\'d like to see our body care product catalogue with wholesale pricing, I can send it over now. Still interested? \uD83D\uDE0A',
     feminine: 'Hi ' + _waName + ', just following up! The feminine care market is growing fast in Jamaica. We can have your branded product ready in 2\u20133 business days. Still want to chat? \uD83D\uDE0A',
     mens:     'Hi ' + _waName + ', just checking in! Men\'s grooming is one of the fastest-growing categories right now. We can help you get started quickly. Still keen? \uD83D\uDE0A',
+    haircare: 'Hi ' + _waName + ', just following up! The hair care market is growing fast in Jamaica. We can have your branded hair care products ready quickly. Still interested in getting started? \uD83D\uDE0A',
     general:  'Hi ' + _waName + ', just following up! Whether it\'s skincare, body care or feminine wellness \u2014 we can help you launch your brand. Still interested in chatting? \uD83D\uDE0A'
   };
   const _waMessage      = _waMsgs[_waSegment]     || _waMsgs.general;
