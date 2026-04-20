@@ -235,6 +235,7 @@ select.finp{cursor:pointer;}
     <button class="nb" onclick="nav('broadcast',this)"><span class="nb-icon">📣</span>Broadcast Email</button>
     <button class="nb" onclick="nav('productlookup',this)"><span class="nb-icon">🔍</span>Product Lookup</button>
     <button class="nb" onclick="nav('waitlist',this)"><span class="nb-icon">🔔</span>Waitlist</button>
+    <button class="nb" onclick="nav('bi',this)"><span class="nb-icon">📈</span>Intelligence</button>
   </nav>
   <div class="sb-footer">
     <div class="sb-user" id="sb-user-email"></div>
@@ -702,6 +703,14 @@ select.finp{cursor:pointer;}
       </div>
     </div>
 
+    <!-- ══════════════ BUSINESS INTELLIGENCE ══════════════ -->
+    <div class="view" id="v-bi">
+      <div class="section-title">Business Intelligence</div>
+      <div id="bi-body">
+        <div style="text-align:center;padding:3rem 1rem;color:var(--mid);font-size:0.82rem;">Click the tab to load data.</div>
+      </div>
+    </div>
+
   </div><!-- /content -->
 </div><!-- /main -->
 
@@ -1128,7 +1137,7 @@ window.nav = function(id, btn) {
   document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
   document.getElementById('v-'+id).classList.add('on');
   if(btn) btn.classList.add('on');
-  const titles = {dashboard:'Dashboard',orders:'Orders',clients:'Clients',products:'Products',labels:'Shipping Labels',consultations:'Consultations',knowledge:'Chatbot Knowledge Base',sitecontent:'Site Content',leads:'Leads',broadcast:'Broadcast Email',productlookup:'Product Lookup'};
+  const titles = {dashboard:'Dashboard',orders:'Orders',clients:'Clients',products:'Products',labels:'Shipping Labels',consultations:'Consultations',knowledge:'Chatbot Knowledge Base',sitecontent:'Site Content',leads:'Leads',broadcast:'Broadcast Email',productlookup:'Product Lookup',bi:'Business Intelligence'};
   document.getElementById('topbar-title').textContent = titles[id]||id;
   closeSidebar();
   if(id==='clients'){
@@ -1137,6 +1146,7 @@ window.nav = function(id, btn) {
   }
   if(id==='leads') loadLeads();
   if(id==='waitlist') loadWaitlist();
+  if(id==='bi') loadBI();
 };
 
 window.openM = function(id){ document.getElementById(id).classList.add('open'); };
@@ -3217,6 +3227,179 @@ window.runTestOrder = function() {
   btn.style.opacity = '0.5';
   statusEl.style.display = 'inline-block';
   statusEl.style.color = '#6B7280';
+
+  // ── BUSINESS INTELLIGENCE ──
+  window.loadBI = function() {
+    var body = document.getElementById('bi-body');
+    if (!body) return;
+    body.innerHTML = '<div style="text-align:center;padding:3rem 1rem;color:var(--mid);font-size:0.82rem;">Loading…</div>';
+    setTimeout(renderBI, 250);
+  };
+
+  function renderBI() {
+    var body = document.getElementById('bi-body');
+    if (!body) return;
+
+    var now = new Date();
+    var y = now.getFullYear(), mo = now.getMonth();
+    var mStart = new Date(y, mo, 1, 0, 0, 0, 0);
+    var mEnd   = new Date(y, mo, now.getDate(), 23, 59, 59, 999);
+
+    // Paid orders (all time)
+    var paid = ORDERS.filter(function(o) {
+      return (o.paymentStatus||o.payStatus||o.payment||'').toLowerCase() === 'paid';
+    });
+
+    // Section 1 metrics
+    var ordersThisMonth = ORDERS.filter(function(o) {
+      var d = _parseOrderDate(o); return d && d >= mStart && d <= mEnd;
+    });
+    var revenueThisMonth = paid.filter(function(o) {
+      var d = _parseOrderDate(o); return d && d >= mStart && d <= mEnd;
+    }).reduce(function(s,o){ return s + (parseFloat(o.total)||0); }, 0);
+    var totalPaidRev = paid.reduce(function(s,o){ return s+(parseFloat(o.total)||0); }, 0);
+    var aov = paid.length > 0 ? Math.round(totalPaidRev / paid.length) : 0;
+
+    // Conversion rate (matches dashboard logic)
+    var oEmails = new Set(ORDERS.map(function(o){ return (o.email||o.customerEmail||'').trim().toLowerCase(); }).filter(Boolean));
+    var oPhones = new Set(ORDERS.map(function(o){ return (o.phone||o.customerWhatsApp||o.wa||'').replace(/\D/g,''); }).filter(Boolean));
+    var converted = 0;
+    LEADS.forEach(function(l) {
+      var le = (l.email||'').trim().toLowerCase();
+      var lp = (l.whatsapp||'').replace(/\D/g,'');
+      if ((le && oEmails.has(le)) || (lp && lp.length >= 7 && oPhones.has(lp))) converted++;
+    });
+    var convRate = LEADS.length > 0 ? ((converted / LEADS.length) * 100).toFixed(1) : '0.0';
+
+    // Section 2: last 7 days
+    var days7 = [];
+    for (var i = 6; i >= 0; i--) {
+      var dd = new Date(now); dd.setDate(dd.getDate() - i);
+      days7.push({
+        lbl: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dd.getDay()],
+        s: new Date(dd.getFullYear(), dd.getMonth(), dd.getDate(), 0,0,0,0),
+        e: new Date(dd.getFullYear(), dd.getMonth(), dd.getDate(), 23,59,59,999),
+        rev: 0
+      });
+    }
+    paid.forEach(function(o) {
+      var dt = _parseOrderDate(o); if (!dt) return;
+      var slot = days7.find(function(x){ return dt >= x.s && dt <= x.e; });
+      if (slot) slot.rev += parseFloat(o.total) || 0;
+    });
+    var maxDay = Math.max.apply(null, days7.map(function(x){ return x.rev; }).concat([1]));
+
+    // Section 3: top 5 products
+    var pMap = {};
+    ORDERS.forEach(function(o) {
+      (Array.isArray(o.items) ? o.items : []).forEach(function(it) {
+        var n = (it.name || 'Unknown').trim();
+        if (!pMap[n]) pMap[n] = { units: 0, rev: 0 };
+        var qty = parseInt(it.qty) || 1;
+        pMap[n].units += qty;
+        pMap[n].rev += (parseFloat(it.price) || 0) * qty;
+      });
+    });
+    var topProds = Object.entries(pMap).sort(function(a,b){ return b[1].rev - a[1].rev; }).slice(0, 5);
+
+    // Section 4: top 5 clients
+    var cMap = {};
+    ORDERS.forEach(function(o) {
+      var name = (o.client || o.customerName || '—').trim();
+      if (!cMap[name]) cMap[name] = { orders: 0, spend: 0 };
+      cMap[name].orders++;
+      cMap[name].spend += parseFloat(o.total) || 0;
+    });
+    var topClients = Object.entries(cMap).sort(function(a,b){ return b[1].spend - a[1].spend; }).slice(0, 5);
+
+    // Section 5: lead pipeline
+    var stages = ['New','Contacted','Qualified','Quoted','Converted'];
+    var sMap = { New: 0, Contacted: 0, Qualified: 0, Quoted: 0, Converted: converted };
+    LEADS.forEach(function(l) {
+      var s = l.status;
+      if (s && s !== 'Converted' && sMap.hasOwnProperty(s)) sMap[s]++;
+      else if (!s || !sMap.hasOwnProperty(s)) sMap['New']++;
+    });
+
+    var monthName = now.toLocaleString('default', { month: 'long' }) + ' ' + y;
+
+    function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // ── Render ──
+    var html = '';
+
+    // Section 1 — Key Metrics
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem;">';
+    html += '<div class="stat-card"><div class="stat-lbl">AOV — Avg Order Value</div><div class="stat-val" style="font-size:1.3rem;color:#B45309;">J$' + aov.toLocaleString() + '</div><div class="stat-sub">Revenue ÷ paid orders</div></div>';
+    html += '<div class="stat-card"><div class="stat-lbl">Revenue This Month</div><div class="stat-val" style="font-size:1.3rem;">J$' + revenueThisMonth.toLocaleString() + '</div><div class="stat-sub">' + monthName + '</div></div>';
+    html += '<div class="stat-card"><div class="stat-lbl">Conversion Rate</div><div class="stat-val" style="font-size:1.3rem;color:var(--green);">' + convRate + '%</div><div class="stat-sub">' + converted + ' of ' + LEADS.length + ' leads</div></div>';
+    html += '<div class="stat-card"><div class="stat-lbl">Orders This Month</div><div class="stat-val" style="font-size:1.3rem;">' + ordersThisMonth.length + '</div><div class="stat-sub">' + monthName + '</div></div>';
+    html += '</div>';
+
+    // Section 2 — Revenue Trend
+    html += '<div class="card" style="margin-bottom:1.5rem;">';
+    html += '<div class="card-title">Revenue Trend — Last 7 Days</div>';
+    html += '<div style="display:flex;align-items:flex-end;gap:6px;height:86px;border-bottom:2px solid var(--border);padding:0 2px;">';
+    days7.forEach(function(x) {
+      var h = Math.max(Math.round((x.rev / maxDay) * 82), x.rev > 0 ? 4 : 0);
+      var bg = x.rev > 0 ? '#B45309' : 'var(--border)';
+      var op = x.rev > 0 ? '1' : '0.35';
+      html += '<div style="flex:1;background:' + bg + ';border-radius:3px 3px 0 0;height:' + h + 'px;opacity:' + op + ';"></div>';
+    });
+    html += '</div>';
+    html += '<div style="display:flex;gap:6px;padding:5px 2px 0;">';
+    days7.forEach(function(x) {
+      var amt = x.rev > 0 ? (x.rev >= 1000 ? 'J$' + Math.round(x.rev / 1000) + 'k' : 'J$' + Math.round(x.rev)) : '';
+      html += '<div style="flex:1;text-align:center;"><div style="font-size:0.62rem;font-weight:600;color:var(--mid);">' + x.lbl + '</div><div style="font-size:0.55rem;color:var(--text);margin-top:1px;">' + amt + '</div></div>';
+    });
+    html += '</div>';
+    html += '</div>';
+
+    // Section 3 — Top 5 Products
+    html += '<div class="card" style="margin-bottom:1.5rem;">';
+    html += '<div class="card-title">Top 5 Products by Revenue</div>';
+    if (topProds.length) {
+      html += '<div class="tbl-wrap"><table><thead><tr><th>#</th><th>Product</th><th>Units Sold</th><th>Total Revenue</th></tr></thead><tbody>';
+      topProds.forEach(function(e, i) {
+        html += '<tr><td style="color:var(--mid);font-weight:700;">' + (i+1) + '</td><td><strong>' + esc(e[0]) + '</strong></td><td>' + e[1].units + '</td><td><strong>J$' + Math.round(e[1].rev).toLocaleString() + '</strong></td></tr>';
+      });
+      html += '</tbody></table></div>';
+    } else {
+      html += '<div class="empty-state">No item-level order data yet.</div>';
+    }
+    html += '</div>';
+
+    // Section 4 — Top 5 Clients
+    html += '<div class="card" style="margin-bottom:1.5rem;">';
+    html += '<div class="card-title">Top 5 Clients by Spend</div>';
+    if (topClients.length) {
+      html += '<div class="tbl-wrap"><table><thead><tr><th>#</th><th>Client</th><th>Orders</th><th>Total Spent</th></tr></thead><tbody>';
+      topClients.forEach(function(e, i) {
+        html += '<tr><td style="color:var(--mid);font-weight:700;">' + (i+1) + '</td><td><strong>' + esc(e[0]) + '</strong></td><td>' + e[1].orders + '</td><td><strong>J$' + Math.round(e[1].spend).toLocaleString() + '</strong></td></tr>';
+      });
+      html += '</tbody></table></div>';
+    } else {
+      html += '<div class="empty-state">No orders yet.</div>';
+    }
+    html += '</div>';
+
+    // Section 5 — Lead Pipeline
+    html += '<div class="card">';
+    html += '<div class="card-title">Lead Pipeline</div>';
+    html += '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-top:0.25rem;">';
+    stages.forEach(function(stage, i) {
+      var isConv = stage === 'Converted';
+      html += '<div style="display:flex;flex-direction:column;align-items:center;padding:0.85rem 1.2rem;background:' + (isConv ? 'var(--green)' : 'white') + ';border:1.5px solid ' + (isConv ? 'var(--green)' : 'var(--border)') + ';border-radius:10px;min-width:90px;text-align:center;">';
+      html += '<div style="font-size:1.55rem;font-weight:700;color:' + (isConv ? 'white' : 'var(--black)') + ';">' + sMap[stage] + '</div>';
+      html += '<div style="font-size:0.62rem;font-weight:600;color:' + (isConv ? 'rgba(255,255,255,0.85)' : 'var(--mid)') + ';text-transform:uppercase;letter-spacing:0.04em;margin-top:0.15rem;">' + stage + '</div>';
+      html += '</div>';
+      if (i < stages.length - 1) html += '<div style="font-size:1rem;color:var(--light);">→</div>';
+    });
+    html += '</div>';
+    html += '</div>';
+
+    body.innerHTML = html;
+  }
 
   let secs = 30;
   statusEl.textContent = `⏳ Check admin in ${secs}s…`;
