@@ -3269,12 +3269,34 @@ function renderBI() {
 
   var pMap = {};
   ORDERS.forEach(function(o) {
-    (Array.isArray(o.items) ? o.items : []).forEach(function(it) {
-      var n = (it.name || 'Unknown').trim();
-      if (!pMap[n]) pMap[n] = { units: 0, rev: 0 };
-      var qty = parseInt(it.qty) || 1;
-      pMap[n].units += qty;
-      pMap[n].rev += (parseFloat(it.price) || 0) * qty;
+    var itemList = [];
+    if (Array.isArray(o.items) && o.items.length) {
+      // Admin-created orders: structured items array
+      o.items.forEach(function(it) {
+        var qty = parseInt(it.qty) || 1;
+        itemList.push({ name: (it.name || 'Unknown').trim(), qty: qty, rev: (parseFloat(it.price) || 0) * qty });
+      });
+    } else {
+      // Storefront orders: "Name (size xQty) | Name (size xQty)" string
+      var prodStr = (o.product || o.products || '').trim();
+      if (prodStr) {
+        var orderTotal = parseFloat(o.total) || 0;
+        var segs = prodStr.split(' | ');
+        var parsed = segs.map(function(seg) {
+          seg = seg.trim();
+          var m = seg.match(/^(.*?)\s*\([^)]*?\s+x(\d+)\)$/);
+          return { name: (m ? m[1].trim() : seg) || 'Unknown', qty: m ? (parseInt(m[2]) || 1) : 1 };
+        });
+        var totalQty = parsed.reduce(function(s, x) { return s + x.qty; }, 0) || 1;
+        parsed.forEach(function(x) {
+          itemList.push({ name: x.name, qty: x.qty, rev: orderTotal * x.qty / totalQty });
+        });
+      }
+    }
+    itemList.forEach(function(it) {
+      if (!pMap[it.name]) pMap[it.name] = { units: 0, rev: 0 };
+      pMap[it.name].units += it.qty;
+      pMap[it.name].rev += it.rev || 0;
     });
   });
   var topProds = Object.entries(pMap).sort(function(a,b){ return b[1].rev - a[1].rev; }).slice(0, 5);
