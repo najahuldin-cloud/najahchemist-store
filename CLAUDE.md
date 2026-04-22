@@ -244,13 +244,33 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
 - Aloe Vera Extract formula finalised: 95.9% fresh aloe gel, 0.5% Potassium Sorbate, 0.5% Sodium Benzoate, 0.1% EDTA, 0.5% Vitamin E, 0.5% Citric Acid. Target pH 3.8-4.2. Shelf life 3-4 months room temp.
 
 ### TODO (carry forward)
-1. Recommended retail prices on product pages
-2. Meta Business verification
-3. Vegan/ingredient tagging on products
-4. Garlic Lavender Soap page — confirm built
-5. NC-76264 Rosheda Nixon missing order
-6. Social proof videos
-7. Re-engagement broadcast — partially sent, do not resend
-8. Google Search Console setup
-9. Review and audit all product page INCI lists for accuracy
-10. Body Butter page — confirm Salicylic Acid content removed
+
+#### ✅ Completed
+- Waitlist confirmation email
+- Container filling service upsell
+- Upsell updated order message
+- /links page with category filters
+- /custom-products page
+- New Client Manufacturing Package (PDF + Word)
+- Repo memory system (CLAUDE.md)
+- Garlic Lavender Soap page
+- NC-76264 Rosheda Nixon missing order
+- TikTok link added to site
+- Client Portal button in nav
+- Bundle direct order links
+- Segmented WhatsApp messages fixed
+- Business Intelligence dashboard
+- Costing system (Google Sheets + Apps Script)
+- Low stock WhatsApp alerts
+- Receipt scanner (PDF + image auto-updates Database)
+- Orders saving to Firestore confirmed working
+
+#### ❌ Pending
+1. Recommended retail prices on all product pages
+2. Review all product page INCI lists for accuracy
+3. Reorder calculator (Google Sheets)
+4. Website inventory connection
+5. Social proof videos
+6. Google Search Console setup
+7. Meta Business verification
+8. Vegan/ingredient tagging on products
