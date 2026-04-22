@@ -269,7 +269,7 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
 1. Recommended retail prices on all product pages
 2. Review all product page INCI lists for accuracy
 3. Reorder calculator (Google Sheets)
-4. Website inventory connection
+4. Website inventory connection — map product formulas in Google Sheets, auto-decrease inventory when orders placed. Formulas stored in Google Drive — need to be added to costing system first.
 5. Social proof videos
 6. Google Search Console setup
 7. Meta Business verification
