@@ -213,3 +213,44 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
 - Garlic Lavender Soap page
 - NC-76264 Rosheda Nixon missing order
 - /links page review
+
+---
+
+## Session Update: April 21, 2026
+
+### Fixed
+- Business Intelligence dashboard auto-loads on tab click
+- Top 5 Products by Revenue now parsing order items correctly
+- sendBroadcastEmail Firebase function — set RESEND_API_KEY secret, redeployed all functions
+- Niacinamide & Hyaluronic Serum product page — corrected INCI list and prices (J$13,000/J$50,000/J$225,000)
+- Bundle "Order This Bundle" buttons — all 4 bundles working correctly
+- Girls Night In bundle price corrected to J$13,000
+- Body Care and Hair Care niches added to /start funnel
+- Bar soap customisation details added to /customise page
+- TikTok link added to site footer (@najahchemist)
+- Client Portal button in nav, Reorder button removed from hero
+- Bundle direct order links added to /links page
+- Segmented WhatsApp messages — discount corrected to 5% no code
+- Body care segment message corrected — removed Ayurvedic Hair Growth Oil reference
+
+### Business Intelligence Stats (April 20, 2026)
+- AOV: J$17,991
+- Revenue this month: J$394,325
+- Orders this month: 26
+- Conversion rate: 2.4% (6 of 252 leads)
+- Top client: Lisa Heath-combs — 5 orders, J$182,000 spent
+
+### Formulation Notes
+- Aloe Vera Extract formula finalised: 95.9% fresh aloe gel, 0.5% Potassium Sorbate, 0.5% Sodium Benzoate, 0.1% EDTA, 0.5% Vitamin E, 0.5% Citric Acid. Target pH 3.8-4.2. Shelf life 3-4 months room temp.
+
+### TODO (carry forward)
+1. Recommended retail prices on product pages
+2. Meta Business verification
+3. Vegan/ingredient tagging on products
+4. Garlic Lavender Soap page — confirm built
+5. NC-76264 Rosheda Nixon missing order
+6. Social proof videos
+7. Re-engagement broadcast — partially sent, do not resend
+8. Google Search Console setup
+9. Review and audit all product page INCI lists for accuracy
+10. Body Butter page — confirm Salicylic Acid content removed
