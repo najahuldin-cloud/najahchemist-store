@@ -274,3 +274,61 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
 6. Google Search Console setup
 7. Meta Business verification
 8. Vegan/ingredient tagging on products
+
+---
+
+## Session Update: April 23, 2026
+
+### Completed This Session
+- Business Intelligence dashboard — auto-loads on tab click, top products fixed
+- sendBroadcastEmail Firebase function — RESEND_API_KEY secret set, all functions redeployed
+- Re-engagement broadcast — partially sent to 252 leads (do NOT resend)
+- Niacinamide & Hyaluronic Serum — INCI corrected, peptide reference removed, prices updated J$13,000/J$50,000/J$225,000
+- Body Care and Hair Care niches added to /start funnel with segmented WhatsApp messages
+- TikTok link added to footer (@najahchemist)
+- Google Costing System v5 built with 6 sheets: Database, Costing, Inventory, Dashboard, Production Log, Reorder Calculator, Formula Map
+- Supplier landed costs added to Database (Niacinamide $40/kg, Tranexamic Acid $110/kg, Allantoin $40/kg, Hydroquinone $55/kg, Kojic Acid $43/kg, Salicylic Acid $35/kg, Snow White $60/kg, Hyaluronic Acid $125/kg, Beta Glucan $62/kg, SAP $102/kg — all USD landed cost)
+- CallMeBot WhatsApp alerts set up (phone: 18768851099, API key: 9757849)
+- Low stock WhatsApp alert — runs daily at 8am via Google Apps Script
+- Receipt scanner — uploads PDF/image to Google Drive folder, Claude AI reads it, Database updates automatically every 30 mins. Folder ID: 16fTJEP2kp6Zixb1gRPJfrhphGs3dif-4
+- Reorder Calculator sheet built — pulls from Inventory + Production Log, shows days of stock, reorder qty for 60-day cover
+- Formula Map sheet started — 12 products mapped from formula files
+
+### In Progress (incomplete — do next session)
+- Formula review — going through each product formula at 1000g batch with Najah to verify/correct before building website inventory connection
+- Products reviewed so far: NONE (usage limit hit before starting)
+- After all formulas verified → add ingredient upgrade suggestions
+- After formulas finalised → build website inventory connection (Firestore order → Google Sheets inventory decrease)
+
+### Lead Conversion Structure (to build next session)
+- Current: 252 leads, 2.4% conversion, all stuck at "New" stage in pipeline
+- Need to build: lead status update system in admin (New → Contacted → Qualified → Quoted → Converted)
+- Need to build: automated follow-up sequence based on lead status
+- Need to build: WhatsApp follow-up templates per segment
+
+### Pending TODO
+1. Formula review — verify all product formulas at 1000g batch (IN PROGRESS)
+2. Website inventory connection — after formulas confirmed
+3. Lead conversion structure — status pipeline + follow-up system
+4. Recommended retail prices on all product pages
+5. Review all product page INCI lists for accuracy
+6. Social proof videos
+7. Google Search Console setup
+8. Meta Business verification
+9. Vegan/ingredient tagging on products
+
+### Key Business Stats (April 20, 2026)
+- AOV: J$17,991
+- Revenue April: J$394,325
+- Orders: 26
+- Leads: 252
+- Conversion rate: 2.4% (6 converted)
+- Top client: Lisa Heath-combs — 5 orders, J$182,000
+- Top products: Kojic & Turmeric Soap, Skincare Bundle, Girls Night In Bundle
+
+### Google Sheets Costing System
+- File: NajahChemist_Costing_System_v5.xlsx
+- Google Drive ID (v4 latest uploaded): 1T3QEdlaO4UKfbeA-oVvmfqrOdp581JjT2g-HZXmTTs8
+- Google Apps Script deployed with: checkLowStock (8am daily), checkForNewReceipts (every 30 mins), setup()
+- Anthropic API key stored in Script Properties as ANTHROPIC_API_KEY
+- Receipt folder: 16fTJEP2kp6Zixb1gRPJfrhphGs3dif-4
