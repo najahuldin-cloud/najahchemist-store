@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caribbean Shipping Rates | Najah Chemist Jamaica</title>
+<meta name="description" content="Najah Chemist Caribbean shipping rates. Wholesale skincare shipped from Jamaica to Trinidad, Barbados, Grenada, St. Lucia, Antigua, Guyana, Cayman Islands, and Bahamas.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://najahchemistja.com/shipping">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://najahchemistja.com/shipping">
+<meta property="og:title" content="Caribbean Shipping Rates | Najah Chemist Jamaica">
+<meta property="og:description" content="Shipping wholesale skincare from Jamaica to the Caribbean. View rates by country and weight.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --black:#0F0E0D;
+  --gold:#b8860b;
+  --gold-light:#c9a84c;
+  --gold-bg:#fdf8ef;
+  --gold-border:#e8d5a3;
+  --cream:#FAFAF8;
+  --border:#E8E4DE;
+  --text:#1C1A18;
+  --mid:#6B7280;
+  --green:#065F46;
+  --green-bg:#D1FAE5;
+  --blue:#1D4ED8;
+  --white:#ffffff;
+}
+html{scroll-behavior:smooth;}
+body{font-family:'Outfit',sans-serif;background:var(--cream);color:var(--text);line-height:1.6;}
+
+/* Nav */
+#nc-nav{position:sticky;top:0;z-index:900;background:white;border-bottom:1px solid var(--border);padding:0.9rem 0;}
+.nav-inner{max-width:1100px;margin:0 auto;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;}
+.nav-logo{display:flex;align-items:center;gap:0.6rem;text-decoration:none;color:var(--text);}
+.nav-logo-nc{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;line-height:1;color:var(--gold);}
+.nav-logo-name{font-size:0.85rem;font-weight:600;letter-spacing:0.02em;}
+.nav-shop{font-size:0.85rem;font-weight:600;color:var(--gold);text-decoration:none;padding:0.5rem 1.1rem;border:1.5px solid var(--gold);border-radius:8px;transition:all 0.2s;}
+.nav-shop:hover{background:var(--gold);color:white;}
+
+/* Hero */
+#page-hero{background:var(--black);padding:3.5rem 1.5rem 3rem;text-align:center;}
+.hero-eyebrow{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:var(--gold-light);margin-bottom:0.65rem;}
+.hero-title{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,5vw,2.6rem);font-weight:700;color:white;line-height:1.2;}
+.hero-sub{font-size:0.92rem;color:rgba(255,255,255,0.55);margin-top:0.6rem;max-width:520px;margin-left:auto;margin-right:auto;}
+
+/* Layout */
+.container{max-width:880px;margin:0 auto;padding:0 1.5rem;}
+#main{padding:3rem 0 5rem;}
+
+/* Section title */
+.section-label{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:var(--gold);margin-bottom:0.5rem;}
+.section-title{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;color:var(--black);margin-bottom:1.2rem;}
+
+/* Card */
+.card{background:white;border:1.5px solid var(--border);border-radius:14px;padding:1.5rem 1.75rem;margin-bottom:1.5rem;}
+
+/* Calculator */
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-bottom:1.2rem;}
+@media(max-width:560px){.calc-grid{grid-template-columns:1fr;}}
+label.fl{font-size:0.74rem;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:0.35rem;}
+select.fi,input.fi{width:100%;padding:0.62rem 0.9rem;border:1.5px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.88rem;color:var(--text);background:white;outline:none;transition:border-color 0.15s;}
+select.fi:focus,input.fi:focus{border-color:var(--black);}
+.calc-btn{width:100%;padding:0.85rem;background:var(--black);color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.95rem;font-weight:700;cursor:pointer;transition:background 0.2s;}
+.calc-btn:hover{background:#2D2B29;}
+
+/* Result box */
+#calc-result{display:none;background:var(--green-bg);border:1.5px solid #6EE7B7;border-radius:10px;padding:1rem 1.25rem;margin-top:1rem;}
+.result-main{font-size:1.3rem;font-weight:800;color:var(--green);margin-bottom:0.2rem;}
+.result-sub{font-size:0.8rem;color:#064E3B;}
+.result-split{font-size:0.75rem;color:#047857;margin-top:0.35rem;font-style:italic;}
+
+/* Rate table */
+.rate-table{width:100%;border-collapse:collapse;font-size:0.83rem;}
+.rate-table th{background:var(--black);color:white;padding:0.6rem 0.75rem;text-align:left;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;}
+.rate-table th:not(:first-child){text-align:center;}
+.rate-table td{padding:0.6rem 0.75rem;border-bottom:1px solid var(--border);}
+.rate-table td:not(:first-child){text-align:center;font-weight:600;color:var(--blue);}
+.rate-table tr:last-child td{border-bottom:none;}
+.rate-table tr:hover td{background:#F9F7F4;}
+.rate-table .country-col{font-weight:600;color:var(--text);}
+@media(max-width:640px){
+  .rate-table{font-size:0.72rem;}
+  .rate-table th,.rate-table td{padding:0.5rem 0.5rem;}
+}
+
+/* Info boxes */
+.info-box{display:flex;gap:0.75rem;background:var(--gold-bg);border:1px solid var(--gold-border);border-radius:10px;padding:0.85rem 1rem;margin-bottom:1rem;}
+.info-box-icon{font-size:1.2rem;flex-shrink:0;margin-top:0.1rem;}
+.info-box-text{font-size:0.82rem;color:#4B3800;line-height:1.6;}
+.info-box-text strong{color:var(--black);}
+
+/* Footer */
+footer{background:var(--black);padding:2rem 1.5rem;text-align:center;}
+footer p{font-size:0.78rem;color:rgba(255,255,255,0.4);}
+footer a{color:var(--gold-light);text-decoration:none;}
+footer a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+
+<nav id="nc-nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">
+      <span class="nav-logo-nc">Nc</span>
+      <span class="nav-logo-name">Najah Chemist</span>
+    </a>
+    <a href="/" class="nav-shop">Shop Wholesale &rarr;</a>
+  </div>
+</nav>
+
+<div id="page-hero">
+  <div class="hero-eyebrow">🇯🇲 Shipping from Jamaica</div>
+  <h1 class="hero-title">Caribbean Shipping Rates</h1>
+  <p class="hero-sub">Wholesale skincare shipped from Kingston, Jamaica to islands across the Caribbean. Rates are in USD by weight.</p>
+</div>
+
+<div id="main">
+  <div class="container">
+
+    <!-- Calculator -->
+    <div class="section-label">Shipping Calculator</div>
+    <h2 class="section-title">Estimate your shipping cost</h2>
+
+    <div class="card">
+      <div class="calc-grid">
+        <div>
+          <label class="fl">Destination Country</label>
+          <select class="fi" id="calc-country">
+            <option value="">— Select country —</option>
+            <option>Antigua &amp; Barbuda</option>
+            <option>Bahamas</option>
+            <option>Barbados</option>
+            <option>Cayman Islands</option>
+            <option>Grenada</option>
+            <option>Guyana</option>
+            <option>St. Lucia</option>
+            <option>Trinidad &amp; Tobago</option>
+          </select>
+        </div>
+        <div>
+          <label class="fl">Total Weight (kg)</label>
+          <input class="fi" id="calc-weight" type="number" min="0.1" step="0.1" placeholder="e.g. 3.5">
+        </div>
+      </div>
+      <button class="calc-btn" onclick="calcShipping()">Calculate Shipping Cost</button>
+      <div id="calc-result">
+        <div class="result-main" id="calc-result-main"></div>
+        <div class="result-sub" id="calc-result-sub"></div>
+        <div class="result-split" id="calc-result-split"></div>
+      </div>
+    </div>
+
+    <!-- Info boxes -->
+    <div class="info-box">
+      <div class="info-box-icon">⚖️</div>
+      <div class="info-box-text"><strong>Rates are estimates.</strong> Actual cost may vary based on courier, parcel dimensions, and current exchange rates. All rates shown in USD. JMD equivalent shown at ~J$157/USD.</div>
+    </div>
+    <div class="info-box">
+      <div class="info-box-icon">📦</div>
+      <div class="info-box-text"><strong>Large orders over 10kg</strong> are split into multiple parcels (max 10kg each). Each parcel is charged at the 10kg rate. This keeps items safe and within courier limits.</div>
+    </div>
+    <div class="info-box">
+      <div class="info-box-icon">⏱️</div>
+      <div class="info-box-text"><strong>Transit time:</strong> 3–7 business days after dispatch. Production time: 7–10 business days. Place your order at least 2–3 weeks before you need the goods.</div>
+    </div>
+
+    <!-- Rate table -->
+    <div class="section-label" style="margin-top:2rem;">Rate Reference</div>
+    <h2 class="section-title">Rates by country &amp; weight (USD)</h2>
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table class="rate-table">
+        <thead>
+          <tr>
+            <th>Country</th>
+            <th>≤1 kg</th>
+            <th>≤2 kg</th>
+            <th>≤3 kg</th>
+            <th>≤5 kg</th>
+            <th>≤10 kg</th>
+            <th>Per 10kg parcel*</th>
+          </tr>
+        </thead>
+        <tbody id="rate-table-body"></tbody>
+      </table>
+    </div>
+    <p style="font-size:0.72rem;color:var(--mid);margin-top:-0.75rem;margin-bottom:2rem;">* Orders over 10kg are split into parcels. Total cost = number of parcels × per-parcel rate.</p>
+
+    <!-- Weight guide -->
+    <div class="section-label" style="margin-top:2rem;">Weight Reference</div>
+    <h2 class="section-title">Estimated product weights</h2>
+    <div class="card">
+      <table class="rate-table">
+        <thead>
+          <tr>
+            <th>Product Size</th>
+            <th>Approx. Weight</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="country-col">1 Litre liquid</td><td>~1.1 kg</td></tr>
+          <tr><td class="country-col">1 Gallon liquid</td><td>~4.2 kg</td></tr>
+          <tr><td class="country-col">5 Gallon liquid</td><td>~21 kg (3 parcels)</td></tr>
+          <tr><td class="country-col">2 lbs solid/cream</td><td>~1.0 kg</td></tr>
+          <tr><td class="country-col">8 lbs solid/cream</td><td>~3.8 kg</td></tr>
+          <tr><td class="country-col">Per Bar Soap</td><td>~0.15 kg</td></tr>
+          <tr><td class="country-col">10 Bars Soap</td><td>~1.5 kg</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- CTA -->
+    <div style="background:var(--black);border-radius:14px;padding:2rem 1.75rem;text-align:center;margin-top:2rem;">
+      <h3 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;color:white;margin-bottom:0.5rem;">Ready to place your order?</h3>
+      <p style="font-size:0.85rem;color:rgba(255,255,255,0.55);margin-bottom:1.25rem;">Add products to your cart and select Caribbean Shipping at checkout.</p>
+      <a href="/" style="display:inline-block;padding:0.85rem 2rem;background:var(--gold-light);color:var(--black);border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.92rem;font-weight:700;text-decoration:none;">Shop Wholesale Products &rarr;</a>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <p>© 2026 Najah Chemist · <a href="/">najahchemistja.com</a> · <a href="https://wa.me/18768851099">WhatsApp Us</a></p>
+</footer>
+
+<script>
+const CARIBBEAN_RATES = {
+  'Antigua & Barbuda': [42, 68, 95, 130, 170],
+  'Bahamas':           [40, 65, 90, 120, 160],
+  'Barbados':          [38, 60, 85, 115, 155],
+  'Cayman Islands':    [35, 55, 78, 108, 145],
+  'Grenada':           [40, 62, 88, 118, 158],
+  'Guyana':            [50, 78, 108, 145, 195],
+  'St. Lucia':         [40, 62, 88, 118, 158],
+  'Trinidad & Tobago': [35, 55, 80, 110, 148],
+};
+const CARIB_KG_BRACKETS = [1, 2, 3, 5, 10];
+const CARIB_USD_TO_JMD = 157;
+
+function calcRateUSD(country, kg) {
+  const rates = CARIBBEAN_RATES[country];
+  if (!rates || kg <= 0) return null;
+  if (kg <= 10) {
+    const idx = CARIB_KG_BRACKETS.findIndex(b => kg <= b);
+    return {usd: rates[idx >= 0 ? idx : 4], parcels: 1};
+  }
+  const parcels = Math.ceil(kg / 10);
+  return {usd: parcels * rates[4], parcels};
+}
+
+function calcShipping() {
+  const country = document.getElementById('calc-country').value;
+  const kg = parseFloat(document.getElementById('calc-weight').value);
+  const result = document.getElementById('calc-result');
+  const main = document.getElementById('calc-result-main');
+  const sub = document.getElementById('calc-result-sub');
+  const split = document.getElementById('calc-result-split');
+
+  if (!country) { alert('Please select a destination country.'); return; }
+  if (!kg || kg <= 0) { alert('Please enter a valid weight.'); return; }
+
+  const r = calcRateUSD(country, kg);
+  if (!r) return;
+  const jmd = Math.round(r.usd * CARIB_USD_TO_JMD);
+  main.textContent = 'USD $' + r.usd + ' (~J$' + jmd.toLocaleString() + ')';
+  sub.textContent = country + ' · ' + kg.toFixed(1) + 'kg · exchange rate ~J$' + CARIB_USD_TO_JMD + '/USD';
+  split.textContent = r.parcels > 1 ? r.parcels + ' parcels × USD $' + CARIBBEAN_RATES[country][4] + ' each' : '';
+  result.style.display = 'block';
+}
+
+// Render rate table
+(function() {
+  const tbody = document.getElementById('rate-table-body');
+  Object.entries(CARIBBEAN_RATES).forEach(([country, rates]) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td class="country-col">' + country + '</td>'
+      + rates.map(r => '<td>$' + r + '</td>').join('')
+      + '<td>$' + rates[4] + '</td>';
+    tbody.appendChild(tr);
+  });
+})();
+
+// Allow Enter key on weight input
+document.getElementById('calc-weight').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') calcShipping();
+});
+</script>
+</body>
+</html>
