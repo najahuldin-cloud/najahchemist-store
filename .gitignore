@@ -6,3 +6,6 @@ add-bo2.html
 add-bo2.mjs
 update-bo2-cat.mjs
 functions/node_modules
+
+# Local Netlify folder
+.netlify
