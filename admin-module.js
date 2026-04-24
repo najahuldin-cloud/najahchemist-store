@@ -1,7 +1,7 @@
 // ════════════════════════════════════════════════════
 // NAJAH CHEMIST — Single clean script. No duplicates.
-// Firebase: najah-chemist project
-// Admin email: start@najahchemist.com
+// Firebase: najah-chemist-staging project (STAGING BRANCH)
+// Admin email: start@najahchemistja.com
 // ════════════════════════════════════════════════════
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -9,12 +9,12 @@ import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateD
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDYdt_0wJNcfGl2WbIKPiESdVcmc-cqZgM",
-  authDomain: "najahchemistja.com",
-  projectId: "najah-chemist",
-  storageBucket: "najah-chemist.firebasestorage.app",
-  messagingSenderId: "89819999556",
-  appId: "1:89819999556:web:4e6eb5c0c881da5e763b11"
+  apiKey: "AIzaSyCHSSW0hZldMIjhCTdSN27wgxxtcCMXlSE",
+  authDomain: "najah-chemist-staging.firebaseapp.com",
+  projectId: "najah-chemist-staging",
+  storageBucket: "najah-chemist-staging.firebasestorage.app",
+  messagingSenderId: "165284411356",
+  appId: "1:165284411356:web:7f9e654b4c24ebf64b0119"
 };
 
 const app = initializeApp(firebaseConfig);
