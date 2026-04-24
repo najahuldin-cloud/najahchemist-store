@@ -25,10 +25,6 @@ const auth = getAuth(app);
 
 // ═══ DATA ═══
 window.PRODUCTS = window.PRODUCTS || [];
-let PRODUCTS = [
-  // Products are loaded from Firestore — see loadDashboardData()
-];
-window.PRODUCTS = PRODUCTS;
 
 let REVIEWS = {
   'tk':[{name:'Yanique T.',stars:5,text:'This soap changed my skin completely! Dark spots are fading fast.',date:'Feb 20'}],

@@ -66,6 +66,73 @@ function sfShowToast(msg) {
   setTimeout(()=>{t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(10px)';},2200);
 }
 
+// ── Firestore product loader ─────────────────────────
+// Reverse maps: Firestore label → storefront size key / category code
+const _SF_SIZE_KEY = {
+  '1 Litre':'litre','1 Gallon':'gallon','5 Gallon':'5gal',
+  '2 lbs':'lb2','8 lbs':'lb8','40 lbs':'lb40',
+  '10 Bars':'bars10','100 Bars':'bars100',
+  '100 Capsules':'caps100','1000 Capsules':'caps1000',
+  '0.5 lb':'halfLb','1 lb':'lb1','Bundle Kit':'kit','1 Design':'design',
+};
+const _SF_CAT_CODE = {
+  'Yoni Care':'yoni','Skin Care':'skin','Bar Soaps':'soap',
+  'Men Care':'mencare','Hair Care':'hair','Bundles':'bundle','Design Services':'label',
+};
+
+async function sfLoadProductsFromFirestore() {
+  try {
+    const [fbApp, fbFs] = await Promise.all([
+      import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js'),
+    ]);
+    const SF_FB_CONFIG = { apiKey: 'AIzaSyCHSSW0hZldMIjhCTdSN27wgxxtcCMXlSE', projectId: 'najah-chemist-staging' };
+    const appName = 'sf-products';
+    const existing = fbApp.getApps().find(a => a.name === appName);
+    const app = existing || fbApp.initializeApp(SF_FB_CONFIG, appName);
+    const db = fbFs.getFirestore(app);
+    const q = fbFs.query(
+      fbFs.collection(db, 'products'),
+      fbFs.where('isActive', '==', true),
+      fbFs.where('isHidden', '==', false)
+    );
+    const snap = await fbFs.getDocs(q);
+    if (snap.empty) { sfRenderProducts('all'); return; }
+
+    const loaded = [];
+    snap.forEach(docSnap => {
+      const d = docSnap.data();
+      const pricing = {};
+      (d.variants || []).forEach(v => {
+        const k = _SF_SIZE_KEY[v.size] || v.size;
+        pricing[k] = { price: v.price, moq: 1 };
+      });
+      loaded.push({
+        id:         d.legacyId || docSnap.id,
+        firestoreId: docSnap.id,
+        name:       d.name,
+        cat:        _SF_CAT_CODE[d.category] || d.category,
+        tagline:    d.tagline || d.description || '',
+        emoji:      d.emoji || '🧴',
+        img:        d.img   || '',
+        tag:        d.tag   || '',
+        sku:        d.sku   || '',
+        pricing,
+        outOfStock: d.outOfStock || false,
+        hidden:     d.isHidden   || false,
+      });
+    });
+
+    const containers = (window.PRODUCTS || []).filter(p => p.id.startsWith('con'));
+    window.PRODUCTS  = [...loaded, ...containers];
+    sfRenderProducts('all');
+    sfRenderHeroCards();
+  } catch (err) {
+    console.warn('[storefront] Firestore product load failed, using fallback:', err);
+    sfRenderProducts('all');
+  }
+}
+
 // ── Product grid & filters ───────────────────────────
 // Map of product IDs → dedicated product page URLs (only where a page exists)
 const SF_PRODUCT_PAGES = {
@@ -1385,7 +1452,10 @@ function sfAddChatMsg(text, isUser, isTyping) {
   // Remove any previously injected container entries before re-adding
   window.PRODUCTS = window.PRODUCTS.filter(function(p){ return !p.id.startsWith('con'); });
   containers.forEach(function(c){ window.PRODUCTS.push(c); });
-  sfRenderProducts('all');
+  // Show loading state then load products from Firestore
+  var grid = document.getElementById('sf-products-grid');
+  if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem 1rem;color:#8A8480;font-size:0.88rem;">Loading products…</div>';
+  sfLoadProductsFromFirestore();
 })();
 
 // ── Post-Purchase Upsell ─────────────────────────────
