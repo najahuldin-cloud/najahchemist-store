@@ -98,6 +98,7 @@
       <button class="sf-nav-link" onclick="sfScroll('sf-policies')">Policies</button>
       <button class="sf-nav-link" onclick="sfScroll('sf-why')">Why Us</button>
       <button class="sf-nav-link" onclick="sfScroll('sf-contact')">Contact</button>
+      <a href="/shipping" class="sf-nav-link" style="text-decoration:none;">Shipping</a>
     </div>
     <div style="display:flex;align-items:center;gap:0.6rem;">
       <a href="/client-portal" style="padding:0.38rem 0.9rem;border:1.5px solid #0F0E0D;border-radius:6px;font-family:'Outfit',sans-serif;font-size:0.76rem;font-weight:600;color:#0F0E0D;text-decoration:none;transition:all 0.18s;white-space:nowrap;" onmouseover="this.style.background='#0F0E0D';this.style.color='white';" onmouseout="this.style.background='transparent';this.style.color='#0F0E0D';">Client Portal</a>
@@ -233,6 +234,7 @@
         <button class="sf-cat" onclick="sfFilter('soap',this)">Bar Soaps</button>
         <button class="sf-cat" onclick="sfFilter('mencare',this)">Men Care</button>
         <button class="sf-cat" onclick="sfFilter('haircare',this)">Hair Care</button>
+        <button class="sf-cat" onclick="sfFilter('bundle',this)">Bundles</button>
         <button class="sf-cat" onclick="sfFilter('label',this)">Design</button>
         <button class="sf-cat" onclick="sfFilter('containers',this)">Containers</button>
       </div>
@@ -648,6 +650,7 @@
         <a href="/wholesale-prices" class="sf-footer-link">Wholesale Price List</a>
         <a href="/label-sizes" class="sf-footer-link">Label Size Guide</a>
         <a href="/track" class="sf-footer-link">Track Your Order</a>
+        <a href="/shipping" class="sf-footer-link">Caribbean Shipping</a>
       </div>
 
       <!-- Contact -->
@@ -927,6 +930,31 @@
             </div>
           </div>
           <div class="sf-ship-opt-fee">From<br>J$1,000</div>
+        </div>
+
+        <div class="sf-ship-opt" id="sf-ship-caribbean" onclick="sfSelectShip('caribbean',this)">
+          <input type="radio" name="sf-ship" id="sfr-caribbean">
+          <div class="sf-ship-opt-info">
+            <div class="sf-ship-opt-name">✈️ Caribbean Shipping</div>
+            <div class="sf-ship-opt-desc">Antigua, Bahamas, Barbados, Cayman Is., Grenada, Guyana, St. Lucia, Trinidad &amp; Tobago · Rate by weight · USD</div>
+            <div class="sf-ship-extra" id="sf-caribbean-extra">
+              <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-top:0.5rem;margin-bottom:0.25rem;">Destination Country</div>
+              <select class="sf-fi" id="sf-caribbean-country" onchange="sfCaribbeanCountryChange()" style="margin-bottom:0;">
+                <option value="">— Select country —</option>
+                <option>Antigua &amp; Barbuda</option>
+                <option>Bahamas</option>
+                <option>Barbados</option>
+                <option>Cayman Islands</option>
+                <option>Grenada</option>
+                <option>Guyana</option>
+                <option>St. Lucia</option>
+                <option>Trinidad &amp; Tobago</option>
+              </select>
+              <div id="sf-caribbean-cost-display" style="font-size:0.73rem;color:#065F46;font-weight:600;margin-top:0.3rem;display:none;padding:0.25rem 0;"></div>
+              <div style="font-size:0.68rem;color:#8A8480;margin-top:0.2rem;">Rates vary by weight. <a href="/shipping" target="_blank" style="color:#1D4ED8;text-decoration:underline;">View rate table</a></div>
+            </div>
+          </div>
+          <div class="sf-ship-opt-fee" id="sf-caribbean-fee-badge" style="color:#1D4ED8;font-size:0.68rem;font-weight:700;">USD<br><span style="font-size:0.62rem;font-weight:400;color:#8A8480;">by weight</span></div>
         </div>
       </div>
 

@@ -410,8 +410,8 @@ select.finp{cursor:pointer;}
       </div>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>SKU</th><th>Name</th><th>Category</th><th>From Price</th><th>Status</th><th>Actions</th></tr></thead>
-          <tbody id="products-tbody"><tr><td colspan="6" class="empty-state">Loading products…</td></tr></tbody>
+          <thead><tr><th>Name</th><th>Category</th><th>Variants</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="products-tbody"><tr><td colspan="5" class="empty-state">Loading products…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -862,97 +862,28 @@ select.finp{cursor:pointer;}
     <button class="modal-close" onclick="closeM('m-edit-product')">✕</button>
     <div class="modal-title" id="prod-modal-title">Add Product</div>
     <input type="hidden" id="ep-id">
-    <div class="frow-3">
-      <div class="frow"><label>SKU</label><input class="finp" id="ep-sku" placeholder="NC-TS01"></div>
-      <div class="frow" style="grid-column:span 2"><label>Name *</label><input class="finp" id="ep-name" placeholder="Turmeric & Kojic Serum"></div>
-    </div>
-    <div class="frow"><label>Tagline</label><input class="finp" id="ep-tl" placeholder="Short marketing description"></div>
     <div class="frow-2">
+      <div class="frow"><label>Name *</label><input class="finp" id="ep-name" placeholder="Turmeric &amp; Kojic Serum"></div>
       <div class="frow">
         <label>Category</label>
-        <select class="finp" id="ep-cat" onchange="updatePricingUI()">
-          <option value="cream">Cream / Lotion / Butter</option>
-          <option value="serum">Serum / Oil / Drops</option>
-          <option value="wash">Wash / Gel / Spray</option>
-          <option value="skincare">Skin Care / Body Oil</option>
-          <option value="soap">Bar Soap</option>
-          <option value="hair">Hair Care</option>
-          <option value="bundle">Bundle / Kit</option>
-          <option value="label">Private Label Design</option>
-          <option value="containers">Containers</option>
+        <select class="finp" id="ep-cat">
+          <option value="Yoni Care">Yoni Care</option>
+          <option value="Skin Care">Skin Care</option>
+          <option value="Bar Soaps">Bar Soaps</option>
+          <option value="Men Care">Men Care</option>
+          <option value="Hair Care">Hair Care</option>
+          <option value="Body Care">Body Care</option>
+          <option value="Bundles">Bundles</option>
+          <option value="Design Services">Design Services</option>
+          <option value="Containers">Containers</option>
         </select>
       </div>
-      <div class="frow">
-        <label>Tag (e.g. Best Seller)</label>
-        <input class="finp" id="ep-tag" placeholder="Best Seller">
-      </div>
     </div>
-    <div class="frow" id="ep-pricing-type-row">
-      <label>Pricing Format</label>
-      <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
-        <button type="button" id="ep-pt-liquid" class="btn btn-sm btn-ol" onclick="setEpPricingType('liquid')">By Volume</button>
-        <button type="button" id="ep-pt-weight" class="btn btn-sm btn-ol" onclick="setEpPricingType('weight')">By Weight</button>
-        <button type="button" id="ep-pt-soap" class="btn btn-sm btn-ol" onclick="setEpPricingType('soap')">Per Bar</button>
-        <button type="button" id="ep-pt-unit" class="btn btn-sm btn-ol" onclick="setEpPricingType('unit')">Per Unit</button>
-      </div>
-    </div>
-    <!-- Pricing sections -->
-    <div id="ep-pricing-liquid">
-      <div class="frow-3">
-        <div class="frow"><label>1 Litre Price (J$)</label><input class="finp" id="ep-p-l" type="number" placeholder="3500"></div>
-        <div class="frow"><label>Min Qty (litres)</label><input class="finp" id="ep-m-l" type="number" placeholder="1"></div>
-        <div></div>
-      </div>
-      <div class="frow-3">
-        <div class="frow"><label>Gallon Price (J$)</label><input class="finp" id="ep-p-g" type="number" placeholder="12000"></div>
-        <div class="frow"><label>Min Qty</label><input class="finp" id="ep-m-g" type="number" placeholder="1"></div>
-        <div></div>
-      </div>
-      <div class="frow-3">
-        <div class="frow"><label>5 Gallon Price (J$)</label><input class="finp" id="ep-p-5g" type="number" placeholder="50000"></div>
-        <div class="frow"><label>Min Qty</label><input class="finp" id="ep-m-5g" type="number" placeholder="1"></div>
-        <div></div>
-      </div>
-    </div>
-    <div id="ep-pricing-weight" style="display:none;">
-      <div class="frow-3">
-        <div class="frow"><label>½ lb Price (J$)</label><input class="finp" id="ep-p-hlb" type="number" placeholder="e.g. 2500"></div>
-        <div class="frow"><label>½ lb MOQ</label><input class="finp" id="ep-m-hlb" type="number" placeholder="1"></div>
-        <div></div>
-      </div>
-      <div class="frow-3">
-        <div class="frow"><label>1 lb Price (J$)</label><input class="finp" id="ep-p-1lb" type="number" placeholder="e.g. 4500"></div>
-        <div class="frow"><label>1 lb MOQ</label><input class="finp" id="ep-m-1lb" type="number" placeholder="1"></div>
-        <div></div>
-      </div>
-      <div class="frow-3">
-        <div class="frow"><label>2 lbs Price (J$)</label><input class="finp" id="ep-p-lb2" type="number"></div>
-        <div class="frow"><label>8 lbs Price (J$)</label><input class="finp" id="ep-p-lb8" type="number"></div>
-        <div class="frow"><label>40 lbs Price (J$)</label><input class="finp" id="ep-p-lb40" type="number"></div>
-      </div>
-    </div>
-    <div id="ep-pricing-soap" style="display:none;">
-      <div class="frow-2">
-        <div class="frow"><label>Price per 10 bars (J$)</label><input class="finp" id="ep-p-bar" type="number"></div>
-        <div class="frow"><label>Min Qty (bars)</label><input class="finp" id="ep-m-bar" type="number" value="10"></div>
-      </div>
-    </div>
-    <div id="ep-pricing-unit" style="display:none;">
-      <div class="frow"><label>Unit Description</label><input class="finp" id="ep-unit-desc" placeholder="e.g. 100 Caps, Bundle, Pack"></div>
-      <div class="frow-2">
-        <div class="frow"><label>Price per Unit (J$)</label><input class="finp" id="ep-p-unit" type="number"></div>
-        <div class="frow"><label>Min Qty</label><input class="finp" id="ep-m-unit" type="number" value="1"></div>
-      </div>
-    </div>
+    <div class="frow"><label>Tagline / Description</label><input class="finp" id="ep-tl" placeholder="Short marketing description"></div>
     <div class="frow"><label>Ingredients</label><input class="finp" id="ep-ing" placeholder="Kojic Acid, Turmeric, Coconut Oil…"></div>
     <div class="frow"><label>Benefits (comma separated)</label><input class="finp" id="ep-ben" placeholder="Fades dark spots, Brightens skin, Reduces acne"></div>
-    <div class="frow"><label>How to Use</label><textarea class="finp" id="ep-use" rows="2"></textarea></div>
+    <div class="frow"><label>Warnings / How to Use</label><textarea class="finp" id="ep-use" rows="2"></textarea></div>
     <div class="frow-2">
-      <div class="frow">
-        <label>Product Image</label>
-        <input type="file" accept="image/*" id="ep-img-input" onchange="previewEpImg(this)" style="font-size:0.78rem;">
-        <img id="ep-img-preview" style="margin-top:0.5rem;max-width:100%;max-height:120px;border-radius:8px;display:none;">
-      </div>
       <div class="frow">
         <label>Visibility</label>
         <select class="finp" id="ep-hidden">
@@ -960,8 +891,28 @@ select.finp{cursor:pointer;}
           <option value="true">Hidden (admin only)</option>
         </select>
       </div>
+      <div class="frow">
+        <label>Product Image</label>
+        <input type="file" accept="image/*" id="ep-img-input" onchange="previewEpImg(this)" style="font-size:0.78rem;">
+        <img id="ep-img-preview" style="margin-top:0.5rem;max-width:100%;max-height:120px;border-radius:8px;display:none;">
+      </div>
     </div>
-    <div class="btn-group" style="margin-top:0.5rem;justify-content:flex-end;">
+    <div style="margin-top:0.8rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
+        <label style="font-size:0.75rem;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:0.04em;">Variants</label>
+        <button type="button" class="btn btn-sm btn-ol" onclick="addVariantRow()">+ Add Variant</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1.5fr 1.5fr 1fr 0.8fr 1.5fr 1.4rem;gap:0.35rem;margin-bottom:0.3rem;padding:0 0.1rem;">
+        <span style="font-size:0.68rem;color:var(--mid);font-weight:600;text-transform:uppercase;">Size</span>
+        <span style="font-size:0.68rem;color:var(--mid);font-weight:600;text-transform:uppercase;">SKU</span>
+        <span style="font-size:0.68rem;color:var(--mid);font-weight:600;text-transform:uppercase;">Price J$</span>
+        <span style="font-size:0.68rem;color:var(--mid);font-weight:600;text-transform:uppercase;">Wt kg</span>
+        <span style="font-size:0.68rem;color:var(--mid);font-weight:600;text-transform:uppercase;">Scents</span>
+        <span></span>
+      </div>
+      <div id="ep-variants-body"></div>
+    </div>
+    <div class="btn-group" style="margin-top:1rem;justify-content:flex-end;">
       <button class="btn btn-ol" onclick="closeM('m-edit-product')">Cancel</button>
       <button class="btn btn-dk" onclick="saveProduct()">Save Product</button>
     </div>
@@ -998,16 +949,17 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "http
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDYdt_0wJNcfGl2WbIKPiESdVcmc-cqZgM",
-  authDomain: "najahchemistja.com",
-  projectId: "najah-chemist",
-  storageBucket: "najah-chemist.firebasestorage.app",
-  messagingSenderId: "89819999556",
-  appId: "1:89819999556:web:4e6eb5c0c881da5e763b11"
+  apiKey: "AIzaSyCHSSW0hZldMIjhCTdSN27wgxxtcCMXlSE",
+  authDomain: "najah-chemist-staging.firebaseapp.com",
+  projectId: "najah-chemist-staging",
+  storageBucket: "najah-chemist-staging.firebasestorage.app",
+  messagingSenderId: "165284411356",
+  appId: "1:165284411356:web:7f9e654b4c24ebf64b0119"
 };
 
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
+window._db = db;
 const auth = getAuth(firebaseApp);
 const storage = getStorage(firebaseApp);
 const functions = getFunctions(firebaseApp);
@@ -1925,25 +1877,27 @@ async function runBackfillOnce() {
 function renderProductsTable(){
   const tbody = document.getElementById('products-tbody');
   let list = [...PRODUCTS];
-  if(_productFilter==='visible') list=list.filter(p=>!p.hidden);
-  if(_productFilter==='hidden') list=list.filter(p=>p.hidden);
-  if(_productSearch){ const s=_productSearch.toLowerCase(); list=list.filter(p=>(p.name||'').toLowerCase().includes(s)||(p.sku||'').toLowerCase().includes(s)||(p.cat||'').toLowerCase().includes(s)); }
-  if(!list.length){ tbody.innerHTML='<tr><td colspan="6" class="empty-state">No products found</td></tr>'; return; }
+  const isHiddenFn = p => !!(p.isHidden || p.hidden);
+  if(_productFilter==='visible') list=list.filter(p=>!isHiddenFn(p));
+  if(_productFilter==='hidden') list=list.filter(p=>isHiddenFn(p));
+  if(_productSearch){ const s=_productSearch.toLowerCase(); list=list.filter(p=>(p.name||'').toLowerCase().includes(s)||(p.category||p.cat||'').toLowerCase().includes(s)); }
+  if(!list.length){ tbody.innerHTML='<tr><td colspan="5" class="empty-state">No products found</td></tr>'; return; }
   tbody.innerHTML = list.map(p=>{
-    const firstKey = Object.keys(p.pricing||{})[0];
-    const fromPrice = firstKey ? 'J$'+p.pricing[firstKey].price.toLocaleString() : '—';
+    const hidden = isHiddenFn(p);
+    const variantCount = Array.isArray(p.variants) ? p.variants.length : Object.keys(p.pricing||{}).length;
+    const cat = escHtml(p.category || p.cat || '—');
+    const docId = p._docId;
     return `<tr>
-      <td><code style="font-size:0.7rem;background:var(--warm);padding:0.15rem 0.4rem;border-radius:4px;">${p.sku||'—'}</code></td>
-      <td><strong>${p.name||'—'}</strong><br><span class="text-sm">${p.tagline||''}</span></td>
-      <td><span class="pill">${p.cat||'—'}</span></td>
-      <td>${fromPrice}</td>
-      <td><span class="badge ${p.hidden?'b-hidden':'b-visible'}">${p.hidden?'Hidden':'Visible'}</span>${p.outOfStock?'&nbsp;<span class="badge b-oos">OUT OF STOCK</span>':''}</td>
+      <td><strong>${escHtml(p.name||'—')}</strong><br><span class="text-sm">${escHtml(p.tagline||p.description||'')}</span></td>
+      <td><span class="pill">${cat}</span></td>
+      <td><span class="text-sm">${variantCount} variant${variantCount!==1?'s':''}</span></td>
+      <td><span class="badge ${hidden?'b-hidden':'b-visible'}">${hidden?'Hidden':'Visible'}</span>${p.outOfStock?'&nbsp;<span class="badge b-oos">OUT OF STOCK</span>':''}</td>
       <td class="btn-group">
-        <button class="btn btn-sm btn-ol" onclick="editProduct('${p.id||p._docId}')">Edit</button>
-        <button class="btn btn-sm" style="background:${p.hidden?'#6B7280':'#059669'};color:white;border:none;padding:0.3rem 0.6rem;font-size:0.72rem;border-radius:6px;cursor:pointer;" onclick="toggleHidden('${p.id||p._docId}',${!p.hidden})">${p.hidden?'Show':'Hide'}</button>
-        <button class="btn btn-sm" style="background:#DC2626;color:white;border:none;padding:0.3rem 0.6rem;font-size:0.72rem;border-radius:6px;cursor:pointer;${p.outOfStock?'display:none;':''}" onclick="toggleOutOfStock('${p.id||p._docId}',true)">Out of Stock</button>
-        ${p.outOfStock?`<button class="btn btn-sm" style="background:#059669;color:white;border:none;padding:0.3rem 0.7rem;font-size:0.72rem;border-radius:6px;cursor:pointer;font-weight:700;" onclick="restockProduct('${p.id||p._docId}')">✓ Mark Restocked</button>`:''}
-        <button class="btn btn-sm btn-rd" onclick="deleteProduct('${p.id||p._docId}')">🗑</button>
+        <button class="btn btn-sm btn-ol" onclick="editProduct('${docId}')">Edit</button>
+        <button class="btn btn-sm" style="background:${hidden?'#6B7280':'#059669'};color:white;border:none;padding:0.3rem 0.6rem;font-size:0.72rem;border-radius:6px;cursor:pointer;" onclick="toggleHidden('${docId}',${!hidden})">${hidden?'Show':'Hide'}</button>
+        <button class="btn btn-sm" style="background:#DC2626;color:white;border:none;padding:0.3rem 0.6rem;font-size:0.72rem;border-radius:6px;cursor:pointer;${p.outOfStock?'display:none;':''}" onclick="toggleOutOfStock('${docId}',true)">Out of Stock</button>
+        ${p.outOfStock?`<button class="btn btn-sm" style="background:#059669;color:white;border:none;padding:0.3rem 0.7rem;font-size:0.72rem;border-radius:6px;cursor:pointer;font-weight:700;" onclick="restockProduct('${docId}')">✓ Mark Restocked</button>`:''}
+        <button class="btn btn-sm btn-rd" onclick="deleteProduct('${docId}')">🗑</button>
       </td>
     </tr>`;
   }).join('');
@@ -1952,128 +1906,112 @@ function renderProductsTable(){
 window.filterProducts = function(f,btn){ _productFilter=f; document.querySelectorAll('#v-products .filter-btn').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); renderProductsTable(); };
 window.searchProducts = function(v){ _productSearch=v; renderProductsTable(); };
 
-window.editProduct = function(id){
-  const p = PRODUCTS.find(x=>(x.id||x._docId)===id);
+window.editProduct = function(docId){
+  const p = PRODUCTS.find(x=>x._docId===docId);
   if(!p) return;
   document.getElementById('prod-modal-title').textContent='Edit Product';
-  document.getElementById('ep-id').value = p.id||p._docId;
-  document.getElementById('ep-sku').value = p.sku||'';
+  document.getElementById('ep-id').value = docId;
   document.getElementById('ep-name').value = p.name||'';
-  document.getElementById('ep-tl').value = p.tagline||'';
-  document.getElementById('ep-cat').value = p.cat||'cream';
-  document.getElementById('ep-tag').value = p.tag||'';
+  document.getElementById('ep-tl').value = p.tagline||p.description||'';
+  document.getElementById('ep-cat').value = p.category||p.cat||'Skin Care';
   document.getElementById('ep-ing').value = p.ingredients||'';
   document.getElementById('ep-ben').value = Array.isArray(p.benefits)?p.benefits.join(', '):(p.benefits||'');
-  document.getElementById('ep-use').value = p.usage||'';
-  document.getElementById('ep-hidden').value = p.hidden?'true':'false';
+  document.getElementById('ep-use').value = p.warnings||p.usage||'';
+  document.getElementById('ep-hidden').value = (p.isHidden||p.hidden)?'true':'false';
   if(p.img){ document.getElementById('ep-img-preview').src=p.img; document.getElementById('ep-img-preview').style.display='block'; }
   else { document.getElementById('ep-img-preview').style.display='none'; }
-  updatePricingUI(p.cat);
-  const pKeys = Object.keys(p.pricing||{});
-  if(pKeys.some(k=>k.startsWith('bars')||k==='bar')){
-    setEpPricingType('soap');
-    const bk=pKeys.find(k=>k.startsWith('bars')||k==='bar')||'bars10';
-    if(p.pricing[bk]){ document.getElementById('ep-p-bar').value=p.pricing[bk].price; document.getElementById('ep-m-bar').value=p.pricing[bk].moq; }
-  } else if(pKeys.some(k=>k==='lb2'||k==='lb8'||k==='lb40'||k==='halfLb'||k==='lb1')){
-    setEpPricingType('weight');
-    if(p.pricing.halfLb){ document.getElementById('ep-p-hlb').value=p.pricing.halfLb.price; document.getElementById('ep-m-hlb').value=p.pricing.halfLb.moq||1; }
-    if(p.pricing.lb1){ document.getElementById('ep-p-1lb').value=p.pricing.lb1.price; document.getElementById('ep-m-1lb').value=p.pricing.lb1.moq||1; }
-    if(p.pricing.lb2) document.getElementById('ep-p-lb2').value=p.pricing.lb2.price;
-    if(p.pricing.lb8) document.getElementById('ep-p-lb8').value=p.pricing.lb8.price;
-    if(p.pricing.lb40) document.getElementById('ep-p-lb40').value=p.pricing.lb40.price;
-  } else if(pKeys.some(k=>k==='kit'||k==='unit'||k==='design')){
-    setEpPricingType('unit');
-    const uk=pKeys.find(k=>k==='kit'||k==='unit'||k==='design')||'kit';
-    if(p.pricing[uk]){ document.getElementById('ep-p-unit').value=p.pricing[uk].price; document.getElementById('ep-m-unit').value=p.pricing[uk].moq||1; }
-    const descSrc=p.unitDesc||p.pricing[uk]?.desc||p.pricing[uk]?.unitDesc||'';
-    const udEl=document.getElementById('ep-unit-desc'); if(udEl) udEl.value=descSrc;
-  } else {
-    setEpPricingType('liquid');
-    if(p.pricing?.litre){ document.getElementById('ep-p-l').value=p.pricing.litre.price; document.getElementById('ep-m-l').value=p.pricing.litre.moq; }
-    if(p.pricing?.gallon){ document.getElementById('ep-p-g').value=p.pricing.gallon.price; document.getElementById('ep-m-g').value=p.pricing.gallon.moq; }
-    if(p.pricing?.['5gal']){ document.getElementById('ep-p-5g').value=p.pricing['5gal'].price; document.getElementById('ep-m-5g').value=p.pricing['5gal'].moq; }
-  }
+  renderVariantRows(p.variants||[]);
   openM('m-edit-product');
 };
 
-window.updatePricingUI = function(catOverride){
-  const cat = catOverride || document.getElementById('ep-cat').value;
-  const isSoap = cat==='soap';
-  const isBundle = cat==='bundle'||cat==='label';
-  let type = isSoap ? 'soap' : isBundle ? 'unit' : 'liquid';
-  setEpPricingType(type);
+function renderVariantRows(variants) {
+  const container = document.getElementById('ep-variants-body');
+  if (!variants || !variants.length) { container.innerHTML = ''; return; }
+  container.innerHTML = variants.map(v => `
+    <div class="variant-row" style="display:grid;grid-template-columns:1.5fr 1.5fr 1fr 0.8fr 1.5fr 1.4rem;gap:0.35rem;align-items:center;margin-bottom:0.4rem;">
+      <input class="finp" style="padding:0.35rem 0.5rem;font-size:0.75rem;" placeholder="Size" value="${escHtml(v.size||'')}" data-field="size">
+      <input class="finp" style="padding:0.35rem 0.5rem;font-size:0.75rem;" placeholder="SKU" value="${escHtml(v.sku||'')}" data-field="sku">
+      <input class="finp" style="padding:0.35rem 0.5rem;font-size:0.75rem;" type="number" placeholder="Price" value="${v.price||''}" data-field="price">
+      <input class="finp" style="padding:0.35rem 0.5rem;font-size:0.75rem;" type="number" step="0.5" min="0" placeholder="kg" value="${v.shippingWeightKg||''}" data-field="shippingWeightKg">
+      <input class="finp" style="padding:0.35rem 0.5rem;font-size:0.75rem;" placeholder="Scents (comma sep)" value="${escHtml((v.scents||[]).join(', '))}" data-field="scents">
+      <button type="button" onclick="deleteVariantRow(this)" style="background:#FEE2E2;color:#DC2626;border:none;border-radius:6px;padding:0.25rem 0.4rem;cursor:pointer;font-size:0.9rem;line-height:1;">✕</button>
+    </div>`).join('');
+}
+
+window.addVariantRow = function() {
+  const container = document.getElementById('ep-variants-body');
+  const div = document.createElement('div');
+  div.className = 'variant-row';
+  div.style.cssText = 'display:grid;grid-template-columns:1.5fr 1.5fr 1fr 0.8fr 1.5fr 1.4rem;gap:0.35rem;align-items:center;margin-bottom:0.4rem;';
+  div.innerHTML = `
+    <input class="finp" style="padding:0.35rem 0.5rem;font-size:0.75rem;" placeholder="Size" data-field="size">
+    <input class="finp" style="padding:0.35rem 0.5rem;font-size:0.75rem;" placeholder="SKU" data-field="sku">
+    <input class="finp" style="padding:0.35rem 0.5rem;font-size:0.75rem;" type="number" placeholder="Price" data-field="price">
+    <input class="finp" style="padding:0.35rem 0.5rem;font-size:0.75rem;" type="number" step="0.5" min="0" placeholder="kg" data-field="shippingWeightKg">
+    <input class="finp" style="padding:0.35rem 0.5rem;font-size:0.75rem;" placeholder="Scents (comma sep)" data-field="scents">
+    <button type="button" onclick="deleteVariantRow(this)" style="background:#FEE2E2;color:#DC2626;border:none;border-radius:6px;padding:0.25rem 0.4rem;cursor:pointer;font-size:0.9rem;line-height:1;">✕</button>`;
+  container.appendChild(div);
 };
 
-window.setEpPricingType = function(type){
-  document.getElementById('ep-pricing-liquid').style.display = type==='liquid' ? 'block' : 'none';
-  document.getElementById('ep-pricing-weight').style.display = type==='weight' ? 'block' : 'none';
-  document.getElementById('ep-pricing-soap').style.display = type==='soap' ? 'block' : 'none';
-  document.getElementById('ep-pricing-unit').style.display = type==='unit' ? 'block' : 'none';
-  ['liquid','weight','soap','unit'].forEach(t=>{
-    const btn=document.getElementById('ep-pt-'+t);
-    if(btn) btn.classList.toggle('btn-dk',t===type);
-    if(btn) btn.classList.toggle('btn-ol',t!==type);
-  });
-  window._epPricingType = type;
+window.deleteVariantRow = function(btn) {
+  btn.closest('.variant-row').remove();
 };
+
+function collectVariants() {
+  return Array.from(document.querySelectorAll('#ep-variants-body .variant-row')).map(row => {
+    const get = f => row.querySelector(`[data-field="${f}"]`)?.value || '';
+    const scentsRaw = get('scents');
+    return {
+      size: get('size').trim(),
+      sku: get('sku').trim(),
+      price: parseFloat(get('price')) || 0,
+      shippingWeightKg: parseFloat(get('shippingWeightKg')) || 0,
+      scents: scentsRaw ? scentsRaw.split(',').map(s=>s.trim()).filter(Boolean) : [],
+    };
+  }).filter(v => v.size || v.sku || v.price);
+}
 
 window.resetProductForm = function(){
   document.getElementById('prod-modal-title').textContent='Add Product';
   document.getElementById('ep-id').value='';
-  ['ep-sku','ep-name','ep-tl','ep-tag','ep-ing','ep-ben','ep-use','ep-p-l','ep-m-l','ep-p-g','ep-m-g','ep-p-5g','ep-m-5g','ep-p-bar','ep-m-bar','ep-p-lb2','ep-p-lb8','ep-p-lb40','ep-p-unit','ep-m-unit','ep-unit-desc','ep-p-hlb','ep-m-hlb','ep-p-1lb','ep-m-1lb'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  document.getElementById('ep-cat').value='cream';
+  ['ep-name','ep-tl','ep-ing','ep-ben','ep-use'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('ep-cat').value='Skin Care';
   document.getElementById('ep-hidden').value='false';
   document.getElementById('ep-img-preview').style.display='none';
-  updatePricingUI('cream');
+  document.getElementById('ep-variants-body').innerHTML='';
 };
 
 window.saveProduct = async function(){
   const name = document.getElementById('ep-name').value.trim();
   if(!name){ toast('Enter a product name'); return; }
-  const cat = document.getElementById('ep-cat').value;
-  const editId = document.getElementById('ep-id').value;
-  let pricing = {};
-  const _pType = window._epPricingType || 'liquid';
-  const soapVis = _pType==='soap';
-  const bundleVis = _pType==='unit';
-  const weightVis = _pType==='weight';
-  if(soapVis){
-    const p=document.getElementById('ep-p-bar').value; if(p) pricing.bars10={price:parseFloat(p),moq:parseInt(document.getElementById('ep-m-bar').value)||10};
-  } else if(bundleVis){
-    const pUnit=document.getElementById('ep-p-unit').value; const uk=cat==='label'?'design':cat==='bundle'?'kit':'unit';
-    const unitDesc=(document.getElementById('ep-unit-desc')?.value||'').trim();
-    if(pUnit) pricing[uk]={price:parseFloat(pUnit),moq:parseInt(document.getElementById('ep-m-unit').value)||1,...(unitDesc?{unitDesc}:{})};
-  } else if(weightVis){
-    const phlb=document.getElementById('ep-p-hlb').value; if(phlb) pricing.halfLb={price:parseFloat(phlb),moq:parseInt(document.getElementById('ep-m-hlb').value)||1};
-    const p1lb=document.getElementById('ep-p-1lb').value; if(p1lb) pricing.lb1={price:parseFloat(p1lb),moq:parseInt(document.getElementById('ep-m-1lb').value)||1};
-    const pl2=document.getElementById('ep-p-lb2').value; if(pl2) pricing.lb2={price:parseFloat(pl2),moq:1};
-    const pl8=document.getElementById('ep-p-lb8').value; if(pl8) pricing.lb8={price:parseFloat(pl8),moq:1};
-    const pl40=document.getElementById('ep-p-lb40').value; if(pl40) pricing.lb40={price:parseFloat(pl40),moq:1};
-    if(!Object.keys(pricing).length) pricing.lb2={price:0,moq:1};
-  } else {
-    const pl=document.getElementById('ep-p-l').value; if(pl) pricing.litre={price:parseFloat(pl),moq:parseInt(document.getElementById('ep-m-l').value)||1};
-    const pg=document.getElementById('ep-p-g').value; if(pg) pricing.gallon={price:parseFloat(pg),moq:parseInt(document.getElementById('ep-m-g').value)||1};
-    const p5=document.getElementById('ep-p-5g').value; if(p5) pricing['5gal']={price:parseFloat(p5),moq:parseInt(document.getElementById('ep-m-5g').value)||1};
-  }
-  if(!Object.keys(pricing).length) pricing.litre={price:0,moq:1};
+  const editDocId = document.getElementById('ep-id').value;
+  const isHidden = document.getElementById('ep-hidden').value === 'true';
   const imgPrev = document.getElementById('ep-img-preview');
-  const img = imgPrev.style.display!=='none' ? imgPrev.src : (editId?(PRODUCTS.find(p=>(p.id||p._docId)===editId)||{}).img||'':'');
+  const newImg = imgPrev.style.display!=='none' ? imgPrev.src : '';
+  const existing = editDocId ? PRODUCTS.find(p=>p._docId===editDocId) : null;
+  const variants = collectVariants();
   const productData = {
-    id: editId || ('p'+Date.now()),
-    sku: document.getElementById('ep-sku').value.trim(),
-    name, tagline: document.getElementById('ep-tl').value,
-    cat, tag: document.getElementById('ep-tag').value,
-    emoji: '🧴', pricing,
-    unitDesc: (document.getElementById('ep-unit-desc')?.value||'').trim()||null,
+    name,
+    category: document.getElementById('ep-cat').value,
+    tagline: document.getElementById('ep-tl').value,
+    description: document.getElementById('ep-tl').value,
     ingredients: document.getElementById('ep-ing').value,
     benefits: document.getElementById('ep-ben').value.split(',').map(s=>s.trim()).filter(Boolean),
-    usage: document.getElementById('ep-use').value,
-    hidden: document.getElementById('ep-hidden').value==='true',
-    img,
+    warnings: document.getElementById('ep-use').value,
+    isHidden,
+    isActive: !isHidden,
+    variants,
+    emoji: existing?.emoji || '🧴',
+    img: newImg || existing?.img || '',
   };
+  let docId = editDocId;
+  if(!docId){
+    docId = name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+    productData.id = docId;
+    productData.legacyId = docId;
+  }
   try {
-    const docId = editId || productData.id;
-    await setDoc(doc(db,'products',docId), productData);
+    await setDoc(doc(db,'products',docId), productData, {merge: !!editDocId});
     toast('Product saved ✓');
     closeM('m-edit-product');
     resetProductForm();
@@ -2101,11 +2039,10 @@ window.previewEpImg = function(input){
 };
 
 window.toggleHidden = async function(id, newHidden){
-  const p = PRODUCTS.find(x=>(x.id||x._docId)===id);
+  const p = PRODUCTS.find(x=>x._docId===id);
   if(!p) return;
-  const docId = p._docId||p.id;
   try {
-    await updateDoc(doc(db,'products',docId),{hidden:newHidden});
+    await updateDoc(doc(db,'products',id),{hidden:newHidden, isHidden:newHidden, isActive:!newHidden});
     toast(newHidden?'Product hidden':'Product visible');
   } catch(e){ toast('Error: '+e.message); }
 };
@@ -2199,10 +2136,8 @@ window.restockProduct = async function(id) {
   }
 };
 
-window.deleteProduct = async function(id){
+window.deleteProduct = async function(docId){
   if(!confirm('Delete this product? This cannot be undone.')) return;
-  const p = PRODUCTS.find(x=>(x.id||x._docId)===id);
-  const docId = p?p._docId||p.id:id;
   try { await deleteDoc(doc(db,'products',docId)); toast('Product deleted'); } catch(e){ toast('Error: '+e.message); }
 };
 

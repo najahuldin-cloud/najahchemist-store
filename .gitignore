@@ -1,4 +1,8 @@
 
+# Firebase service account keys — never commit
+staging-service-account.json
+prod-service-account.json
+
 # Local migration/dev scripts — contain hardcoded Firebase config
 migrate-products.js
 migrate-products-browser.js
@@ -6,3 +10,6 @@ add-bo2.html
 add-bo2.mjs
 update-bo2-cat.mjs
 functions/node_modules
+
+# Local Netlify folder
+.netlify

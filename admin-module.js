@@ -1,7 +1,7 @@
 // ════════════════════════════════════════════════════
 // NAJAH CHEMIST — Single clean script. No duplicates.
-// Firebase: najah-chemist project
-// Admin email: start@najahchemist.com
+// Firebase: najah-chemist-staging project (STAGING BRANCH)
+// Admin email: start@najahchemistja.com
 // ════════════════════════════════════════════════════
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -9,12 +9,12 @@ import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateD
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDYdt_0wJNcfGl2WbIKPiESdVcmc-cqZgM",
-  authDomain: "najahchemistja.com",
-  projectId: "najah-chemist",
-  storageBucket: "najah-chemist.firebasestorage.app",
-  messagingSenderId: "89819999556",
-  appId: "1:89819999556:web:4e6eb5c0c881da5e763b11"
+  apiKey: "AIzaSyCHSSW0hZldMIjhCTdSN27wgxxtcCMXlSE",
+  authDomain: "najah-chemist-staging.firebaseapp.com",
+  projectId: "najah-chemist-staging",
+  storageBucket: "najah-chemist-staging.firebasestorage.app",
+  messagingSenderId: "165284411356",
+  appId: "1:165284411356:web:7f9e654b4c24ebf64b0119"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -24,11 +24,11 @@ window._app = app;
 const auth = getAuth(app);
 
 // ═══ DATA ═══
+// Module-scoped PRODUCTS — admin panel's own array, populated by loadFromDB().
+// This shadows window.PRODUCTS so loadFromDB never overwrites the storefront's
+// correctly-formatted product list.
+let PRODUCTS = [];
 window.PRODUCTS = window.PRODUCTS || [];
-let PRODUCTS = [
-  // Products are loaded from Firestore — see loadDashboardData()
-];
-window.PRODUCTS = PRODUCTS;
 
 let REVIEWS = {
   'tk':[{name:'Yanique T.',stars:5,text:'This soap changed my skin completely! Dark spots are fading fast.',date:'Feb 20'}],
@@ -444,7 +444,7 @@ function showToast(msg){
 // ═══ SIZE HELPERS ═══
 function sizeLabel(k){const labels={litre:'1 Litre',gallon:'1 Gallon','5gal':'5 Gallon',lb2:'2 lbs',lb8:'8 lbs',lb40:'40 lbs',bars10:'10 Bars',bars100:'100 Bars',caps100:'100 Caps',caps1000:'1000 Caps',halfLb:'½ lb',lb1:'1 lb',kit:'Per Unit',unit:'Per Unit',design:'Per Design',bar:'Per Bar'};return labels[k]||k.charAt(0).toUpperCase()+k.slice(1);}
 function getDisplayPrice(p){
-  const keys=Object.keys(p.pricing);
+  const keys=Object.keys(p.pricing||{});
   if(!keys.length) return {price:'Contact us',moq:''};
   const SO={halfLb:0,lb1:1,lb2:2,lb8:3,lb40:4,bar:0,bars10:0,bars100:1,litre:0,gallon:1,'5gal':2,caps100:0,caps1000:1,unit:0,kit:0,design:0};
   const f=keys.sort((a,b)=>((SO[a]??99)-(SO[b]??99)))[0];
