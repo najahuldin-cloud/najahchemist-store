@@ -24,6 +24,10 @@ window._app = app;
 const auth = getAuth(app);
 
 // ═══ DATA ═══
+// Module-scoped PRODUCTS — admin panel's own array, populated by loadFromDB().
+// This shadows window.PRODUCTS so loadFromDB never overwrites the storefront's
+// correctly-formatted product list.
+let PRODUCTS = [];
 window.PRODUCTS = window.PRODUCTS || [];
 
 let REVIEWS = {
@@ -440,7 +444,7 @@ function showToast(msg){
 // ═══ SIZE HELPERS ═══
 function sizeLabel(k){const labels={litre:'1 Litre',gallon:'1 Gallon','5gal':'5 Gallon',lb2:'2 lbs',lb8:'8 lbs',lb40:'40 lbs',bars10:'10 Bars',bars100:'100 Bars',caps100:'100 Caps',caps1000:'1000 Caps',halfLb:'½ lb',lb1:'1 lb',kit:'Per Unit',unit:'Per Unit',design:'Per Design',bar:'Per Bar'};return labels[k]||k.charAt(0).toUpperCase()+k.slice(1);}
 function getDisplayPrice(p){
-  const keys=Object.keys(p.pricing);
+  const keys=Object.keys(p.pricing||{});
   if(!keys.length) return {price:'Contact us',moq:''};
   const SO={halfLb:0,lb1:1,lb2:2,lb8:3,lb40:4,bar:0,bars10:0,bars100:1,litre:0,gallon:1,'5gal':2,caps100:0,caps1000:1,unit:0,kit:0,design:0};
   const f=keys.sort((a,b)=>((SO[a]??99)-(SO[b]??99)))[0];
