@@ -1,6 +1,7 @@
 
-# Staging Firebase service account key — never commit
+# Firebase service account keys — never commit
 staging-service-account.json
+prod-service-account.json
 
 # Local migration/dev scripts — contain hardcoded Firebase config
 migrate-products.js
