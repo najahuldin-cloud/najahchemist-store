@@ -62,6 +62,16 @@ function sfGetPrice(p) {
   const moqLabel = isUnit&&p.unitDesc ? 'Per Unit · '+p.unitDesc : sfSizeLabel(k);
   return {price:'From J$'+(entry.price||0).toLocaleString(), moq:moqLabel};
 }
+function sfRrpHtml(wholesalePrice, isContainer) {
+  if (isContainer || !wholesalePrice) return '';
+  const retLow  = wholesalePrice * 2;
+  const retHigh = wholesalePrice * 3;
+  return '<div style="margin-top:0.22rem;">' +
+    '<div style="font-size:0.7rem;color:#059669;">Suggested Retail: J$' + retLow.toLocaleString() + ' – J$' + retHigh.toLocaleString() + '</div>' +
+    '<div style="font-size:0.7rem;color:#059669;font-weight:700;">Est. Profit: J$' + (retLow - wholesalePrice).toLocaleString() + ' – J$' + (retHigh - wholesalePrice).toLocaleString() + ' per unit</div>' +
+    '<div style="font-size:0.65rem;color:#9CA3AF;margin-top:0.07rem;">Retail pricing may vary based on your branding and market.</div>' +
+    '</div>';
+}
 const SF_IMG_CLASS = {yoni:'img-wash',skin:'img-cream',soap:'img-soap',hair:'img-serum',pl:'img-label',containers:'img-cream'};
 const SF_CAT_LABEL = {yoni:'Yoni Care',skin:'Skin Care',soap:'Bar Soap',hair:'Hair Care',pl:'Private Label',containers:'Containers'};
 
@@ -215,6 +225,8 @@ function sfRenderProducts(filter) {
   }
   grid.innerHTML = list.map(p => {
     const {price, moq} = sfGetPrice(p);
+    const _minK = sfMinKey(p.pricing);
+    const _minPrice = _minK && p.pricing[_minK] ? (p.pricing[_minK].price || 0) : 0;
     const imgHtml = p.img ? `<img src="${p.img}" alt="${p.name}">` : `<span style="font-size:3rem;">${p.emoji}</span>`;
     const revs = (window.REVIEWS || {})[p.id] || [];
     const starHtml = revs.length
@@ -230,8 +242,9 @@ function sfRenderProducts(filter) {
       <div class="sf-card-body">
         <div class="sf-card-cat" style="display:flex;justify-content:space-between;align-items:center;">${SF_CAT_LABEL[p.cat]||p.cat}${starHtml}</div>
         <div class="sf-card-name">${p.name}</div>
-        <div style="font-size:0.78rem;font-weight:700;color:#B45309;margin-bottom:0.25rem;">${price}</div>
-        <div class="sf-card-tl" ${learnMoreUrl ? 'style="margin-bottom:0.2rem;"' : ''}>${p.tagline}</div>
+        <div style="font-size:0.78rem;font-weight:700;color:#B45309;margin-bottom:0.1rem;">${price}</div>
+        ${sfRrpHtml(_minPrice, p.cat === 'containers')}
+        <div class="sf-card-tl" style="margin-top:0.3rem;${learnMoreUrl ? 'margin-bottom:0.2rem;' : ''}">${p.tagline}</div>
         ${learnMoreHtml}
         <div class="sf-card-footer">
           <div class="sf-card-moq">${moq}</div>
@@ -546,6 +559,19 @@ function sfOpenProduct(id) {
   const firstEntry = p.pricing[keys[0]];
   setHTML('sf-modal-price-row', `<div class="sf-modal-price-item"><div class="sf-modal-price-lbl">Price</div><div class="sf-modal-price-val" id="sf-m-price">J$${firstEntry.price.toLocaleString()}</div></div><div class="sf-modal-price-item"><div class="sf-modal-price-lbl">Size</div><div class="sf-modal-price-val" id="sf-m-moq">${sfSizeLabel(keys[0])}</div></div>`);
 
+  // RRP — inject/update element immediately after price row
+  const _priceRowEl = document.getElementById('sf-modal-price-row');
+  if (_priceRowEl) {
+    let _rrpEl = document.getElementById('sf-modal-rrp');
+    if (!_rrpEl) {
+      _rrpEl = document.createElement('div');
+      _rrpEl.id = 'sf-modal-rrp';
+      _priceRowEl.parentNode.insertBefore(_rrpEl, _priceRowEl.nextSibling);
+    }
+    _rrpEl.style.cssText = 'padding:0.5rem 1.25rem 0;';
+    _rrpEl.innerHTML = sfRrpHtml(firstEntry.price, isContainer);
+  }
+
   // Qty
   set('sf-modal-qty-val', '1');
   set('sf-modal-moq-note', sfSizeLabel(keys[0]));
@@ -637,6 +663,8 @@ window.sfSelectSize = function(prodId, sizeKey, btn) {
   const _isUnit=['kit','unit','design'].includes(sizeKey);
   if (mq) mq.textContent = _isUnit&&p.unitDesc?p.unitDesc:sfSizeLabel(sizeKey);
   if (sub) sub.textContent = 'J$'+(p.pricing[sizeKey].price * sfCurrentModalQty).toLocaleString();
+  const _rrpEl = document.getElementById('sf-modal-rrp');
+  if (_rrpEl) _rrpEl.innerHTML = sfRrpHtml(p.pricing[sizeKey].price, p.cat === 'containers');
 };
 
 window.sfModalQty = function(delta) {
@@ -943,6 +971,7 @@ function sfRenderCart() {
         <div class="sf-cart-item-info">
           <div class="sf-cart-item-name">${item.name}</div>
           <div class="sf-cart-item-sub">${item.size}</div>
+          ${item.cat !== 'containers' && item.price ? `<div style="font-size:0.67rem;color:#059669;margin-top:0.12rem;">Retail est.: J$${(item.price*2).toLocaleString()}–J$${(item.price*3).toLocaleString()} / unit</div>` : ''}
           <div class="sf-cart-item-qty-row">
             <button class="sf-cq-btn" onclick="sfCartQty(${i},-1)">−</button>
             <span class="sf-cq-val">${item.qty}</span>
