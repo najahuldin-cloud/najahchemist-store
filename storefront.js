@@ -171,7 +171,7 @@ async function sfLoadProductsFromFirestore() {
       import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js'),
       import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js'),
     ]);
-    const SF_FB_CONFIG = { apiKey: 'AIzaSyDYdt_0wJNcfGl2WbIKPiESdVcmc-cqZgM', projectId: 'najah-chemist' };
+    const SF_FB_CONFIG = { apiKey: 'AIzaSyCHSSW0hZldMIjhCTdSN27wgxxtcCMXlSE', authDomain: 'najah-chemist-staging.firebaseapp.com', projectId: 'najah-chemist-staging', storageBucket: 'najah-chemist-staging.firebasestorage.app', messagingSenderId: '165284411356', appId: '1:165284411356:web:7f9e654b4c24ebf64b0119' };
     const appName = 'sf-products';
     const existing = fbApp.getApps().find(a => a.name === appName);
     const app = existing || fbApp.initializeApp(SF_FB_CONFIG, appName);
