@@ -62,8 +62,9 @@ function sfGetPrice(p) {
   const moqLabel = isUnit&&p.unitDesc ? 'Per Unit · '+p.unitDesc : sfSizeLabel(k);
   return {price:'From J$'+(entry.price||0).toLocaleString(), moq:moqLabel};
 }
-function sfRrpHtml(wholesalePrice, isContainer) {
-  if (isContainer || !wholesalePrice) return '';
+const SF_RRP_EXCLUDED_CATS = ['containers', 'bundle', 'label'];
+function sfRrpHtml(wholesalePrice, cat) {
+  if (!wholesalePrice || SF_RRP_EXCLUDED_CATS.includes(cat)) return '';
   const retLow  = wholesalePrice * 2;
   const retHigh = wholesalePrice * 3;
   return '<div style="margin-top:0.22rem;">' +
@@ -243,7 +244,7 @@ function sfRenderProducts(filter) {
         <div class="sf-card-cat" style="display:flex;justify-content:space-between;align-items:center;">${SF_CAT_LABEL[p.cat]||p.cat}${starHtml}</div>
         <div class="sf-card-name">${p.name}</div>
         <div style="font-size:0.78rem;font-weight:700;color:#B45309;margin-bottom:0.1rem;">${price}</div>
-        ${sfRrpHtml(_minPrice, p.cat === 'containers')}
+        ${sfRrpHtml(_minPrice, p.cat)}
         <div class="sf-card-tl" style="margin-top:0.3rem;${learnMoreUrl ? 'margin-bottom:0.2rem;' : ''}">${p.tagline}</div>
         ${learnMoreHtml}
         <div class="sf-card-footer">
@@ -569,7 +570,7 @@ function sfOpenProduct(id) {
       _priceRowEl.parentNode.insertBefore(_rrpEl, _priceRowEl.nextSibling);
     }
     _rrpEl.style.cssText = 'padding:0.5rem 1.25rem 0;';
-    _rrpEl.innerHTML = sfRrpHtml(firstEntry.price, isContainer);
+    _rrpEl.innerHTML = sfRrpHtml(firstEntry.price, p.cat);
   }
 
   // Qty
@@ -664,7 +665,7 @@ window.sfSelectSize = function(prodId, sizeKey, btn) {
   if (mq) mq.textContent = _isUnit&&p.unitDesc?p.unitDesc:sfSizeLabel(sizeKey);
   if (sub) sub.textContent = 'J$'+(p.pricing[sizeKey].price * sfCurrentModalQty).toLocaleString();
   const _rrpEl = document.getElementById('sf-modal-rrp');
-  if (_rrpEl) _rrpEl.innerHTML = sfRrpHtml(p.pricing[sizeKey].price, p.cat === 'containers');
+  if (_rrpEl) _rrpEl.innerHTML = sfRrpHtml(p.pricing[sizeKey].price, p.cat);
 };
 
 window.sfModalQty = function(delta) {
@@ -971,7 +972,7 @@ function sfRenderCart() {
         <div class="sf-cart-item-info">
           <div class="sf-cart-item-name">${item.name}</div>
           <div class="sf-cart-item-sub">${item.size}</div>
-          ${item.cat !== 'containers' && item.price ? `<div style="font-size:0.67rem;color:#059669;margin-top:0.12rem;">Retail est.: J$${(item.price*2).toLocaleString()}–J$${(item.price*3).toLocaleString()} / unit</div>` : ''}
+          ${item.price && !SF_RRP_EXCLUDED_CATS.includes(item.cat) ? `<div style="font-size:0.67rem;color:#059669;margin-top:0.12rem;">Retail est.: J$${(item.price*2).toLocaleString()}–J$${(item.price*3).toLocaleString()} / unit</div>` : ''}
           <div class="sf-cart-item-qty-row">
             <button class="sf-cq-btn" onclick="sfCartQty(${i},-1)">−</button>
             <span class="sf-cq-val">${item.qty}</span>
