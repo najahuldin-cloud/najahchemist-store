@@ -373,7 +373,7 @@ function renderBestSellers(){
   const section = document.getElementById('sf-bestsellers-section');
   const grid = document.getElementById('sf-bs-grid');
   if(!section||!grid) return;
-  const prods = ids.map(id=>PRODUCTS.find(p=>p.id===id)).filter(Boolean).slice(0,3);
+  const prods = ids.map(id=>PRODUCTS.find(p=>p.legacyId===id||p.id===id)).filter(Boolean).slice(0,3);
   if(!prods.length){ section.style.display='none'; return; }
   section.style.display='block';
   grid.innerHTML = prods.map(p=>{

@@ -209,7 +209,7 @@ async function sfLoadProductsFromFirestore() {
     });
 
     const containers = (window.PRODUCTS || []).filter(p => p.id.startsWith('con'));
-    window.PRODUCTS  = [...loaded, ...containers];
+    window.PRODUCTS  = [...loaded.filter(p => !p.hidden), ...containers];
     sfRenderProducts('all');
     sfRenderHeroCards();
   } catch (err) {
