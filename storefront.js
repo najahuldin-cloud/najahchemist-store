@@ -204,7 +204,7 @@ async function sfLoadProductsFromFirestore() {
         sku:        d.sku   || '',
         pricing,
         outOfStock: d.outOfStock || false,
-        hidden:     d.isHidden   || false,
+        hidden:     d.isHidden || d.hidden || false,
       });
     });
 
