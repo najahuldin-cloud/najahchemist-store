@@ -63,15 +63,72 @@ function sfGetPrice(p) {
   return {price:'From J$'+(entry.price||0).toLocaleString(), moq:moqLabel};
 }
 const SF_RRP_EXCLUDED_CATS = ['containers', 'bundle', 'label'];
-function sfRrpHtml(wholesalePrice, cat) {
-  if (!wholesalePrice || SF_RRP_EXCLUDED_CATS.includes(cat)) return '';
-  const retLow  = wholesalePrice * 2;
-  const retHigh = wholesalePrice * 3;
-  return '<div style="margin-top:0.22rem;">' +
-    '<div style="font-size:0.7rem;color:#059669;">Suggested Retail: J$' + retLow.toLocaleString() + ' – J$' + retHigh.toLocaleString() + '</div>' +
-    '<div style="font-size:0.7rem;color:#059669;font-weight:700;">Est. Profit: J$' + (retLow - wholesalePrice).toLocaleString() + ' – J$' + (retHigh - wholesalePrice).toLocaleString() + ' per unit</div>' +
-    '<div style="font-size:0.65rem;color:#9CA3AF;margin-top:0.07rem;">Retail pricing may vary based on your branding and market.</div>' +
-    '</div>';
+const SF_RRP = {
+  'yoni-foaming-wash':           { low: 1500, high: 2200, online_low: 3600, online_high: 4800 },
+  'yoni-foaming-scrub':          { low: 1500, high: 2200, online_low: 3200, online_high: 4700 },
+  'yoni-brightening-scrub':      { low: 1800, high: 2500, online_low: 3500, online_high: 5200 },
+  'yoni-oil-without-petals':     { low: 1700, high: 2200, online_low: 4000, online_high: 5200 },
+  'yoni-oil-with-petals':        { low: 1800, high: 2500, online_low: 4200, online_high: 5500 },
+  'vagimist':                    { low: 1500, high: 2200, online_low: 3500, online_high: 4800 },
+  'boric-acid-probiotics-gel-wash': { low: 1800, high: 2500, online_low: 4200, online_high: 5200 },
+  'yoni-anti-itch-cream':        { low: 1800, high: 2500, online_low: 4000, online_high: 5200 },
+  'yoni-bar-soap':               { low: 1000, high: 1500, online_low: 2800, online_high: 3800 },
+  'yoni-steam-herbs':            { low: 1200, high: 1800, online_low: 2200, online_high: 3200 },
+  'yoni-pops-capsules':          { low: 1800, high: 2500, online_low: 2800, online_high: 4200 },
+  'boric-acid-capsules':         { low: 1200, high: 1800, online_low: 1700, online_high: 2600 },
+  'inner-thigh-cream':           { low: 1800, high: 2500, online_low: 4000, online_high: 5200 },
+  'fertility-drops':             { low: 2500, high: 3500, online_low: 4500, online_high: 6200 },
+  'maca-root-capsules':          { low: 2500, high: 3500, online_low: 4500, online_high: 6200 },
+  'lightening-serum':            { low: 2200, high: 3000, online_low: 4800, online_high: 5800 },
+  'hyaluronic-acid-serum':       { low: 2200, high: 3000, online_low: 4500, online_high: 5500 },
+  'rose-oil-serum':              { low: 2200, high: 3000, online_low: 4500, online_high: 5500 },
+  'papaya-serum':                { low: 2000, high: 2800, online_low: 4200, online_high: 5200 },
+  'papaya-oil':                  { low: 2000, high: 2800, online_low: 4200, online_high: 5200 },
+  'peeling-oil':                 { low: 2500, high: 3500, online_low: 5200, online_high: 6500 },
+  'spot-remover':                { low: 2200, high: 3000, online_low: 4800, online_high: 5800 },
+  'glycolic-acid-aha-toner':     { low: 1500, high: 2200, online_low: 4200, online_high: 5200 },
+  'soothing-rose-toner':         { low: 1200, high: 1800, online_low: 3200, online_high: 4500 },
+  'turmeric-facial-cleanser':    { low: 1200, high: 1800, online_low: 3200, online_high: 4500 },
+  'hydrating-moisturiser':       { low: 1800, high: 2200, online_low: 4000, online_high: 5200 },
+  'turmeric-facial-scrub':       { low: 1300, high: 1800, online_low: 3500, online_high: 4500 },
+  'turmeric-facial-mask':        { low: 1300, high: 1800, online_low: 3500, online_high: 4500 },
+  'strong-lightening-cream':     { low: 2200, high: 3000, online_low: 4800, online_high: 5800 },
+  'body-scrub':                  { low: 1500, high: 2200, online_low: 3500, online_high: 5000 },
+  'brightening-body-scrub':      { low: 1800, high: 2500, online_low: 4200, online_high: 5500 },
+  'body-butter':                 { low: 1800, high: 2500, online_low: 4000, online_high: 5500 },
+  'brightening-body-butter':     { low: 2200, high: 3000, online_low: 4500, online_high: 6000 },
+  'kojic-turmeric-soap':         { low: 1200, high: 1500, online_low: 2800, online_high: 3800 },
+  'turmeric-only-soap':          { low: 900,  high: 1200, online_low: 2500, online_high: 3200 },
+  'kojic-only-soap':             { low: 1000, high: 1300, online_low: 2800, online_high: 3500 },
+  'salicylic-acid-soap':         { low: 1200, high: 1500, online_low: 2800, online_high: 3800 },
+  'glycolic-acid-soap':          { low: 1200, high: 1500, online_low: 2800, online_high: 3800 },
+  'vitamin-c-soap':              { low: 1200, high: 1500, online_low: 2800, online_high: 3800 },
+  'papaya-soap':                 { low: 1000, high: 1400, online_low: 2500, online_high: 3200 },
+  'kojic-charcoal-soap':         { low: 1200, high: 1500, online_low: 2800, online_high: 3800 },
+  'skin-lightening-bar-soap':    { low: 1300, high: 1800, online_low: 3000, online_high: 4200 },
+  'garlic-lavender-soap':        { low: 1200, high: 1500, online_low: 2800, online_high: 3800 },
+  'beard-balm':                  { low: 1800, high: 2500, online_low: 4000, online_high: 5200 },
+  'beard-shampoo':               { low: 1500, high: 2200, online_low: 3500, online_high: 4800 },
+  'beard-oil':                   { low: 1800, high: 2500, online_low: 4200, online_high: 5500 },
+  'ryfle-wash':                  { low: 1500, high: 2200, online_low: 3500, online_high: 4800 },
+  'jock-lube':                   { low: 1800, high: 2500, online_low: 4000, online_high: 5200 },
+  'jock-mist':                   { low: 1500, high: 2200, online_low: 3500, online_high: 4800 },
+  'jock-itch-cream':             { low: 1800, high: 2500, online_low: 4000, online_high: 5200 },
+  'hair-mist':                   { low: 1500, high: 2200, online_low: 3500, online_high: 4800 },
+  'hair-butter':                 { low: 1800, high: 2500, online_low: 4000, online_high: 5500 },
+  'hair-growth-oil':             { low: 2200, high: 3000, online_low: 4800, online_high: 5800 },
+};
+function sfRrpHtml(p, wholesalePrice) {
+  if (!p || SF_RRP_EXCLUDED_CATS.includes(p.cat)) return '';
+  const key = (p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  const rrp = SF_RRP[key];
+  if (!rrp) return '';
+  return `<div style="margin:0.6rem 0 0;padding:0.55rem 0.75rem;background:#F0FDF4;border-radius:6px;border-left:3px solid #4CAF50;">
+    <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6B7280;margin-bottom:0.3rem;">Resell Potential</div>
+    <div style="font-size:0.7rem;color:#2e7d32;">Suggested Retail: J$${rrp.low.toLocaleString()} – J$${rrp.high.toLocaleString()} per unit</div>
+    <div style="font-size:0.7rem;color:#9CA3AF;text-decoration:line-through;">If bought online: J$${rrp.online_low.toLocaleString()} – J$${rrp.online_high.toLocaleString()}</div>
+    <div style="font-size:0.62rem;color:#9CA3AF;margin-top:0.15rem;">Retail pricing may vary based on your branding and market.</div>
+  </div>`;
 }
 const SF_IMG_CLASS = {yoni:'img-wash',skin:'img-cream',soap:'img-soap',hair:'img-serum',pl:'img-label',containers:'img-cream'};
 const SF_CAT_LABEL = {yoni:'Yoni Care',skin:'Skin Care',soap:'Bar Soap',hair:'Hair Care',pl:'Private Label',containers:'Containers'};
@@ -244,7 +301,6 @@ function sfRenderProducts(filter) {
         <div class="sf-card-cat" style="display:flex;justify-content:space-between;align-items:center;">${SF_CAT_LABEL[p.cat]||p.cat}${starHtml}</div>
         <div class="sf-card-name">${p.name}</div>
         <div style="font-size:0.78rem;font-weight:700;color:#B45309;margin-bottom:0.1rem;">${price}</div>
-        ${sfRrpHtml(_minPrice, p.cat)}
         <div class="sf-card-tl" style="margin-top:0.3rem;${learnMoreUrl ? 'margin-bottom:0.2rem;' : ''}">${p.tagline}</div>
         ${learnMoreHtml}
         <div class="sf-card-footer">
@@ -570,7 +626,7 @@ function sfOpenProduct(id) {
       _priceRowEl.parentNode.insertBefore(_rrpEl, _priceRowEl.nextSibling);
     }
     _rrpEl.style.cssText = 'padding:0.5rem 1.25rem 0;';
-    _rrpEl.innerHTML = sfRrpHtml(firstEntry.price, p.cat);
+    _rrpEl.innerHTML = sfRrpHtml(p, firstEntry.price);
   }
 
   // Qty
@@ -665,7 +721,7 @@ window.sfSelectSize = function(prodId, sizeKey, btn) {
   if (mq) mq.textContent = _isUnit&&p.unitDesc?p.unitDesc:sfSizeLabel(sizeKey);
   if (sub) sub.textContent = 'J$'+(p.pricing[sizeKey].price * sfCurrentModalQty).toLocaleString();
   const _rrpEl = document.getElementById('sf-modal-rrp');
-  if (_rrpEl) _rrpEl.innerHTML = sfRrpHtml(p.pricing[sizeKey].price, p.cat);
+  if (_rrpEl) _rrpEl.innerHTML = sfRrpHtml(p, p.pricing[sizeKey].price);
 };
 
 window.sfModalQty = function(delta) {
@@ -972,7 +1028,6 @@ function sfRenderCart() {
         <div class="sf-cart-item-info">
           <div class="sf-cart-item-name">${item.name}</div>
           <div class="sf-cart-item-sub">${item.size}</div>
-          ${item.price && !SF_RRP_EXCLUDED_CATS.includes(item.cat) ? `<div style="font-size:0.67rem;color:#059669;margin-top:0.12rem;">Retail est.: J$${(item.price*2).toLocaleString()}–J$${(item.price*3).toLocaleString()} / unit</div>` : ''}
           <div class="sf-cart-item-qty-row">
             <button class="sf-cq-btn" onclick="sfCartQty(${i},-1)">−</button>
             <span class="sf-cq-val">${item.qty}</span>
