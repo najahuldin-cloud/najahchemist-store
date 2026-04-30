@@ -964,6 +964,18 @@ const auth = getAuth(firebaseApp);
 const storage = getStorage(firebaseApp);
 const functions = getFunctions(firebaseApp);
 
+// Leads are saved by start.html into the production project — read them from there
+const prodFirebaseConfig = {
+  apiKey: "AIzaSyDYdt_0wJNcfGl2WbIKPiESdVcmc-cqZgM",
+  authDomain: "najahchemistja.com",
+  projectId: "najah-chemist",
+  storageBucket: "najah-chemist.firebasestorage.app",
+  messagingSenderId: "89819999556",
+  appId: "1:89819999556:web:4e6eb5c0c881da5e763b11"
+};
+const prodApp = initializeApp(prodFirebaseConfig, 'prod-leads');
+const prodDb = getFirestore(prodApp);
+
 // ── STATE ──
 let PRODUCTS = [];
 let ORDERS = [];
@@ -1066,7 +1078,7 @@ async function initAdmin() {
     backfillMissingClientIds();
   });
 
-  onSnapshot(query(collection(db,'leads'), orderBy('createdAt','desc')), snap => {
+  onSnapshot(query(collection(prodDb,'leads'), orderBy('createdAt','desc')), snap => {
     LEADS = snap.docs.map(d => ({...d.data(), _docId: d.id}));
     updateDashStats();
   });
@@ -2853,7 +2865,7 @@ window.loadLeads = async function() {
   const tbody = document.getElementById('leads-tbody');
   tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--mid);">Loading…</td></tr>';
   try {
-    const snap = await getDocs(query(collection(db,'leads'), orderBy('createdAt','desc')));
+    const snap = await getDocs(query(collection(prodDb,'leads'), orderBy('createdAt','desc')));
     _leadsCache = [];
     snap.forEach(d => _leadsCache.push({ id: d.id, ...d.data() }));
     if (_leadsCache.length === 0) {
@@ -2959,7 +2971,7 @@ async function bcLoadCounts() {
   try {
     const [subSnap, leadSnap] = await Promise.all([
       getDocs(query(collection(db,'subscribers'))),
-      getDocs(query(collection(db,'leads')))
+      getDocs(query(collection(prodDb,'leads')))
     ]);
     _bcSubCount = 0;
     subSnap.forEach(d => { if (!d.data().unsubscribed && d.data().email) _bcSubCount++; });
