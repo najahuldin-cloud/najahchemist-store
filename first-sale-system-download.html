@@ -13,14 +13,8 @@
   --gold: #c9a96e;
   --gold-dark: #a07840;
   --gold-light: #e8c98a;
-  --gold-bg: #fdf8ef;
   --dark: #0A0908;
   --dark2: #1C1A18;
-  --body: #444;
-  --muted: #777;
-  --border: #e8e3d8;
-  --bg: #ffffff;
-  --bg3: #f5f3ee;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
@@ -40,7 +34,6 @@ nav {
   padding: 0 40px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   height: 60px;
   border-bottom: 1px solid rgba(201,169,110,0.15);
 }
@@ -51,25 +44,18 @@ nav {
   text-decoration: none;
 }
 .nav-logo-mark {
-  width: 32px;
-  height: 32px;
+  width: 32px; height: 32px;
   background: rgba(201,169,110,0.12);
   border: 1px solid rgba(201,169,110,0.3);
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--gold);
-  letter-spacing: 0.05em;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.75rem; font-weight: 700;
+  color: var(--gold); letter-spacing: 0.05em;
 }
 .nav-logo-text {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #fff;
-  letter-spacing: 0.04em;
+  font-size: 1rem; font-weight: 600;
+  color: #fff; letter-spacing: 0.04em;
 }
 
 main {
@@ -80,54 +66,47 @@ main {
   padding: 60px 20px;
 }
 
-.download-card {
+.card {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(201,169,110,0.2);
   border-radius: 16px;
   padding: 56px 48px;
-  max-width: 560px;
+  max-width: 520px;
   width: 100%;
   text-align: center;
 }
 
-.check-icon {
-  width: 64px;
-  height: 64px;
+.icon {
+  width: 64px; height: 64px;
   background: rgba(201,169,110,0.12);
   border: 1px solid rgba(201,169,110,0.3);
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   margin: 0 auto 28px;
   font-size: 1.6rem;
 }
 
 .eyebrow {
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--gold);
-  margin-bottom: 12px;
+  font-size: 0.72rem; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--gold); margin-bottom: 12px;
 }
 
 .title {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 2rem;
-  font-weight: 700;
-  color: #fff;
-  line-height: 1.25;
-  margin-bottom: 16px;
+  font-size: 1.9rem; font-weight: 700;
+  color: #fff; line-height: 1.25;
+  margin-bottom: 14px;
 }
 
 .subtitle {
-  font-size: 0.95rem;
-  color: rgba(255,255,255,0.6);
+  font-size: 0.92rem;
+  color: rgba(255,255,255,0.55);
   line-height: 1.75;
-  margin-bottom: 36px;
+  margin-bottom: 32px;
 }
 
+/* Download area */
 .btn-download {
   display: inline-block;
   background: var(--gold);
@@ -139,87 +118,142 @@ main {
   font-size: 1rem;
   letter-spacing: 0.02em;
   transition: background 0.2s, transform 0.1s;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
-.btn-download:hover {
-  background: var(--gold-light);
-  transform: translateY(-1px);
-}
+.btn-download:hover { background: var(--gold-light); transform: translateY(-1px); }
 .btn-download:active { transform: none; }
 
 .btn-note {
-  font-size: 0.8rem;
-  color: rgba(255,255,255,0.4);
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.35);
   display: block;
-  margin-bottom: 36px;
+  margin-bottom: 32px;
 }
 
-.email-form-wrap {
+/* Email also section */
+.also-wrap {
   border-top: 1px solid rgba(201,169,110,0.15);
-  padding-top: 28px;
+  padding-top: 24px;
 }
-.email-form-label {
-  font-size: 0.85rem;
-  color: rgba(255,255,255,0.55);
-  margin-bottom: 14px;
+.also-label {
+  font-size: 0.83rem;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 12px;
   display: block;
 }
-.email-form {
+.also-form {
   display: flex;
   gap: 8px;
-  max-width: 360px;
+  max-width: 340px;
   margin: 0 auto;
 }
-.email-form input {
+.also-form input {
   flex: 1;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(201,169,110,0.25);
   border-radius: 8px;
-  padding: 11px 14px;
-  color: #fff;
-  font-size: 0.9rem;
+  padding: 10px 13px;
+  color: #fff; font-size: 0.88rem;
   font-family: 'Outfit', sans-serif;
   outline: none;
   transition: border-color 0.2s;
 }
-.email-form input::placeholder { color: rgba(255,255,255,0.3); }
-.email-form input:focus { border-color: rgba(201,169,110,0.5); }
-.email-form button {
-  background: rgba(201,169,110,0.15);
-  border: 1px solid rgba(201,169,110,0.35);
+.also-form input::placeholder { color: rgba(255,255,255,0.28); }
+.also-form input:focus { border-color: rgba(201,169,110,0.5); }
+.also-form button {
+  background: rgba(201,169,110,0.12);
+  border: 1px solid rgba(201,169,110,0.3);
   border-radius: 8px;
   color: var(--gold);
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.82rem; font-weight: 600;
   font-family: 'Outfit', sans-serif;
-  padding: 11px 18px;
+  padding: 10px 16px;
   cursor: pointer;
   transition: background 0.2s;
   white-space: nowrap;
 }
-.email-form button:hover { background: rgba(201,169,110,0.25); }
-#email-status {
-  font-size: 0.82rem;
-  margin-top: 10px;
-  min-height: 20px;
-  color: rgba(255,255,255,0.5);
+.also-form button:hover { background: rgba(201,169,110,0.22); }
+#also-status {
+  font-size: 0.8rem; margin-top: 9px; min-height: 18px;
+  color: rgba(255,255,255,0.45);
 }
-#email-status.ok { color: #6ee78a; }
-#email-status.err { color: #f87171; }
+#also-status.ok { color: #6ee78a; }
+#also-status.err { color: #f87171; }
+
+/* Verify form (Way 2) */
+.verify-wrap { width: 100%; }
+.field {
+  text-align: left;
+  margin-bottom: 16px;
+}
+.field label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 7px;
+}
+.field input {
+  width: 100%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(201,169,110,0.25);
+  border-radius: 10px;
+  padding: 13px 16px;
+  color: #fff; font-size: 0.95rem;
+  font-family: 'Outfit', sans-serif;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.field input::placeholder { color: rgba(255,255,255,0.25); }
+.field input:focus { border-color: rgba(201,169,110,0.55); }
+.field-hint {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.3);
+  margin-top: 5px;
+}
+.btn-verify {
+  width: 100%;
+  background: var(--gold);
+  color: var(--dark);
+  border: none;
+  border-radius: 10px;
+  padding: 15px 24px;
+  font-size: 1rem; font-weight: 700;
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background 0.2s, transform 0.1s;
+  margin-top: 6px;
+}
+.btn-verify:hover { background: var(--gold-light); transform: translateY(-1px); }
+.btn-verify:active { transform: none; }
+.btn-verify:disabled { opacity: 0.6; cursor: default; transform: none; }
+
+#verify-error {
+  font-size: 0.85rem;
+  color: #f87171;
+  margin-top: 14px;
+  line-height: 1.6;
+  display: none;
+}
+#verify-error a { color: var(--gold); text-decoration: none; }
+#verify-error a:hover { text-decoration: underline; }
 
 footer {
   text-align: center;
   padding: 20px;
   border-top: 1px solid rgba(255,255,255,0.06);
   font-size: 0.75rem;
-  color: rgba(255,255,255,0.25);
+  color: rgba(255,255,255,0.22);
 }
 
 @media (max-width: 600px) {
   nav { padding: 0 20px; }
-  .download-card { padding: 36px 24px; }
-  .title { font-size: 1.6rem; }
-  .email-form { flex-direction: column; }
+  .card { padding: 36px 22px; }
+  .title { font-size: 1.55rem; }
+  .also-form { flex-direction: column; }
 }
 </style>
 </head>
@@ -233,29 +267,58 @@ footer {
 </nav>
 
 <main>
-  <div class="download-card">
-    <div class="check-icon">✓</div>
-    <div class="eyebrow">Purchase Confirmed</div>
-    <h1 class="title">The First Sale System</h1>
-    <p class="subtitle">
-      Your book is ready to download.<br>
-      Save it to your device to read anytime, on any device.
-    </p>
+  <div class="card" id="card">
 
-    <a href="/assets/downloads/the-first-sale-system.pdf" class="btn-download" download="The-First-Sale-System-Najahuldin-Martin.pdf">
-      Download Your Book
-    </a>
-    <span class="btn-note">PDF · Opens in browser · Save to read offline</span>
+    <!-- WAY 1: shown when ?email= param present (Fygaro redirect) -->
+    <div id="mode-download" style="display:none;">
+      <div class="icon">✓</div>
+      <div class="eyebrow">Purchase Confirmed</div>
+      <h1 class="title">The First Sale System</h1>
+      <p class="subtitle">Your book is ready. Save it to your device to read anytime, on any device.</p>
 
-    <div class="email-form-wrap">
-      <span class="email-form-label">Want a copy sent to your email as well?</span>
-      <form class="email-form" id="email-form" onsubmit="sendEmail(event)">
-        <input type="text" id="f-name" placeholder="Your name" autocomplete="given-name"/>
-        <input type="email" id="f-email" placeholder="Email address" required autocomplete="email"/>
-        <button type="submit">Send</button>
-      </form>
-      <div id="email-status"></div>
+      <a href="/assets/downloads/the-first-sale-system.pdf" class="btn-download" download="The-First-Sale-System-Najahuldin-Martin.pdf">
+        Download Your Book
+      </a>
+      <span class="btn-note">PDF · Opens in browser · Save to read offline</span>
+
+      <div class="also-wrap">
+        <span class="also-label">Want a copy sent to your email as well?</span>
+        <form class="also-form" id="also-form" onsubmit="sendAlsoEmail(event)">
+          <input type="text" id="also-name" placeholder="Your name" autocomplete="given-name"/>
+          <input type="email" id="also-email" placeholder="Email address" required autocomplete="email"/>
+          <button type="submit">Send</button>
+        </form>
+        <div id="also-status"></div>
+      </div>
     </div>
+
+    <!-- WAY 2: shown when no ?email= param (direct visit) -->
+    <div id="mode-verify" style="display:none;">
+      <div class="icon">📖</div>
+      <div class="eyebrow">The First Sale System</div>
+      <h1 class="title">Access Your Download</h1>
+      <p class="subtitle">Enter your order details to access your download.</p>
+
+      <div class="verify-wrap">
+        <form id="verify-form" onsubmit="verifyOrder(event)">
+          <div class="field">
+            <label for="v-email">Email address</label>
+            <input type="email" id="v-email" placeholder="The email you paid with" required autocomplete="email"/>
+          </div>
+          <div class="field">
+            <label for="v-order">Fygaro order number</label>
+            <input type="text" id="v-order" placeholder="e.g. O-KL4SZ9LL4KD" required autocomplete="off" spellcheck="false"/>
+            <div class="field-hint">Found in your Fygaro receipt email</div>
+          </div>
+          <button type="submit" class="btn-verify" id="verify-btn">Get My Download</button>
+        </form>
+        <div id="verify-error">
+          Order not found. Please check your order number and try again.<br>
+          Need help? <a href="https://wa.me/18768851099">WhatsApp us: +1876-885-1099</a>
+        </div>
+      </div>
+    </div>
+
   </div>
 </main>
 
@@ -264,63 +327,105 @@ footer {
 </footer>
 
 <script>
-  // Pre-fill from URL params (Fygaro passes name/email after payment)
+(function () {
   const params = new URLSearchParams(location.search);
-  const pName = params.get('name') || params.get('customer_name') || '';
   const pEmail = params.get('email') || params.get('customer_email') || '';
-  if (pName) document.getElementById('f-name').value = pName;
-  if (pEmail) document.getElementById('f-email').value = pEmail;
+  const pName  = params.get('name')  || params.get('customer_name')  || '';
 
-  // Auto-send if both name and email are in URL params
   if (pEmail) {
-    setTimeout(() => sendEmailAuto(pName, pEmail), 1200);
-  }
-
-  async function sendEmailAuto(name, email) {
-    try {
-      await fetch('/.netlify/functions/send-book', {
+    // WAY 1 — Fygaro redirect with email param
+    document.getElementById('mode-download').style.display = '';
+    if (pName)  document.getElementById('also-name').value  = pName;
+    if (pEmail) document.getElementById('also-email').value = pEmail;
+    // Auto-send the book email silently
+    setTimeout(() => {
+      fetch('/.netlify/functions/send-book', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email })
-      });
-    } catch (e) {
-      // Silent — buyer can still use the form manually
-    }
+        body: JSON.stringify({ name: pName, email: pEmail })
+      }).catch(() => {});
+    }, 1200);
+  } else {
+    // WAY 2 — Direct visit, show verification form
+    document.getElementById('mode-verify').style.display = '';
   }
+})();
 
-  async function sendEmail(e) {
-    e.preventDefault();
-    const name = document.getElementById('f-name').value.trim();
-    const email = document.getElementById('f-email').value.trim();
-    const status = document.getElementById('email-status');
-    const btn = e.target.querySelector('button');
+async function verifyOrder(e) {
+  e.preventDefault();
+  const email  = document.getElementById('v-email').value.trim();
+  const order  = document.getElementById('v-order').value.trim();
+  const btn    = document.getElementById('verify-btn');
+  const errEl  = document.getElementById('verify-error');
 
-    btn.disabled = true;
-    btn.textContent = 'Sending…';
-    status.textContent = '';
-    status.className = '';
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+  errEl.style.display = 'none';
 
-    try {
-      const res = await fetch('/.netlify/functions/send-book', {
+  try {
+    const res  = await fetch('/.netlify/functions/verify-book-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, orderNumber: order })
+    });
+    const data = await res.json();
+
+    if (data.valid) {
+      // Swap to download mode
+      document.getElementById('mode-verify').style.display  = 'none';
+      document.getElementById('mode-download').style.display = '';
+      document.getElementById('also-email').value = email;
+      // Send the book email
+      fetch('/.netlify/functions/send-book', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email })
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        status.textContent = 'Sent! Check your inbox (and spam folder).';
-        status.className = 'ok';
-        btn.textContent = 'Sent';
-      } else {
-        throw new Error(data.error || 'Something went wrong');
-      }
-    } catch (err) {
-      status.textContent = 'Could not send — please try again.';
-      status.className = 'err';
+        body: JSON.stringify({ email })
+      }).catch(() => {});
+    } else {
+      errEl.style.display = 'block';
       btn.disabled = false;
-      btn.textContent = 'Send';
+      btn.textContent = 'Get My Download';
     }
+  } catch (err) {
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Get My Download';
   }
+}
+
+async function sendAlsoEmail(e) {
+  e.preventDefault();
+  const name   = document.getElementById('also-name').value.trim();
+  const email  = document.getElementById('also-email').value.trim();
+  const status = document.getElementById('also-status');
+  const btn    = e.target.querySelector('button');
+
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  status.textContent = '';
+  status.className = '';
+
+  try {
+    const res  = await fetch('/.netlify/functions/send-book', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      status.textContent = 'Sent! Check your inbox (and spam folder).';
+      status.className = 'ok';
+      btn.textContent = 'Sent';
+    } else {
+      throw new Error(data.error || 'error');
+    }
+  } catch (err) {
+    status.textContent = 'Could not send — please try again.';
+    status.className = 'err';
+    btn.disabled = false;
+    btn.textContent = 'Send';
+  }
+}
 </script>
 </body>
 </html>
