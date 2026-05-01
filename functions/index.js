@@ -111,6 +111,88 @@ exports.onOrderComplete = onDocumentUpdated(
   }
 );
 
+// ── Firestore Trigger: notify owner when new order created ────────────────────
+
+exports.onOrderCreated = onDocumentCreated(
+  { document: 'orders/{orderId}', secrets: ['RESEND_API_KEY'] },
+  async (event) => {
+    const data    = event.data.data();
+    const orderId = event.params.orderId;
+
+    const resendKey = process.env.RESEND_API_KEY;
+    if (!resendKey) {
+      console.warn('[onOrderCreated] RESEND_API_KEY not configured — skipping');
+      return;
+    }
+
+    const displayId  = data.id || data.orderId || orderId;
+    const clientName = getClientName(data);
+    const phone      = getPhone(data);
+    const payMethod  = data.payMethod || data.payment || '—';
+    const total      = data.total ? `J$${Number(data.total).toLocaleString()}` : '—';
+    const shipDetail = data.shippingDetail || data.deliveryLocation || '—';
+    const items      = buildItemsList(data);
+
+    const itemRowsHtml = items.length > 0
+      ? items.map(i =>
+          `<tr>
+            <td style="padding:8px 12px;border-bottom:1px solid #f0ece8;color:#1a1a1a;">${i.name}${i.size && i.size !== '—' ? ' — ' + i.size : ''}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #f0ece8;text-align:center;color:#555;">×${i.qty || 1}</td>
+          </tr>`).join('')
+      : `<tr><td colspan="2" style="padding:8px 12px;color:#777;">${data.product || 'See order'}</td></tr>`;
+
+    const waLink = phone
+      ? `<a href="https://wa.me/${phone.replace(/\D/g,'')}" style="color:#B45309;font-weight:600;text-decoration:none;">WhatsApp ${phone}</a>`
+      : '—';
+
+    const html = wrapEmail('New Order 🛒', `
+      <h2 style="margin:0 0 16px;font-size:1.3rem;font-weight:700;color:#1a1a1a;">New order received 🛒</h2>
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+        <tr><td style="padding:4px 0;color:#777;font-size:0.85rem;width:120px;">Order ID</td><td style="padding:4px 0;font-weight:600;color:#1a1a1a;">NC-${displayId}</td></tr>
+        <tr><td style="padding:4px 0;color:#777;font-size:0.85rem;">Customer</td><td style="padding:4px 0;color:#1a1a1a;">${clientName}</td></tr>
+        <tr><td style="padding:4px 0;color:#777;font-size:0.85rem;">Phone</td><td style="padding:4px 0;color:#1a1a1a;">${waLink}</td></tr>
+        <tr><td style="padding:4px 0;color:#777;font-size:0.85rem;">Payment</td><td style="padding:4px 0;color:#1a1a1a;">${payMethod}</td></tr>
+        <tr><td style="padding:4px 0;color:#777;font-size:0.85rem;">Shipping</td><td style="padding:4px 0;color:#1a1a1a;">${shipDetail}</td></tr>
+        <tr><td style="padding:4px 0;color:#777;font-size:0.85rem;">Total</td><td style="padding:4px 0;font-weight:700;color:#1a1a1a;">${total}</td></tr>
+      </table>
+
+      <p style="margin:0 0 8px;font-weight:600;font-size:0.9rem;color:#1a1a1a;">Items ordered:</p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;border:1px solid #f0ece8;border-radius:8px;overflow:hidden;">
+        <thead>
+          <tr style="background:#f5f1ec;">
+            <th style="padding:8px 12px;text-align:left;font-size:0.78rem;color:#777;font-weight:600;">Product</th>
+            <th style="padding:8px 12px;text-align:center;font-size:0.78rem;color:#777;font-weight:600;">Qty</th>
+          </tr>
+        </thead>
+        <tbody>${itemRowsHtml}</tbody>
+      </table>
+    `, null);
+
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from:    'Najah Chemist Orders <orders@najahchemistja.com>',
+          to:      ['start@najahchemistja.com'],
+          subject: `New order — NC-${displayId} | ${clientName} | ${total}`,
+          html
+        })
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(`Resend error ${res.status}: ${errData.message || JSON.stringify(errData)}`);
+      }
+      console.log(`[onOrderCreated] Owner notified for order ${displayId}`);
+    } catch (err) {
+      console.error(`[onOrderCreated] Notification failed for ${displayId}:`, err.message);
+    }
+  }
+);
+
 // ── Helper: send order-complete email ────────────────────────────────────────
 
 async function sendOrderCompleteEmail(email, order, docId) {
