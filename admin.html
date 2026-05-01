@@ -552,6 +552,18 @@ select.finp{cursor:pointer;}
           <!-- RIGHT: Preview -->
           <div>
             <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--mid);margin-bottom:0.6rem;">Preview</div>
+
+            <!-- Action buttons — above preview so always visible -->
+            <div class="inv-actions" style="margin-bottom:0.75rem;">
+              <button class="btn btn-dk" onclick="invDownloadPDF()">⬇ Download PDF</button>
+              <button class="btn btn-wa" onclick="invShareWhatsApp()">💬 WhatsApp</button>
+              <button class="btn btn-bl" onclick="invOpenEmailModal()">✉ Email</button>
+              <button class="btn btn-gold" onclick="invSave()">💾 Save Invoice</button>
+            </div>
+            <div style="margin-bottom:0.75rem;">
+              <button class="btn btn-ol btn-sm" onclick="invShowList()">← Back to Saved Invoices</button>
+            </div>
+
             <div class="inv-preview" id="inv-preview-box">
               <div class="inv-preview-meta">
                 <div class="inv-preview-header" style="border-bottom:none;padding-bottom:0;">
@@ -612,16 +624,6 @@ select.finp{cursor:pointer;}
               </ul>
             </div>
 
-            <!-- Action buttons -->
-            <div class="inv-actions">
-              <button class="btn btn-dk" onclick="invDownloadPDF()">⬇ Download PDF</button>
-              <button class="btn btn-wa" onclick="invShareWhatsApp()">💬 WhatsApp</button>
-              <button class="btn btn-bl" onclick="invOpenEmailModal()">✉ Email</button>
-              <button class="btn btn-gold" onclick="invSave()">💾 Save Invoice</button>
-            </div>
-            <div style="margin-top:0.5rem;">
-              <button class="btn btn-ol btn-sm" onclick="invShowList()">← Back to Saved Invoices</button>
-            </div>
           </div>
         </div>
       </div>
@@ -3685,9 +3687,8 @@ window.invNew = function() {
 function invPopulateOrderDropdown() {
   const sel = document.getElementById('inv-order-select');
   if (!sel) return;
-  const orders = window.ORDERS || [];
   sel.innerHTML = '<option value="">— Select an order —</option>';
-  orders.slice(0,150).forEach(function(o) {
+  ORDERS.slice(0,200).forEach(function(o) {
     const lbl = (o.id||o.orderId||'?') + ' — ' + (o.client||o.customerName||'Unknown') + ' (' + invFmt(o.total||0) + ')';
     const opt = document.createElement('option');
     opt.value = o.id || o.orderId || '';
@@ -3698,20 +3699,37 @@ function invPopulateOrderDropdown() {
 
 window.invLoadOrder = function(orderId) {
   if (!orderId) return;
-  const o = (window.ORDERS||[]).find(function(x){ return (x.id||x.orderId)===orderId; });
-  if (!o) return;
+  const o = ORDERS.find(function(x){ return (x.id||x.orderId)===orderId; });
+  if (!o) { toast('Order not found'); return; }
   document.getElementById('inv-client-name').value = o.client || o.customerName || '';
-  document.getElementById('inv-biz-name').value = '';
+  document.getElementById('inv-biz-name').value = o.businessName || o.bizName || '';
   document.getElementById('inv-phone').value = o.phone || o.wa || o.customerWhatsApp || '';
   document.getElementById('inv-email').value = o.email || o.customerEmail || '';
   _invItems = [];
   if (Array.isArray(o.items) && o.items.length) {
     o.items.forEach(function(it) {
-      const prod = (window.PRODUCTS||[]).find(function(p){ return p.id===it.productId; });
-      _invItems.push({ sku:(prod&&prod.sku)||'', name:it.name||'', size:it.size||'', qty:it.qty||1, price:parseFloat(it.price||0) });
+      const prod = PRODUCTS.find(function(p){ return p.id===it.productId || p.name===it.name; });
+      _invItems.push({
+        productId: prod ? prod.id : (it.productId||''),
+        sku: (prod&&prod.sku)||it.sku||'',
+        name: it.name || (prod&&prod.name) || '',
+        sizeKey: it.sizeKey || '',
+        size: it.size || '',
+        qty: it.qty || 1,
+        price: parseFloat(it.price||0)
+      });
     });
   } else {
-    _invItems.push({ sku:'', name:o.product||'', size:o.size||'', qty:o.qty||1, price:parseFloat(o.total||0) });
+    const prod = PRODUCTS.find(function(p){ return p.name===(o.product||''); });
+    _invItems.push({
+      productId: prod ? prod.id : '',
+      sku: (prod&&prod.sku)||'',
+      name: o.product || '',
+      sizeKey: '',
+      size: o.size || '',
+      qty: o.qty || 1,
+      price: parseFloat(o.total||0)
+    });
   }
   invRenderRows();
   invUpdatePreview();
@@ -3726,10 +3744,41 @@ window.invSetMode = function(mode, btn) {
 };
 
 window.invAddRow = function() {
-  _invItems.push({ sku:'', name:'', size:'', qty:1, price:0 });
+  _invItems.push({ productId:'', sku:'', name:'', sizeKey:'', size:'', qty:1, price:0 });
   invRenderRows();
   invUpdatePreview();
 };
+
+// ── Size label map ──────────────────────────────────────────────────────────
+var _INV_SIZE_LABELS = {
+  litre:'1 Litre', gallon:'1 Gallon', '5gal':'5 Gallons',
+  halfLb:'½ lb', lb1:'1 lb', lb2:'2 lbs', lb8:'8 lbs', lb40:'40 lbs',
+  bars10:'10 Bars', unit:'1 Unit'
+};
+function invSizeLabel(k) { return _INV_SIZE_LABELS[k] || k; }
+
+function invBuildSizeOpts(prod, selectedKey) {
+  if (!prod || !prod.pricing || !Object.keys(prod.pricing).length) {
+    return '<option value="">— Size —</option>';
+  }
+  return '<option value="">— Select Size —</option>' +
+    Object.keys(prod.pricing).map(function(k) {
+      var pr = (prod.pricing[k].price||0).toLocaleString();
+      return '<option value="' + k + '"' + (k===selectedKey?' selected':'') + '>' + invSizeLabel(k) + ' — J$' + pr + '</option>';
+    }).join('');
+}
+
+function invBuildProdOpts(selectedId, customName) {
+  var opts = '<option value="">— Select Product —</option>';
+  if (customName && !PRODUCTS.find(function(p){ return p.id===selectedId; })) {
+    opts += '<option value="_custom_" selected>' + invEsc(customName) + ' (custom)</option>';
+  }
+  opts += PRODUCTS.map(function(p) {
+    return '<option value="' + p.id + '"' + (p.id===selectedId?' selected':'') + '>' +
+      (p.sku?'['+invEsc(p.sku)+'] ':'') + invEsc(p.name) + '</option>';
+  }).join('');
+  return opts;
+}
 
 function invRenderRows() {
   const tbody = document.getElementById('inv-items-tbody');
@@ -3739,17 +3788,66 @@ function invRenderRows() {
   }
   tbody.innerHTML = _invItems.map(function(it, i) {
     const rt = (parseFloat(it.qty)||0)*(parseFloat(it.price)||0);
+    const prod = it.productId ? PRODUCTS.find(function(p){ return p.id===it.productId; }) : null;
+    const prodOpts = invBuildProdOpts(it.productId, it.name);
+    const sizeOpts = invBuildSizeOpts(prod, it.sizeKey);
     return '<tr>' +
-      '<td><input value="' + invEsc(it.sku) + '" placeholder="SKU" oninput="invRowUpdate(' + i + ',\'sku\',this.value)"></td>' +
-      '<td><input value="' + invEsc(it.name) + '" placeholder="Product name" oninput="invRowUpdate(' + i + ',\'name\',this.value)"></td>' +
-      '<td><input value="' + invEsc(it.size) + '" placeholder="e.g. 250ml" oninput="invRowUpdate(' + i + ',\'size\',this.value)"></td>' +
+      '<td><input id="inv-sku-' + i + '" value="' + invEsc(it.sku) + '" placeholder="SKU" oninput="invRowUpdate(' + i + ',\'sku\',this.value)" style="background:' + (it.productId?'var(--warm)':'white') + ';"></td>' +
+      '<td><select onchange="invProductSelect(' + i + ',this.value)">' + prodOpts + '</select></td>' +
+      '<td><select id="inv-size-' + i + '" onchange="invSizeSelect(' + i + ',this.value)">' + sizeOpts + '</select></td>' +
       '<td><input type="number" value="' + (it.qty||1) + '" min="1" style="text-align:center;" oninput="invRowUpdate(' + i + ',\'qty\',this.value)"></td>' +
-      '<td><input type="number" value="' + (it.price||0) + '" min="0" step="100" style="text-align:right;" oninput="invRowUpdate(' + i + ',\'price\',this.value)"></td>' +
+      '<td><input type="number" id="inv-price-' + i + '" value="' + (it.price||0) + '" min="0" step="100" style="text-align:right;" oninput="invRowUpdate(' + i + ',\'price\',this.value)"></td>' +
       '<td class="inv-total-cell">' + invFmt(rt) + '</td>' +
       '<td><button class="remove-item-btn" onclick="invRemoveRow(' + i + ')">✕</button></td>' +
       '</tr>';
   }).join('');
 }
+
+window.invProductSelect = function(i, productId) {
+  if (!_invItems[i]) return;
+  if (productId === '_custom_') return;
+  const prod = productId ? PRODUCTS.find(function(p){ return p.id===productId; }) : null;
+  _invItems[i].productId = productId;
+  _invItems[i].sku = prod ? (prod.sku||'') : '';
+  _invItems[i].name = prod ? prod.name : '';
+  _invItems[i].sizeKey = '';
+  _invItems[i].size = '';
+  _invItems[i].price = 0;
+
+  const tbody = document.getElementById('inv-items-tbody');
+  const row = tbody && tbody.rows[i];
+  if (row) {
+    const skuInput = row.cells[0].querySelector('input');
+    if (skuInput) { skuInput.value = _invItems[i].sku; skuInput.style.background = prod ? 'var(--warm)' : 'white'; }
+    const sizeSel = row.cells[2].querySelector('select');
+    if (sizeSel) {
+      sizeSel.innerHTML = invBuildSizeOpts(prod, '');
+      if (prod && sizeSel.options.length > 1) {
+        sizeSel.selectedIndex = 1;
+        invSizeSelect(i, sizeSel.options[1].value);
+        return;
+      }
+    }
+  }
+  invUpdatePreview();
+};
+
+window.invSizeSelect = function(i, sizeKey) {
+  if (!_invItems[i]) return;
+  const prod = _invItems[i].productId ? PRODUCTS.find(function(p){ return p.id===_invItems[i].productId; }) : null;
+  _invItems[i].sizeKey = sizeKey;
+  _invItems[i].size = sizeKey ? invSizeLabel(sizeKey) : '';
+  if (prod && prod.pricing && sizeKey && prod.pricing[sizeKey]) {
+    _invItems[i].price = prod.pricing[sizeKey].price || 0;
+    const row = document.getElementById('inv-items-tbody') && document.getElementById('inv-items-tbody').rows[i];
+    if (row) {
+      const priceInput = row.cells[4].querySelector('input');
+      if (priceInput) priceInput.value = _invItems[i].price;
+      row.cells[5].textContent = invFmt((_invItems[i].qty||1)*_invItems[i].price);
+    }
+  }
+  invUpdatePreview();
+};
 
 window.invRowUpdate = function(i, field, val) {
   if (!_invItems[i]) return;
@@ -3870,7 +3968,9 @@ window.invShareWhatsApp = function() {
   msg += '⚠️ Payment is 100% upfront. Orders begin after payment confirmation.\n';
   msg += 'No COD. Bank transfer or Fygaro only.\n\n';
   msg += 'Thank you! 🌿 Najah Chemist';
-  window.open('https://wa.me/18768851099?text=' + encodeURIComponent(msg), '_blank');
+  var waNum = (data.phone||'').replace(/\D/g,'');
+  if (!waNum) { toast('No client phone number set — add phone to invoice first'); return; }
+  window.open('https://wa.me/' + waNum + '?text=' + encodeURIComponent(msg), '_blank');
 };
 
 window.invOpenEmailModal = function() {
