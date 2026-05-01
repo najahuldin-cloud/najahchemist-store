@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
   --black:#0F0E0D;--off:#FAFAF8;--warm:#F5F2ED;--warmer:#EDE8DF;
@@ -186,6 +187,48 @@ select.finp{cursor:pointer;}
 .pill{display:inline-block;padding:0.15rem 0.5rem;border-radius:20px;font-size:0.65rem;font-weight:600;background:var(--warm);color:var(--mid);}
 .knowledge-area{width:100%;min-height:300px;font-family:'Outfit',sans-serif;font-size:0.8rem;line-height:1.6;padding:0.8rem;border:1.5px solid var(--border);border-radius:8px;resize:vertical;outline:none;}
 .knowledge-area:focus{border-color:var(--black);}
+
+/* ── INVOICE BUILDER ── */
+.inv-layout{display:grid;grid-template-columns:1fr 420px;gap:1.5rem;align-items:start;}
+@media(max-width:1100px){.inv-layout{grid-template-columns:1fr;}}
+.inv-mode-tabs{display:flex;gap:0;margin-bottom:1.2rem;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;width:fit-content;}
+.inv-mode-tab{padding:0.5rem 1.2rem;font-size:0.8rem;font-weight:600;cursor:pointer;background:white;border:none;font-family:'Outfit',sans-serif;color:var(--mid);transition:all 0.15s;}
+.inv-mode-tab.on{background:var(--black);color:white;}
+.inv-items-table{width:100%;border-collapse:collapse;font-size:0.8rem;}
+.inv-items-table th{background:var(--warm);padding:0.5rem 0.6rem;text-align:left;font-size:0.7rem;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:0.04em;border-bottom:1px solid var(--border);}
+.inv-items-table td{padding:0.4rem 0.4rem;border-bottom:1px solid var(--border);vertical-align:middle;}
+.inv-items-table input,.inv-items-table select{width:100%;padding:0.35rem 0.5rem;border:1.5px solid var(--border);border-radius:6px;font-size:0.78rem;font-family:'Outfit',sans-serif;background:white;outline:none;}
+.inv-items-table input:focus,.inv-items-table select:focus{border-color:var(--black);}
+.inv-items-table .inv-total-cell{font-weight:600;color:var(--black);white-space:nowrap;font-size:0.8rem;}
+
+/* ── INVOICE PREVIEW ── */
+.inv-preview{background:white;border:1px solid var(--border);border-radius:12px;padding:1.5rem;font-family:'Outfit',sans-serif;font-size:0.78rem;line-height:1.5;position:sticky;top:80px;}
+.inv-preview-header{border-bottom:2px solid var(--black);padding-bottom:0.8rem;margin-bottom:0.8rem;}
+.inv-preview-co{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--black);}
+.inv-preview-co-sub{font-size:0.7rem;color:var(--mid);margin-top:0.15rem;}
+.inv-preview-title{font-size:1.4rem;font-weight:700;letter-spacing:0.08em;text-align:right;color:var(--black);}
+.inv-preview-meta{display:flex;justify-content:space-between;align-items:flex-start;}
+.inv-preview-bill{margin:0.8rem 0;padding:0.7rem 0.9rem;background:var(--warm);border-radius:8px;font-size:0.75rem;}
+.inv-preview-bill-label{font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--mid);margin-bottom:0.3rem;}
+.inv-preview-tbl{width:100%;border-collapse:collapse;font-size:0.72rem;margin:0.8rem 0;}
+.inv-preview-tbl th{background:var(--black);color:white;padding:0.4rem 0.5rem;text-align:left;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.04em;}
+.inv-preview-tbl td{padding:0.35rem 0.5rem;border-bottom:1px solid var(--border);}
+.inv-preview-tbl tr:last-child td{border-bottom:none;}
+.inv-preview-totals{text-align:right;margin:0.6rem 0;font-size:0.78rem;}
+.inv-preview-totals .inv-grand{font-weight:700;font-size:0.92rem;border-top:2px solid var(--black);padding-top:0.4rem;margin-top:0.4rem;}
+.inv-preview-payment{background:var(--warm);border-radius:8px;padding:0.7rem 0.9rem;margin:0.8rem 0;font-size:0.7rem;line-height:1.7;}
+.inv-preview-payment strong{color:var(--black);}
+.inv-preview-notices{font-size:0.65rem;color:var(--mid);line-height:1.7;margin-top:0.6rem;}
+.inv-preview-notices li{margin-bottom:0.15rem;}
+.inv-actions{display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:1rem;}
+
+/* ── INVOICE PRINT ── */
+@media print {
+  body.inv-printing > *:not(#inv-print-zone) { display: none !important; }
+  body.inv-printing #inv-print-zone { display: block !important; position: static !important; width: 100% !important; padding: 20mm; box-sizing: border-box; }
+  body.inv-printing #inv-print-zone * { visibility: visible !important; }
+}
+#inv-print-zone{display:none;}
 </style>
 </head>
 <body>
@@ -225,6 +268,7 @@ select.finp{cursor:pointer;}
   <nav class="sb-nav">
     <button class="nb on" onclick="nav('dashboard',this)"><span class="nb-icon">📊</span>Dashboard</button>
     <button class="nb" onclick="nav('orders',this)"><span class="nb-icon">📦</span>Orders<span class="nb-badge" id="nb-orders-badge" style="display:none">0</span></button>
+    <button class="nb" onclick="nav('invoices',this)"><span class="nb-icon">🧾</span>Invoices</button>
     <button class="nb" onclick="nav('clients',this)"><span class="nb-icon">👥</span>Clients</button>
     <button class="nb" onclick="nav('products',this)"><span class="nb-icon">🧴</span>Products</button>
     <button class="nb" onclick="nav('labels',this)"><span class="nb-icon">🏷</span>Shipping Labels</button>
@@ -363,6 +407,225 @@ select.finp{cursor:pointer;}
           <thead><tr><th style="width:28px;"><input type="checkbox" id="select-all-orders" onchange="toggleAllOrders(this.checked)" title="Select all"></th><th>Order ID</th><th>Client</th><th>Products</th><th>Total</th><th>Pay Status</th><th>Order Status</th><th>Date</th><th>Tracking</th><th>Actions</th></tr></thead>
           <tbody id="orders-tbody"><tr><td colspan="10" class="empty-state">Loading orders…</td></tr></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- ══════════════ INVOICES ══════════════ -->
+    <div class="view" id="v-invoices">
+      <div class="section-title">Invoice Builder
+        <div style="display:flex;gap:0.5rem;">
+          <button class="btn btn-ol btn-sm" onclick="invNew()">+ New Invoice</button>
+          <button class="btn btn-dk btn-sm" onclick="invShowList()">📋 Saved Invoices</button>
+        </div>
+      </div>
+
+      <!-- Saved invoices list (shown by default) -->
+      <div id="inv-list-panel">
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Invoice #</th><th>Client</th><th>Date</th><th>Due</th><th>Total</th><th>Type</th><th>Actions</th></tr></thead>
+            <tbody id="inv-saved-tbody"><tr><td colspan="7" class="empty-state">Loading saved invoices…</td></tr></tbody>
+          </table>
+        </div>
+        <div style="margin-top:1rem;text-align:center;">
+          <button class="btn btn-gold" onclick="invShowBuilder()">+ Create New Invoice</button>
+        </div>
+      </div>
+
+      <!-- Invoice builder (hidden until create/edit) -->
+      <div id="inv-builder-panel" style="display:none;">
+        <div class="inv-layout">
+          <!-- LEFT: Form -->
+          <div>
+            <!-- Mode tabs -->
+            <div class="inv-mode-tabs">
+              <button class="inv-mode-tab on" id="inv-tab-order" onclick="invSetMode('order',this)">From Order</button>
+              <button class="inv-mode-tab" id="inv-tab-manual" onclick="invSetMode('manual',this)">Manual</button>
+            </div>
+
+            <!-- From Order panel -->
+            <div id="inv-from-order-panel" class="card" style="margin-bottom:1rem;">
+              <div class="card-title">Select Order</div>
+              <div class="frow">
+                <label>Order</label>
+                <select class="finp" id="inv-order-select" onchange="invLoadOrder(this.value)">
+                  <option value="">— Select an order —</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Invoice details -->
+            <div class="card" style="margin-bottom:1rem;">
+              <div class="card-title">Invoice Details</div>
+              <div class="frow-3">
+                <div class="frow">
+                  <label>Invoice #</label>
+                  <input class="finp" id="inv-number" placeholder="INV-XXXXX" oninput="invUpdatePreview()">
+                </div>
+                <div class="frow">
+                  <label>Invoice Date</label>
+                  <input class="finp" type="date" id="inv-date" onchange="invUpdatePreview()">
+                </div>
+                <div class="frow">
+                  <label>Due Date</label>
+                  <input class="finp" type="date" id="inv-due-date" onchange="invUpdatePreview()">
+                </div>
+              </div>
+              <div class="frow">
+                <label>Order Type</label>
+                <select class="finp" id="inv-order-type" onchange="invUpdatePreview()">
+                  <option value="Regular">Regular</option>
+                  <option value="Customised">Customised</option>
+                  <option value="Custom R&amp;D">Custom R&amp;D</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Client info -->
+            <div class="card" style="margin-bottom:1rem;">
+              <div class="card-title">Client Information</div>
+              <div class="frow-2">
+                <div class="frow">
+                  <label>Business Name</label>
+                  <input class="finp" id="inv-biz-name" placeholder="ABC Skincare Ltd." oninput="invUpdatePreview()">
+                </div>
+                <div class="frow">
+                  <label>Client Name</label>
+                  <input class="finp" id="inv-client-name" placeholder="Jane Smith" oninput="invUpdatePreview()">
+                </div>
+              </div>
+              <div class="frow-2">
+                <div class="frow">
+                  <label>Phone</label>
+                  <input class="finp" id="inv-phone" placeholder="+1876…" oninput="invUpdatePreview()">
+                </div>
+                <div class="frow">
+                  <label>Email</label>
+                  <input class="finp" id="inv-email" placeholder="client@example.com" oninput="invUpdatePreview()">
+                </div>
+              </div>
+            </div>
+
+            <!-- Line items -->
+            <div class="card" style="margin-bottom:1rem;">
+              <div class="card-title">Line Items
+                <button class="btn btn-sm btn-ol" onclick="invAddRow()">+ Add Row</button>
+              </div>
+              <div style="overflow-x:auto;">
+                <table class="inv-items-table">
+                  <thead>
+                    <tr>
+                      <th style="width:80px;">SKU</th>
+                      <th>Product Name</th>
+                      <th style="width:80px;">Size</th>
+                      <th style="width:55px;">Qty</th>
+                      <th style="width:100px;">Unit Price</th>
+                      <th style="width:90px;">Total</th>
+                      <th style="width:30px;"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="inv-items-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Totals -->
+            <div class="card" style="margin-bottom:1rem;">
+              <div class="card-title">Totals</div>
+              <div style="display:flex;flex-direction:column;gap:0.5rem;max-width:320px;margin-left:auto;">
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.82rem;">
+                  <span style="color:var(--mid);">Subtotal</span>
+                  <span id="inv-subtotal-display" style="font-weight:600;">J$0</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;font-size:0.82rem;">
+                  <span style="color:var(--mid);">Shipping</span>
+                  <input type="number" id="inv-shipping" value="0" min="0" step="100" oninput="invUpdatePreview()" style="width:120px;padding:0.35rem 0.5rem;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;font-family:'Outfit',sans-serif;text-align:right;">
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:1rem;font-weight:700;border-top:2px solid var(--black);padding-top:0.5rem;">
+                  <span>TOTAL</span>
+                  <span id="inv-total-display">J$0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT: Preview -->
+          <div>
+            <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--mid);margin-bottom:0.6rem;">Preview</div>
+
+            <!-- Action buttons — above preview so always visible -->
+            <div class="inv-actions" style="margin-bottom:0.75rem;">
+              <button class="btn btn-dk" onclick="invDownloadPDF()">⬇ Download PDF</button>
+              <button class="btn btn-wa" onclick="invShareWhatsApp()">💬 WhatsApp</button>
+              <button class="btn btn-bl" onclick="invOpenEmailModal()">✉ Email</button>
+              <button class="btn btn-gold" onclick="invSave()">💾 Save Invoice</button>
+            </div>
+            <div style="margin-bottom:0.75rem;">
+              <button class="btn btn-ol btn-sm" onclick="invShowList()">← Back to Saved Invoices</button>
+            </div>
+
+            <div class="inv-preview" id="inv-preview-box">
+              <div class="inv-preview-meta">
+                <div class="inv-preview-header" style="border-bottom:none;padding-bottom:0;">
+                  <div class="inv-preview-co">NAJAH CHEMIST</div>
+                  <div class="inv-preview-co-sub">najahchemistja.com | +1876-885-1099 | start@najahchemistja.com<br>Kingston, Jamaica</div>
+                </div>
+                <div style="text-align:right;">
+                  <div class="inv-preview-title">INVOICE</div>
+                  <div style="font-size:0.72rem;margin-top:0.3rem;line-height:1.8;">
+                    <div><strong>Invoice #:</strong> <span id="pv-number">INV-00000</span></div>
+                    <div><strong>Date:</strong> <span id="pv-date">—</span></div>
+                    <div><strong>Due Date:</strong> <span id="pv-due">—</span></div>
+                  </div>
+                </div>
+              </div>
+              <div style="border-bottom:1px solid var(--border);margin:0.6rem 0;"></div>
+              <div class="inv-preview-bill">
+                <div class="inv-preview-bill-label">Bill To</div>
+                <div id="pv-biz" style="font-weight:700;"></div>
+                <div id="pv-client-info" style="color:var(--mid);"></div>
+              </div>
+              <div style="font-size:0.7rem;color:var(--mid);margin-bottom:0.3rem;"><strong style="color:var(--black);">Order Type:</strong> <span id="pv-order-type">Regular</span></div>
+              <table class="inv-preview-tbl">
+                <thead>
+                  <tr><th>SKU</th><th>Product</th><th>Size</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr>
+                </thead>
+                <tbody id="pv-items-tbody">
+                  <tr><td colspan="6" style="text-align:center;color:var(--mid);padding:0.6rem;">No items added</td></tr>
+                </tbody>
+              </table>
+              <div class="inv-preview-totals">
+                <div>Subtotal: <span id="pv-subtotal">J$0</span></div>
+                <div>Shipping: <span id="pv-shipping">J$0</span></div>
+                <div class="inv-grand">TOTAL: <span id="pv-total">J$0</span></div>
+              </div>
+              <div style="border-bottom:1.5px solid var(--black);margin:0.6rem 0;"></div>
+              <div class="inv-preview-payment">
+                <div style="font-weight:700;text-transform:uppercase;letter-spacing:0.04em;font-size:0.7rem;margin-bottom:0.4rem;">Payment Information</div>
+                <strong>Bank:</strong> National Commercial Bank (NCB)<br>
+                <strong>Business Name:</strong> Najah Chemist<br>
+                <strong>Account Type:</strong> Business/Savings<br>
+                <strong>JMD Account:</strong> 354-747-294<br>
+                <strong>USD Account:</strong> 354-747-308<br>
+                <strong>Branch:</strong> Knuttsford Boulevard, 1-7 Knuttsford Boulevard, Kingston 5<br>
+                <strong>Swift Code:</strong> JNCBJMKX<br>
+                <strong>Alternative:</strong> Pay via Fygaro at najahchemistja.com
+              </div>
+              <div style="border-bottom:1px solid var(--border);margin:0.4rem 0;"></div>
+              <div style="font-weight:700;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.3rem;color:var(--black);">Important Notices</div>
+              <ul class="inv-preview-notices">
+                <li>Payment is 100% upfront. Orders are not processed until payment is confirmed.</li>
+                <li>No refunds or exchanges on manufactured products.</li>
+                <li>Turnaround times: Regular orders 2–3 business days | Customised orders 5–7 business days | Custom R&amp;D 14–21 business days after sample approval — all after payment confirmation.</li>
+                <li>No COD. Bank transfer or Fygaro only.</li>
+                <li>Client is responsible for their own label compliance and product claims.</li>
+                <li>Najah Chemist is not liable after product handover.</li>
+                <li>Custom formulation R&amp;D fees are non-refundable once work begins.</li>
+              </ul>
+            </div>
+
+          </div>
+        </div>
       </div>
     </div>
 
@@ -716,6 +979,7 @@ select.finp{cursor:pointer;}
 
 <!-- ══════════ TOAST ══════════ -->
 <div id="a-toast"></div>
+<div id="inv-print-zone"></div>
 <div id="print-zone" style="display:none;"></div>
 <div id="bulk-print-zone" style="display:none;position:fixed;top:0;left:0;z-index:99999;background:white;width:100%;height:100%;overflow:auto;"></div>
 <!-- TRACKING MODAL -->
@@ -750,6 +1014,30 @@ select.finp{cursor:pointer;}
 </div>
 
 <!-- ══════════ MODALS ══════════ -->
+
+<!-- INVOICE EMAIL MODAL -->
+<div class="modal-overlay" id="m-inv-email">
+  <div class="modal">
+    <button class="modal-close" onclick="closeM('m-inv-email')">✕</button>
+    <div class="modal-title">Send Invoice via Email</div>
+    <div class="frow">
+      <label>Client Email Address</label>
+      <input class="finp" type="email" id="inv-email-to" placeholder="client@example.com">
+    </div>
+    <div class="frow">
+      <label>Subject</label>
+      <input class="finp" id="inv-email-subject" placeholder="Invoice from Najah Chemist">
+    </div>
+    <div class="frow">
+      <label>Message (optional)</label>
+      <textarea class="finp" id="inv-email-msg" rows="3" placeholder="Hi, please find your invoice attached…"></textarea>
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+      <button class="btn btn-dk" style="flex:1;justify-content:center;" onclick="invSendEmail()">Send Invoice</button>
+      <button class="btn btn-ol" onclick="closeM('m-inv-email')">Cancel</button>
+    </div>
+  </div>
+</div>
 
 <!-- NEW ORDER -->
 <div class="modal-overlay" id="m-new-order">
@@ -1101,7 +1389,7 @@ window.nav = function(id, btn) {
   document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
   document.getElementById('v-'+id).classList.add('on');
   if(btn) btn.classList.add('on');
-  const titles = {dashboard:'Dashboard',orders:'Orders',clients:'Clients',products:'Products',labels:'Shipping Labels',consultations:'Consultations',knowledge:'Chatbot Knowledge Base',sitecontent:'Site Content',leads:'Leads',broadcast:'Broadcast Email',productlookup:'Product Lookup',bi:'Business Intelligence'};
+  const titles = {dashboard:'Dashboard',orders:'Orders',invoices:'Invoices',clients:'Clients',products:'Products',labels:'Shipping Labels',consultations:'Consultations',knowledge:'Chatbot Knowledge Base',sitecontent:'Site Content',leads:'Leads',broadcast:'Broadcast Email',productlookup:'Product Lookup',bi:'Business Intelligence'};
   document.getElementById('topbar-title').textContent = titles[id]||id;
   closeSidebar();
   if(id==='clients'){
@@ -1111,6 +1399,7 @@ window.nav = function(id, btn) {
   if(id==='leads') loadLeads();
   if(id==='waitlist') loadWaitlist();
   if(id==='bi') loadBI();
+  if(id==='invoices') invInit();
 };
 
 window.openM = function(id){ document.getElementById(id).classList.add('open'); };
@@ -3319,6 +3608,460 @@ function renderBI() {
   html += '</div></div>';
   body.innerHTML = html;
 }
+
+// ══════════════ INVOICE BUILDER ══════════════
+
+let _invItems = [];
+let _invMode = 'order';
+let _savedInvoices = [];
+
+function invFmtDate(d) {
+  if (!d) return '—';
+  const dt = typeof d === 'string' ? new Date(d) : d;
+  if (isNaN(dt)) return String(d);
+  const dd = String(dt.getDate()).padStart(2,'0');
+  const mm = String(dt.getMonth()+1).padStart(2,'0');
+  return dd+'/'+mm+'/'+dt.getFullYear();
+}
+
+function invFmt(n) {
+  return 'J$' + (parseFloat(n)||0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function invGenNumber() {
+  return 'INV-' + Math.floor(10000 + Math.random() * 90000);
+}
+
+function invTodayStr() {
+  return new Date().toISOString().slice(0,10);
+}
+
+function invDueDateStr() {
+  const d = new Date(); d.setDate(d.getDate() + 7);
+  return d.toISOString().slice(0,10);
+}
+
+function invEsc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+window.invInit = function() {
+  invPopulateOrderDropdown();
+  invLoadSavedList();
+  invShowList();
+};
+
+function invResetFields() {
+  document.getElementById('inv-number').value = invGenNumber();
+  document.getElementById('inv-date').value = invTodayStr();
+  document.getElementById('inv-due-date').value = invDueDateStr();
+  document.getElementById('inv-biz-name').value = '';
+  document.getElementById('inv-client-name').value = '';
+  document.getElementById('inv-phone').value = '';
+  document.getElementById('inv-email').value = '';
+  document.getElementById('inv-order-type').value = 'Regular';
+  document.getElementById('inv-shipping').value = '0';
+  _invItems = [];
+  invRenderRows();
+  invUpdatePreview();
+  invSetMode('order', document.getElementById('inv-tab-order'));
+}
+
+window.invShowBuilder = function() {
+  document.getElementById('inv-list-panel').style.display = 'none';
+  document.getElementById('inv-builder-panel').style.display = '';
+  invResetFields();
+};
+
+window.invShowList = function() {
+  document.getElementById('inv-list-panel').style.display = '';
+  document.getElementById('inv-builder-panel').style.display = 'none';
+};
+
+window.invNew = function() {
+  document.getElementById('inv-list-panel').style.display = 'none';
+  document.getElementById('inv-builder-panel').style.display = '';
+  invResetFields();
+};
+
+function invPopulateOrderDropdown() {
+  const sel = document.getElementById('inv-order-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Select an order —</option>';
+  ORDERS.slice(0,200).forEach(function(o) {
+    const lbl = (o.id||o.orderId||'?') + ' — ' + (o.client||o.customerName||'Unknown') + ' (' + invFmt(o.total||0) + ')';
+    const opt = document.createElement('option');
+    opt.value = o.id || o.orderId || '';
+    opt.textContent = lbl;
+    sel.appendChild(opt);
+  });
+}
+
+window.invLoadOrder = function(orderId) {
+  if (!orderId) return;
+  const o = ORDERS.find(function(x){ return (x.id||x.orderId)===orderId; });
+  if (!o) { toast('Order not found'); return; }
+  document.getElementById('inv-client-name').value = o.client || o.customerName || '';
+  document.getElementById('inv-biz-name').value = o.businessName || o.bizName || '';
+  document.getElementById('inv-phone').value = o.phone || o.wa || o.customerWhatsApp || '';
+  document.getElementById('inv-email').value = o.email || o.customerEmail || '';
+  _invItems = [];
+  if (Array.isArray(o.items) && o.items.length) {
+    o.items.forEach(function(it) {
+      const prod = PRODUCTS.find(function(p){ return p.id===it.productId || p.name===it.name; });
+      _invItems.push({
+        productId: prod ? prod.id : (it.productId||''),
+        sku: (prod&&prod.sku)||it.sku||'',
+        name: it.name || (prod&&prod.name) || '',
+        sizeKey: it.sizeKey || '',
+        size: it.size || '',
+        qty: it.qty || 1,
+        price: parseFloat(it.price||0)
+      });
+    });
+  } else {
+    const prod = PRODUCTS.find(function(p){ return p.name===(o.product||''); });
+    _invItems.push({
+      productId: prod ? prod.id : '',
+      sku: (prod&&prod.sku)||'',
+      name: o.product || '',
+      sizeKey: '',
+      size: o.size || '',
+      qty: o.qty || 1,
+      price: parseFloat(o.total||0)
+    });
+  }
+  invRenderRows();
+  invUpdatePreview();
+};
+
+window.invSetMode = function(mode, btn) {
+  _invMode = mode;
+  document.getElementById('inv-tab-order').classList.toggle('on', mode==='order');
+  document.getElementById('inv-tab-manual').classList.toggle('on', mode==='manual');
+  document.getElementById('inv-from-order-panel').style.display = mode==='order' ? '' : 'none';
+  if (mode==='manual' && _invItems.length===0) invAddRow();
+};
+
+window.invAddRow = function() {
+  _invItems.push({ productId:'', sku:'', name:'', sizeKey:'', size:'', qty:1, price:0 });
+  invRenderRows();
+  invUpdatePreview();
+};
+
+// ── Size label map ──────────────────────────────────────────────────────────
+var _INV_SIZE_LABELS = {
+  litre:'1 Litre', gallon:'1 Gallon', '5gal':'5 Gallons',
+  halfLb:'½ lb', lb1:'1 lb', lb2:'2 lbs', lb8:'8 lbs', lb40:'40 lbs',
+  bars10:'10 Bars', unit:'1 Unit'
+};
+function invSizeLabel(k) { return _INV_SIZE_LABELS[k] || k; }
+
+function invBuildSizeOpts(prod, selectedKey) {
+  if (!prod || !prod.pricing || !Object.keys(prod.pricing).length) {
+    return '<option value="">— Size —</option>';
+  }
+  return '<option value="">— Select Size —</option>' +
+    Object.keys(prod.pricing).map(function(k) {
+      var pr = (prod.pricing[k].price||0).toLocaleString();
+      return '<option value="' + k + '"' + (k===selectedKey?' selected':'') + '>' + invSizeLabel(k) + ' — J$' + pr + '</option>';
+    }).join('');
+}
+
+function invBuildProdOpts(selectedId, customName) {
+  var opts = '<option value="">— Select Product —</option>';
+  if (customName && !PRODUCTS.find(function(p){ return p.id===selectedId; })) {
+    opts += '<option value="_custom_" selected>' + invEsc(customName) + ' (custom)</option>';
+  }
+  opts += PRODUCTS.map(function(p) {
+    return '<option value="' + p.id + '"' + (p.id===selectedId?' selected':'') + '>' +
+      (p.sku?'['+invEsc(p.sku)+'] ':'') + invEsc(p.name) + '</option>';
+  }).join('');
+  return opts;
+}
+
+function invRenderRows() {
+  const tbody = document.getElementById('inv-items-tbody');
+  if (!_invItems.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--mid);padding:0.8rem;font-size:0.78rem;">No items. Click + Add Row.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _invItems.map(function(it, i) {
+    const rt = (parseFloat(it.qty)||0)*(parseFloat(it.price)||0);
+    const prod = it.productId ? PRODUCTS.find(function(p){ return p.id===it.productId; }) : null;
+    const prodOpts = invBuildProdOpts(it.productId, it.name);
+    const sizeOpts = invBuildSizeOpts(prod, it.sizeKey);
+    return '<tr>' +
+      '<td><input id="inv-sku-' + i + '" value="' + invEsc(it.sku) + '" placeholder="SKU" oninput="invRowUpdate(' + i + ',\'sku\',this.value)" style="background:' + (it.productId?'var(--warm)':'white') + ';"></td>' +
+      '<td><select onchange="invProductSelect(' + i + ',this.value)">' + prodOpts + '</select></td>' +
+      '<td><select id="inv-size-' + i + '" onchange="invSizeSelect(' + i + ',this.value)">' + sizeOpts + '</select></td>' +
+      '<td><input type="number" value="' + (it.qty||1) + '" min="1" style="text-align:center;" oninput="invRowUpdate(' + i + ',\'qty\',this.value)"></td>' +
+      '<td><input type="number" id="inv-price-' + i + '" value="' + (it.price||0) + '" min="0" step="100" style="text-align:right;" oninput="invRowUpdate(' + i + ',\'price\',this.value)"></td>' +
+      '<td class="inv-total-cell">' + invFmt(rt) + '</td>' +
+      '<td><button class="remove-item-btn" onclick="invRemoveRow(' + i + ')">✕</button></td>' +
+      '</tr>';
+  }).join('');
+}
+
+window.invProductSelect = function(i, productId) {
+  if (!_invItems[i]) return;
+  if (productId === '_custom_') return;
+  const prod = productId ? PRODUCTS.find(function(p){ return p.id===productId; }) : null;
+  _invItems[i].productId = productId;
+  _invItems[i].sku = prod ? (prod.sku||'') : '';
+  _invItems[i].name = prod ? prod.name : '';
+  _invItems[i].sizeKey = '';
+  _invItems[i].size = '';
+  _invItems[i].price = 0;
+
+  const tbody = document.getElementById('inv-items-tbody');
+  const row = tbody && tbody.rows[i];
+  if (row) {
+    const skuInput = row.cells[0].querySelector('input');
+    if (skuInput) { skuInput.value = _invItems[i].sku; skuInput.style.background = prod ? 'var(--warm)' : 'white'; }
+    const sizeSel = row.cells[2].querySelector('select');
+    if (sizeSel) {
+      sizeSel.innerHTML = invBuildSizeOpts(prod, '');
+      if (prod && sizeSel.options.length > 1) {
+        sizeSel.selectedIndex = 1;
+        invSizeSelect(i, sizeSel.options[1].value);
+        return;
+      }
+    }
+  }
+  invUpdatePreview();
+};
+
+window.invSizeSelect = function(i, sizeKey) {
+  if (!_invItems[i]) return;
+  const prod = _invItems[i].productId ? PRODUCTS.find(function(p){ return p.id===_invItems[i].productId; }) : null;
+  _invItems[i].sizeKey = sizeKey;
+  _invItems[i].size = sizeKey ? invSizeLabel(sizeKey) : '';
+  if (prod && prod.pricing && sizeKey && prod.pricing[sizeKey]) {
+    _invItems[i].price = prod.pricing[sizeKey].price || 0;
+    const row = document.getElementById('inv-items-tbody') && document.getElementById('inv-items-tbody').rows[i];
+    if (row) {
+      const priceInput = row.cells[4].querySelector('input');
+      if (priceInput) priceInput.value = _invItems[i].price;
+      row.cells[5].textContent = invFmt((_invItems[i].qty||1)*_invItems[i].price);
+    }
+  }
+  invUpdatePreview();
+};
+
+window.invRowUpdate = function(i, field, val) {
+  if (!_invItems[i]) return;
+  _invItems[i][field] = (field==='qty'||field==='price') ? (parseFloat(val)||0) : val;
+  const row = document.getElementById('inv-items-tbody').rows[i];
+  if (row) row.cells[5].textContent = invFmt((_invItems[i].qty||0)*(_invItems[i].price||0));
+  invUpdatePreview();
+};
+
+window.invRemoveRow = function(i) {
+  _invItems.splice(i,1); invRenderRows(); invUpdatePreview();
+};
+
+window.invUpdatePreview = function() {
+  const get = function(id){ const el=document.getElementById(id); return el?el.value:''; };
+  const num = get('inv-number')||'INV-00000';
+  const date = get('inv-date');
+  const due = get('inv-due-date');
+  const biz = get('inv-biz-name').trim();
+  const cname = get('inv-client-name').trim();
+  const phone = get('inv-phone').trim();
+  const email = get('inv-email').trim();
+  const orderType = get('inv-order-type');
+  const shipping = parseFloat(get('inv-shipping'))||0;
+
+  var s = function(id,v){ var el=document.getElementById(id); if(el) el.textContent=v; };
+  s('pv-number', num);
+  s('pv-date', invFmtDate(date));
+  s('pv-due', invFmtDate(due));
+  s('pv-biz', biz||'—');
+  var clientParts = [];
+  if(cname) clientParts.push(cname);
+  if(phone) clientParts.push(phone);
+  if(email) clientParts.push(email);
+  s('pv-client-info', clientParts.join(' | ')||'');
+  s('pv-order-type', orderType);
+
+  var subtotal = 0;
+  _invItems.forEach(function(it){ subtotal += (parseFloat(it.qty)||0)*(parseFloat(it.price)||0); });
+  var grand = subtotal + shipping;
+
+  var sub1 = document.getElementById('inv-subtotal-display'); if(sub1) sub1.textContent = invFmt(subtotal);
+  var tot1 = document.getElementById('inv-total-display'); if(tot1) tot1.textContent = invFmt(grand);
+  s('pv-subtotal', invFmt(subtotal));
+  s('pv-shipping', invFmt(shipping));
+  s('pv-total', invFmt(grand));
+
+  var pvTbody = document.getElementById('pv-items-tbody');
+  if (pvTbody) {
+    if (!_invItems.length) {
+      pvTbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--mid);padding:0.5rem;">No items added</td></tr>';
+    } else {
+      pvTbody.innerHTML = _invItems.map(function(it) {
+        var rt = (parseFloat(it.qty)||0)*(parseFloat(it.price)||0);
+        return '<tr><td>' + invEsc(it.sku||'—') + '</td><td>' + invEsc(it.name||'—') + '</td><td>' + invEsc(it.size||'—') + '</td>' +
+          '<td style="text-align:center;">' + (it.qty||1) + '</td>' +
+          '<td style="text-align:right;">' + invFmt(it.price||0) + '</td>' +
+          '<td style="text-align:right;font-weight:600;">' + invFmt(rt) + '</td></tr>';
+      }).join('');
+    }
+  }
+};
+
+function invGetData() {
+  var get = function(id){ var el=document.getElementById(id); return el?el.value:''; };
+  var shipping = parseFloat(get('inv-shipping'))||0;
+  var subtotal = 0;
+  _invItems.forEach(function(it){ subtotal += (parseFloat(it.qty)||0)*(parseFloat(it.price)||0); });
+  return {
+    number: get('inv-number')||invGenNumber(),
+    date: get('inv-date'),
+    dueDate: get('inv-due-date'),
+    bizName: get('inv-biz-name').trim(),
+    clientName: get('inv-client-name').trim(),
+    phone: get('inv-phone').trim(),
+    email: get('inv-email').trim(),
+    orderType: get('inv-order-type'),
+    items: JSON.parse(JSON.stringify(_invItems)),
+    subtotal: subtotal,
+    shipping: shipping,
+    total: subtotal + shipping
+  };
+}
+
+window.invDownloadPDF = function() {
+  var preview = document.getElementById('inv-preview-box');
+  var printZone = document.getElementById('inv-print-zone');
+  if (!preview || !printZone) return;
+  printZone.innerHTML = '<div style="font-family:Outfit,Arial,sans-serif;padding:15mm 20mm;font-size:10pt;">' + preview.innerHTML + '</div>';
+  document.body.classList.add('inv-printing');
+  window.print();
+  setTimeout(function() {
+    document.body.classList.remove('inv-printing');
+    printZone.innerHTML = '';
+  }, 1500);
+};
+
+window.invShareWhatsApp = function() {
+  var data = invGetData();
+  var msg = 'Hi ' + (data.clientName||'there') + ',\n\n';
+  msg += 'Please find your invoice from Najah Chemist below.\n\n';
+  msg += '📄 *' + data.number + '*\n';
+  msg += 'Date: ' + invFmtDate(data.date) + '  |  Due: ' + invFmtDate(data.dueDate) + '\n';
+  if (data.bizName) msg += '🏢 ' + data.bizName + '\n';
+  msg += '📦 *Order Type:* ' + data.orderType + '\n\n';
+  msg += '*Items:*\n';
+  data.items.forEach(function(it) {
+    var rt = (parseFloat(it.qty)||0)*(parseFloat(it.price)||0);
+    msg += '• ' + (it.sku?'['+it.sku+'] ':'') + it.name + (it.size?' ('+it.size+')':'') + ' × ' + it.qty + ' = ' + invFmt(rt) + '\n';
+  });
+  msg += '\nSubtotal: ' + invFmt(data.subtotal) + '\n';
+  if (data.shipping) msg += 'Shipping: ' + invFmt(data.shipping) + '\n';
+  msg += '*TOTAL: ' + invFmt(data.total) + '*\n\n';
+  msg += '💳 *Payment Options:*\n';
+  msg += 'NCB JMD: 354-747-294\n';
+  msg += 'NCB USD: 354-747-308 (Swift: JNCBJMKX)\n';
+  msg += 'Fygaro: najahchemistja.com\n\n';
+  msg += '⚠️ Payment is 100% upfront. Orders begin after payment confirmation.\n';
+  msg += 'No COD. Bank transfer or Fygaro only.\n\n';
+  msg += 'Thank you! 🌿 Najah Chemist';
+  var waNum = (data.phone||'').replace(/\D/g,'');
+  if (!waNum) { toast('No client phone number set — add phone to invoice first'); return; }
+  window.open('https://wa.me/' + waNum + '?text=' + encodeURIComponent(msg), '_blank');
+};
+
+window.invOpenEmailModal = function() {
+  var data = invGetData();
+  var toEl = document.getElementById('inv-email-to');
+  var subEl = document.getElementById('inv-email-subject');
+  var msgEl = document.getElementById('inv-email-msg');
+  if (toEl) toEl.value = data.email || '';
+  if (subEl) subEl.value = 'Invoice ' + data.number + ' from Najah Chemist';
+  if (msgEl) msgEl.value = 'Hi ' + (data.clientName||'there') + ',\n\nPlease find your invoice ' + data.number + ' for ' + invFmt(data.total) + ' due ' + invFmtDate(data.dueDate) + '.\n\nPayment: NCB bank transfer (JMD: 354-747-294) or Fygaro at najahchemistja.com.\n\nThank you!\nNajah Chemist';
+  openM('m-inv-email');
+};
+
+window.invSendEmail = async function() {
+  var to = (document.getElementById('inv-email-to').value||'').trim();
+  var subject = (document.getElementById('inv-email-subject').value||'').trim();
+  var msg = (document.getElementById('inv-email-msg').value||'').trim();
+  if (!to || !to.includes('@')) { toast('Please enter a valid email address'); return; }
+  var data = invGetData();
+  try {
+    toast('Sending invoice email…');
+    var res = await fetch('/.netlify/functions/send-invoice', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ to, subject, message: msg, invoice: data })
+    });
+    if (res.ok) { toast('Invoice sent to ' + to + ' ✓'); closeM('m-inv-email'); }
+    else { var err = await res.text(); toast('Send failed: ' + err); }
+  } catch(e) { toast('Send failed: ' + (e.message||'Network error')); }
+};
+
+window.invSave = async function() {
+  var data = invGetData();
+  if (!data.clientName && !data.bizName) { toast('Please add client name or business name'); return; }
+  if (!data.items.length || !data.items[0].name) { toast('Please add at least one line item'); return; }
+  var _db = window._db;
+  if (!_db) { toast('Firestore not ready – please wait and try again'); return; }
+  try {
+    var { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await addDoc(collection(_db, 'invoices'), Object.assign({}, data, { savedAt: new Date().toISOString(), createdAt: serverTimestamp() }));
+    toast('Invoice ' + data.number + ' saved ✓');
+    invLoadSavedList();
+  } catch(e) { console.error('invSave error', e); toast('Save failed: ' + (e.message||'Unknown')); }
+};
+
+async function invLoadSavedList() {
+  var tbody = document.getElementById('inv-saved-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Loading…</td></tr>';
+  var _db = window._db;
+  if (!_db) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Not connected. Please log in.</td></tr>'; return; }
+  try {
+    var { collection, getDocs, orderBy, query, limit } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    var q = query(collection(_db, 'invoices'), orderBy('savedAt','desc'), limit(50));
+    var snap = await getDocs(q);
+    _savedInvoices = snap.docs.map(function(d){ return Object.assign({}, d.data(), { _docId: d.id }); });
+    if (!_savedInvoices.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No saved invoices yet. Create one above.</td></tr>'; return; }
+    tbody.innerHTML = _savedInvoices.map(function(inv, i) {
+      return '<tr>' +
+        '<td><strong>' + invEsc(inv.number||'—') + '</strong></td>' +
+        '<td>' + invEsc((inv.bizName||inv.clientName)||'—') + '</td>' +
+        '<td>' + invFmtDate(inv.date) + '</td>' +
+        '<td>' + invFmtDate(inv.dueDate) + '</td>' +
+        '<td><strong>' + invFmt(inv.total||0) + '</strong></td>' +
+        '<td>' + invEsc(inv.orderType||'—') + '</td>' +
+        '<td><button class="btn btn-sm btn-bl" onclick="invLoadSaved(' + i + ')">View/Edit</button></td>' +
+        '</tr>';
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Error: ' + invEsc(e.message) + '</td></tr>';
+  }
+}
+
+window.invLoadSaved = function(i) {
+  var inv = _savedInvoices[i]; if (!inv) return;
+  var set = function(id,v){ var el=document.getElementById(id); if(el) el.value=(v||''); };
+  set('inv-number', inv.number||invGenNumber());
+  set('inv-date', inv.date||invTodayStr());
+  set('inv-due-date', inv.dueDate||invDueDateStr());
+  set('inv-biz-name', inv.bizName||'');
+  set('inv-client-name', inv.clientName||'');
+  set('inv-phone', inv.phone||'');
+  set('inv-email', inv.email||'');
+  set('inv-order-type', inv.orderType||'Regular');
+  set('inv-shipping', inv.shipping||0);
+  _invItems = JSON.parse(JSON.stringify(inv.items||[]));
+  invRenderRows(); invUpdatePreview();
+  invSetMode('manual', document.getElementById('inv-tab-manual'));
+  document.getElementById('inv-list-panel').style.display='none';
+  document.getElementById('inv-builder-panel').style.display='';
+};
 
 // ── Test Order ───────────────────────────────────────────────────────────────
 window.runTestOrder = function() {

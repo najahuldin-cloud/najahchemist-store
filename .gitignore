@@ -11,5 +11,8 @@ add-bo2.mjs
 update-bo2-cat.mjs
 functions/node_modules
 
+# Dependencies
+node_modules/
+
 # Local Netlify folder
 .netlify
