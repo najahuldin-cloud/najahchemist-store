@@ -327,6 +327,17 @@ select.finp{cursor:pointer;}
         <div class="stat-card"><div class="stat-lbl">Products</div><div class="stat-val" id="ds-products">0</div><div class="stat-sub" id="ds-products-sub">In catalogue</div></div>
       </div>
 
+      <!-- ── AOV ── -->
+      <div style="margin-bottom:1.5rem;">
+        <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--mid);margin-bottom:0.75rem;">Average Order Value</div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-lbl">Avg Order Today</div><div class="stat-val" id="ds-aov-today">—</div><div class="stat-sub">Orders placed today</div></div>
+          <div class="stat-card"><div class="stat-lbl">Avg Order (7 days)</div><div class="stat-val" id="ds-aov-7d">—</div><div class="stat-sub">Last 7 days</div></div>
+          <div class="stat-card"><div class="stat-lbl">Avg Order (30 days)</div><div class="stat-val" id="ds-aov-30d">—</div><div class="stat-sub">Last 30 days</div></div>
+          <div class="stat-card"><div class="stat-lbl">AOV vs prev 7 days</div><div class="stat-val" id="ds-aov-change">—</div><div class="stat-sub">7d vs prior 7d</div></div>
+        </div>
+      </div>
+
       <!-- ── LEAD PIPELINE ── -->
       <div style="margin-bottom:1.5rem;">
         <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--mid);margin-bottom:0.75rem;">Lead Pipeline</div>
@@ -1500,6 +1511,42 @@ function updateDashStats() {
   document.getElementById('ds-leads-converted').textContent = converted;
   document.getElementById('ds-leads-rate').textContent = rate;
   document.getElementById('ds-leads-segments').textContent = segText;
+
+  // ── AOV Cards ──
+  const _now = new Date();
+  const _todayStart  = new Date(_now); _todayStart.setHours(0,0,0,0);
+  const _7dStart     = new Date(_now.getTime() - 7*24*60*60*1000);  _7dStart.setHours(0,0,0,0);
+  const _30dStart    = new Date(_now.getTime() - 30*24*60*60*1000); _30dStart.setHours(0,0,0,0);
+  const _prev7Start  = new Date(_now.getTime() - 14*24*60*60*1000); _prev7Start.setHours(0,0,0,0);
+  const _prev7End    = new Date(_7dStart.getTime() - 1);
+
+  const _aovOrders = ORDERS.filter(o => (o.status||'').toLowerCase() !== 'cancelled' && (o.paymentStatus||o.payStatus||o.payment||'').toLowerCase() === 'paid');
+
+  const _calcAOV = (start, end) => {
+    const subset = _aovOrders.filter(o => { const d = _parseOrderDate(o); return d && d >= start && (!end || d <= end); });
+    if (!subset.length) return null;
+    return Math.round(subset.reduce((s, o) => s + (parseFloat(o.total)||0), 0) / subset.length);
+  };
+
+  const _aovToday  = _calcAOV(_todayStart);
+  const _aov7d     = _calcAOV(_7dStart);
+  const _aov30d    = _calcAOV(_30dStart);
+  const _aovPrev7  = _calcAOV(_prev7Start, _prev7End);
+  const _fmtAOV    = v => v === null ? '—' : 'J$' + v.toLocaleString();
+
+  document.getElementById('ds-aov-today').textContent = _fmtAOV(_aovToday);
+  document.getElementById('ds-aov-7d').textContent    = _fmtAOV(_aov7d);
+  document.getElementById('ds-aov-30d').textContent   = _fmtAOV(_aov30d);
+
+  const _aovChEl = document.getElementById('ds-aov-change');
+  if (_aov7d !== null && _aovPrev7 !== null && _aovPrev7 > 0) {
+    const _pct = Math.round(((_aov7d - _aovPrev7) / _aovPrev7) * 100);
+    _aovChEl.textContent  = (_pct >= 0 ? '+' : '') + _pct + '%';
+    _aovChEl.style.color  = _pct >= 0 ? 'var(--green)' : '#DC2626';
+  } else {
+    _aovChEl.textContent = '—';
+    _aovChEl.style.color = '';
+  }
 }
 window.updateDashStats = updateDashStats;
 

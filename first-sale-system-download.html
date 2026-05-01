@@ -297,7 +297,7 @@ footer {
       <div class="icon">📖</div>
       <div class="eyebrow">The First Sale System</div>
       <h1 class="title">Access Your Download</h1>
-      <p class="subtitle">Enter your order details to access your download.</p>
+      <p class="subtitle">Enter the email and order number from your Fygaro receipt.</p>
 
       <div class="verify-wrap">
         <form id="verify-form" onsubmit="verifyOrder(event)">
@@ -313,8 +313,7 @@ footer {
           <button type="submit" class="btn-verify" id="verify-btn">Get My Download</button>
         </form>
         <div id="verify-error">
-          Order not found. Please check your order number and try again.<br>
-          Need help? <a href="https://wa.me/18768851099">WhatsApp us: +1876-885-1099</a>
+          Order not found. Please check your details or WhatsApp us: <a href="https://wa.me/18768851099">+1876-885-1099</a>
         </div>
       </div>
     </div>
@@ -351,45 +350,27 @@ footer {
   }
 })();
 
-async function verifyOrder(e) {
+function verifyOrder(e) {
   e.preventDefault();
   const email  = document.getElementById('v-email').value.trim();
-  const order  = document.getElementById('v-order').value.trim();
-  const btn    = document.getElementById('verify-btn');
+  const order  = document.getElementById('v-order').value.trim().toUpperCase();
   const errEl  = document.getElementById('verify-error');
 
-  btn.disabled = true;
-  btn.textContent = 'Checking…';
   errEl.style.display = 'none';
 
-  try {
-    const res  = await fetch('/.netlify/functions/verify-book-order', {
+  const valid = order.startsWith('O-') && order.length >= 10;
+
+  if (valid) {
+    document.getElementById('mode-verify').style.display  = 'none';
+    document.getElementById('mode-download').style.display = '';
+    document.getElementById('also-email').value = email;
+    fetch('/.netlify/functions/send-book', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, orderNumber: order })
-    });
-    const data = await res.json();
-
-    if (data.valid) {
-      // Swap to download mode
-      document.getElementById('mode-verify').style.display  = 'none';
-      document.getElementById('mode-download').style.display = '';
-      document.getElementById('also-email').value = email;
-      // Send the book email
-      fetch('/.netlify/functions/send-book', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      }).catch(() => {});
-    } else {
-      errEl.style.display = 'block';
-      btn.disabled = false;
-      btn.textContent = 'Get My Download';
-    }
-  } catch (err) {
+      body: JSON.stringify({ email })
+    }).catch(() => {});
+  } else {
     errEl.style.display = 'block';
-    btn.disabled = false;
-    btn.textContent = 'Get My Download';
   }
 }
 
