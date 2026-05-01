@@ -176,6 +176,11 @@
   status = 200
 
 [[redirects]]
+  from = "/first-sale-system-download"
+  to = "/first-sale-system-download.html"
+  status = 200
+
+[[redirects]]
   from = "/customise"
   to = "/customisation.html"
   status = 200
