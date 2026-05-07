@@ -408,13 +408,16 @@ async function loadFromDB() {
 // ═══ BEST SELLERS ═══
 const BS_IMG_CLASS={soap:'img-soap',yoni:'img-wash',skincare:'img-cream',mencare:'img-soap',haircare:'img-cream',bundle:'img-label',label:'img-label',cream:'img-cream',serum:'img-serum',wash:'img-wash',hair:'img-cream'};
 function renderBestSellers(){
+  console.log('[BS] renderBestSellers called, _bestSellerIds:', window._bestSellerIds);
   const ids = window._bestSellerIds||[];
   const section = document.getElementById('sf-bestsellers-section');
   const grid = document.getElementById('sf-bs-grid');
   if(!section||!grid) return;
   const prods = ids.map(id=>PRODUCTS.find(p=>p.legacyId===id||p.id===id||p.firestoreId===id||(p.name&&p.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')===id))).filter(Boolean).slice(0,3);
+  console.log('[BS] prods found:', prods.length);
   const heroSection = document.getElementById('hero-best-sellers');
   const heroGrid    = document.getElementById('hero-bs-grid');
+  console.log('[BS] heroSection found:', !!heroSection);
   if(!prods.length){
     section.style.display='none';
     if(heroSection) heroSection.style.display='none';
