@@ -441,7 +441,7 @@ function renderBestSellers(){
         </div>
       </div>`;
     }).join('');
-    if(heroSection && heroGrid){ heroGrid.innerHTML=grid.innerHTML; heroSection.setAttribute('style','display:block!important;background:#0F0E0D;padding:3rem 2rem 4rem;'); }
+    if(heroSection && heroGrid){ heroGrid.innerHTML=grid.innerHTML; heroSection.setAttribute('style','display:block!important;'); }
   } catch(e) {
     console.error('renderBestSellers error:', e);
   }
