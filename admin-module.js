@@ -420,7 +420,7 @@ function renderBestSellers(){
   console.log('[BS] heroSection found:', !!heroSection);
   if(!prods.length){
     section.style.display='none';
-    if(heroSection) heroSection.style.display='none';
+    if(heroSection) heroSection.style.setProperty('display','none','important');
     return;
   }
   section.style.display='block';
@@ -441,7 +441,7 @@ function renderBestSellers(){
         </div>
       </div>`;
     }).join('');
-    if(heroSection && heroGrid){ heroGrid.innerHTML=grid.innerHTML; heroSection.style.display='block'; }
+    if(heroSection && heroGrid){ heroGrid.innerHTML=grid.innerHTML; heroSection.style.setProperty('display','block','important'); }
   } catch(e) {
     console.error('renderBestSellers error:', e);
   }
