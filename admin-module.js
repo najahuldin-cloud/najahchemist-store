@@ -499,13 +499,13 @@ window.openProduct = function(id){
   const sw=document.getElementById('pd-sizes-wrap');
   if(p.cat==='soap'){
     sw.style.display='none';
-    const bk=Object.keys(p.pricing).find(k=>k.startsWith('bars')||k==='bar')||Object.keys(p.pricing)[0];
+    const bk=Object.keys(p.pricing||{}).find(k=>k.startsWith('bars')||k==='bar')||Object.keys(p.pricing||{})[0];
     const sp=p.pricing[bk]||{price:0,moq:1};
     document.getElementById('pd-price').textContent='J$'+sp.price.toLocaleString()+'/bar';
     document.getElementById('pd-moq').textContent='Min '+sp.moq+' bars';
   } else {
     sw.style.display='block';
-    const keys=Object.keys(p.pricing);
+    const keys=Object.keys(p.pricing||{});
     const isUnit=keys.some(k=>k==='kit'||k==='unit'||k==='design');
     document.getElementById('pd-size-btns').innerHTML=keys.map((k,i)=>{
       const lbl=isUnit&&p.unitDesc?p.unitDesc:(p.pricing[k]?.desc||sizeLabel(k));
@@ -940,7 +940,7 @@ window.editProduct = function(id){
   document.getElementById('ap-use').value=p.usage;
   if(p.img){document.getElementById('img-preview').src=p.img;document.getElementById('img-preview').style.display='block';}
   else document.getElementById('img-preview').style.display='none';
-  const pKeys = Object.keys(p.pricing);
+  const pKeys = Object.keys(p.pricing||{});
   let pType = 'liquid';
   if (pKeys.some(k => k.startsWith('bars') || k === 'bar')) pType = 'bar';
   else if (pKeys.some(k => k === 'lb2' || k === 'lb8' || k === 'lb40' || k === 'halfLb' || k === 'lb1')) pType = 'weight';
