@@ -332,7 +332,7 @@ function sfRenderHeroCards() {
   if (!el) return;
   const ids = window._bestSellerIds || [];
   const prods = window.PRODUCTS || [];
-  const list = ids.map(id => prods.find(p => p.id === id)).filter(Boolean).slice(0, 3);
+  const list = ids.map(id => prods.find(p => p.id === id || p.legacyId === id || p.firestoreId === id || (p.name && p.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') === id))).filter(Boolean).slice(0, 3);
   if (!list.length) { el.innerHTML = ''; return; }
   el.innerHTML = `<div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.18em;color:#c9a84c;margin-bottom:0.5rem;">⭐ Best Sellers</div>` +
     list.map(p => {
