@@ -408,6 +408,7 @@ async function loadFromDB() {
 // ═══ BEST SELLERS ═══
 const BS_IMG_CLASS={soap:'img-soap',yoni:'img-wash',skincare:'img-cream',mencare:'img-soap',haircare:'img-cream',bundle:'img-label',label:'img-label',cream:'img-cream',serum:'img-serum',wash:'img-wash',hair:'img-cream'};
 function renderBestSellers(){
+  console.log('[BS] document.body exists:', !!document.body, 'document.readyState:', document.readyState, 'document.URL:', document.URL);
   requestAnimationFrame(function(){
     console.log('[BS] renderBestSellers called, _bestSellerIds:', window._bestSellerIds);
     const ids = window._bestSellerIds||[];
