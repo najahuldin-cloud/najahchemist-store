@@ -268,6 +268,45 @@ async function saveReviewToDB(review) {
 }
 window.saveReviewToDB = saveReviewToDB;
 
+// ── Firestore → rendering schema transform ────────────────────────────────
+// Firestore stores products with variants[] + category + isHidden.
+// All rendering code expects p.pricing{}, p.cat, p.hidden.
+function transformFirestoreProduct(raw) {
+  const SIZE_MAP = {
+    '2 lbs':    'lb2',   '8 lbs':    'lb8',   '40 lbs':   'lb40',
+    '1 lb':     'lb1',   '½ lb':     'halfLb',
+    '1 litre':  'l1',    '1 liter':  'l1',
+    '2 litres': 'l2',    '2 liters': 'l2',
+    '5 litres': 'l5',    '5 liters': 'l5',
+    '1 gallon': 'gallon',
+    '5 gallon': '5gal',  '5 gallons':'gal5',
+    '10 bars':  'bars10','100 bars': 'bars100','1 bar': 'bar',
+  };
+  const CAT_MAP = {
+    'men care':  'mencare',  'skin care': 'skincare',
+    'bar soaps': 'soap',     'yoni care': 'yoni',
+    'hair care': 'haircare', 'bundles':   'bundle',
+  };
+  const p = Object.assign({}, raw);
+  // 1. variants[] → pricing{}
+  if (Array.isArray(p.variants) && !p.pricing) {
+    p.pricing = {};
+    p.variants.forEach(function(v) {
+      const norm = (v.size || '').toLowerCase().trim();
+      const key  = SIZE_MAP[norm] || v.size || norm;
+      p.pricing[key] = { price: Number(v.price) || 0, moq: Number(v.moq) || 1 };
+    });
+  }
+  // 2. category → cat
+  if (p.category && !p.cat) {
+    p.cat = CAT_MAP[(p.category || '').toLowerCase().trim()] ||
+            (p.category || '').toLowerCase().replace(/\s+/g, '');
+  }
+  // 3. isHidden → hidden
+  if ('isHidden' in p && !('hidden' in p)) p.hidden = p.isHidden;
+  return p;
+}
+
 async function loadFromDB() {
   // ── 1. Products — real-time listener keeps prices in sync with admin ──────
   // Using onSnapshot instead of getDocs so any price saved in admin.html
@@ -276,7 +315,7 @@ async function loadFromDB() {
     await new Promise(function(resolve) {
       var settled = false;
       onSnapshot(collection(db,'products'), function(snap) {
-        const dbProds = snap.docs.map(function(d){ return {...d.data()}; });
+        const dbProds = snap.docs.map(function(d){ return transformFirestoreProduct(d.data()); });
         PRODUCTS.length = 0;
         dbProds.forEach(function(dbP){ PRODUCTS.push(dbP); });
         console.log('[Najah] Products synced: ' + PRODUCTS.length);
