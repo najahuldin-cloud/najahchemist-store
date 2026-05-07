@@ -413,7 +413,13 @@ function renderBestSellers(){
   const grid = document.getElementById('sf-bs-grid');
   if(!section||!grid) return;
   const prods = ids.map(id=>PRODUCTS.find(p=>p.legacyId===id||p.id===id||p.firestoreId===id||(p.name&&p.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')===id))).filter(Boolean).slice(0,3);
-  if(!prods.length){ section.style.display='none'; return; }
+  const heroSection = document.getElementById('hero-best-sellers');
+  const heroGrid    = document.getElementById('hero-bs-grid');
+  if(!prods.length){
+    section.style.display='none';
+    if(heroSection) heroSection.style.display='none';
+    return;
+  }
   section.style.display='block';
   try {
     grid.innerHTML = prods.filter(p=>p!=null&&typeof p==='object'&&p.id&&p.name).map(p=>{
@@ -432,6 +438,7 @@ function renderBestSellers(){
         </div>
       </div>`;
     }).join('');
+    if(heroSection && heroGrid){ heroGrid.innerHTML=grid.innerHTML; heroSection.style.display='block'; }
   } catch(e) {
     console.error('renderBestSellers error:', e);
   }
