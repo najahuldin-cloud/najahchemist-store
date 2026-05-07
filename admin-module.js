@@ -363,7 +363,7 @@ async function loadFromDB() {
       if(d.id==='bestSellers'){
         const bsData=d.data();
         const bsIds=bsData.productIds||bsData.ids;
-        if(Array.isArray(bsIds)) window._bestSellerIds = bsIds;
+        if(Array.isArray(bsIds)){ window._bestSellerIds = bsIds; renderBestSellers(); }
       }
     });
   } catch(e) {}
