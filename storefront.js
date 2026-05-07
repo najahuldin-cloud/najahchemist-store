@@ -212,6 +212,18 @@ async function sfLoadProductsFromFirestore() {
     window.PRODUCTS  = [...loaded.filter(p => !p.hidden), ...containers];
     sfRenderProducts('all');
     sfRenderHeroCards();
+
+    // Fetch best sellers setting so renderBestSellers has IDs ready
+    try {
+      const bsSnap = await fbFs.getDoc(fbFs.doc(db, 'settings', 'bestSellers'));
+      if (bsSnap.exists()) {
+        const bsData = bsSnap.data();
+        const bsIds = bsData.productIds || bsData.ids;
+        if (Array.isArray(bsIds)) window._bestSellerIds = bsIds;
+      }
+    } catch (bsErr) {}
+    sfRenderHeroCards();
+    if (typeof window.renderBestSellers === 'function') window.renderBestSellers();
   } catch (err) {
     console.warn('[storefront] Firestore product load failed, using fallback:', err);
     sfRenderProducts('all');
