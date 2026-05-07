@@ -416,9 +416,9 @@ function renderBestSellers(){
     if(!section||!grid) return;
     const prods = ids.map(id=>PRODUCTS.find(p=>p.legacyId===id||p.id===id||p.firestoreId===id||(p.name&&p.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')===id))).filter(Boolean).slice(0,3);
     console.log('[BS] prods found:', prods.length);
-    const heroSection = document.getElementById('hero-best-sellers');
+    const heroSection = window.document.getElementById('hero-best-sellers') || document.querySelector('#hero-best-sellers');
     const heroGrid    = document.getElementById('hero-bs-grid');
-    console.log('[BS] heroSection found:', !!heroSection);
+    console.log('[BS] heroSection query result:', heroSection, 'all IDs in doc:', [...document.querySelectorAll('[id]')].map(e=>e.id).filter(i=>i.includes('hero')));
     if(!prods.length){
       section.style.display='none';
       if(heroSection) heroSection.style.setProperty('display','none','important');
