@@ -376,7 +376,7 @@ function renderBestSellers(){
   const prods = ids.map(id=>PRODUCTS.find(p=>p.legacyId===id||p.id===id||p.firestoreId===id||(p.name&&p.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')===id))).filter(Boolean).slice(0,3);
   if(!prods.length){ section.style.display='none'; return; }
   section.style.display='block';
-  grid.innerHTML = prods.map(p=>{
+  grid.innerHTML = prods.filter(p=>p&&p.id&&p.name).map(p=>{
     const _so={halfLb:0,lb1:1,lb2:2,lb8:3,lb40:4,bar:0,bars10:0,bars100:1,litre:0,gallon:1,'5gal':2,caps100:0,caps1000:1,unit:0,kit:0,design:0};
     const firstKey=Object.keys(p.pricing||{}).sort((a,b)=>((_so[a]??99)-(_so[b]??99)))[0];
     const price='J$'+p.pricing[firstKey].price.toLocaleString();
@@ -801,7 +801,7 @@ function updateStatRevs(){
 // ═══ ADMIN ═══
 function renderAdminProducts(){
   const el=document.getElementById('admin-prod-list'); if(!el) return;
-  el.innerHTML=PRODUCTS.map(p=>{
+  el.innerHTML=PRODUCTS.filter(p=>p&&p.id&&p.name).map(p=>{
     const {price}=getDisplayPrice(p);
     const img=p.img?`<img src="${p.img}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">`:p.emoji;
     return `<div class="admin-prod-row">
