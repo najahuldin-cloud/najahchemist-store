@@ -408,46 +408,33 @@ async function loadFromDB() {
 // ═══ BEST SELLERS ═══
 const BS_IMG_CLASS={soap:'img-soap',yoni:'img-wash',skincare:'img-cream',mencare:'img-soap',haircare:'img-cream',bundle:'img-label',label:'img-label',cream:'img-cream',serum:'img-serum',wash:'img-wash',hair:'img-cream'};
 function renderBestSellers(){
-  console.log('[BS] document.body exists:', !!document.body, 'document.readyState:', document.readyState, 'document.URL:', document.URL);
-  requestAnimationFrame(function(){
-    console.log('[BS] renderBestSellers called, _bestSellerIds:', window._bestSellerIds);
-    const ids = window._bestSellerIds||[];
-    const section = document.getElementById('sf-bestsellers-section');
-    const grid = document.getElementById('sf-bs-grid');
-    if(!section||!grid) return;
-    const prods = ids.map(id=>PRODUCTS.find(p=>p.legacyId===id||p.id===id||p.firestoreId===id||(p.name&&p.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')===id))).filter(Boolean).slice(0,3);
-    console.log('[BS] prods found:', prods.length);
-    const heroSection = window.document.getElementById('hero-best-sellers') || document.querySelector('#hero-best-sellers');
-    const heroGrid    = document.getElementById('hero-bs-grid');
-    console.log('[BS] heroSection query result:', heroSection, 'all IDs in doc:', [...document.querySelectorAll('[id]')].map(e=>e.id).filter(i=>i.includes('hero')));
-    if(!prods.length){
-      section.style.display='none';
-      if(heroSection) heroSection.style.setProperty('display','none','important');
-      return;
-    }
-    section.style.display='block';
-    try {
-      grid.innerHTML = prods.filter(p=>p!=null&&typeof p==='object'&&p.id&&p.name).map(p=>{
-        const _so={halfLb:0,lb1:1,lb2:2,lb8:3,lb40:4,bar:0,bars10:0,bars100:1,litre:0,gallon:1,'5gal':2,caps100:0,caps1000:1,unit:0,kit:0,design:0};
-        const firstKey=Object.keys(p.pricing||{}).sort((a,b)=>((_so[a]??99)-(_so[b]??99)))[0];
-        const price='J$'+(p.pricing&&firstKey&&p.pricing[firstKey]?p.pricing[firstKey].price:0).toLocaleString();
-        const imgCls=BS_IMG_CLASS[p.cat]||'img-cream';
-        const img=p.img?`<img src="${p.img}" style="width:100%;height:100%;object-fit:cover;">`:`<span style="font-size:3.5rem;">${p.emoji||'🧴'}</span>`;
-        return `<div class="sf-bs-card" onclick="sfOpenProduct('${p.id}')">
-          <div class="sf-bs-img ${imgCls}">${img}${p.tag?`<span class="pc-tag">${p.tag}</span>`:''}</div>
-          <div class="sf-bs-body">
-            <div class="sf-bs-name">${p.name}</div>
-            <div class="sf-bs-tl">${p.tagline}</div>
-            <div class="sf-bs-price">From ${price}</div>
-            <button class="sf-bs-btn" onclick="event.stopPropagation();sfOpenProduct('${p.id}')">View Product</button>
-          </div>
-        </div>`;
-      }).join('');
-      if(heroSection && heroGrid){ heroGrid.innerHTML=grid.innerHTML; heroSection.setAttribute('style','display:block!important;'); }
-    } catch(e) {
-      console.error('renderBestSellers error:', e);
-    }
-  });
+  const ids = window._bestSellerIds||[];
+  const section = document.getElementById('sf-bestsellers-section');
+  const grid = document.getElementById('sf-bs-grid');
+  if(!section||!grid) return;
+  const prods = ids.map(id=>PRODUCTS.find(p=>p.legacyId===id||p.id===id||p.firestoreId===id||(p.name&&p.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')===id))).filter(Boolean).slice(0,3);
+  if(!prods.length){ section.style.display='none'; return; }
+  section.style.display='block';
+  try {
+    grid.innerHTML = prods.filter(p=>p!=null&&typeof p==='object'&&p.id&&p.name).map(p=>{
+      const _so={halfLb:0,lb1:1,lb2:2,lb8:3,lb40:4,bar:0,bars10:0,bars100:1,litre:0,gallon:1,'5gal':2,caps100:0,caps1000:1,unit:0,kit:0,design:0};
+      const firstKey=Object.keys(p.pricing||{}).sort((a,b)=>((_so[a]??99)-(_so[b]??99)))[0];
+      const price='J$'+(p.pricing&&firstKey&&p.pricing[firstKey]?p.pricing[firstKey].price:0).toLocaleString();
+      const imgCls=BS_IMG_CLASS[p.cat]||'img-cream';
+      const img=p.img?`<img src="${p.img}" style="width:100%;height:100%;object-fit:cover;">`:`<span style="font-size:3.5rem;">${p.emoji||'🧴'}</span>`;
+      return `<div class="sf-bs-card" onclick="sfOpenProduct('${p.id}')">
+        <div class="sf-bs-img ${imgCls}">${img}${p.tag?`<span class="pc-tag">${p.tag}</span>`:''}</div>
+        <div class="sf-bs-body">
+          <div class="sf-bs-name">${p.name}</div>
+          <div class="sf-bs-tl">${p.tagline}</div>
+          <div class="sf-bs-price">From ${price}</div>
+          <button class="sf-bs-btn" onclick="event.stopPropagation();sfOpenProduct('${p.id}')">View Product</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    console.error('renderBestSellers error:', e);
+  }
 }
 window.renderBestSellers = renderBestSellers;
 
