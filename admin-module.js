@@ -288,7 +288,7 @@ async function loadFromDB() {
           sfRenderProducts(_pendingCat || 'all');
           if(typeof sfRenderHeroCards==='function') sfRenderHeroCards();
           if(typeof sfRenderStarterKit==='function') sfRenderStarterKit();
-          if(typeof renderBestSellers==='function') renderBestSellers();
+          if(typeof renderBestSellers==='function' && window._bestSellerIds && window._bestSellerIds.length) renderBestSellers();
         }
         if(!settled){
           var _openPid = new URLSearchParams(window.location.search).get('openProduct');
@@ -373,12 +373,12 @@ function renderBestSellers(){
   const section = document.getElementById('sf-bestsellers-section');
   const grid = document.getElementById('sf-bs-grid');
   if(!section||!grid) return;
-  const prods = ids.map(id=>PRODUCTS.find(p=>p.legacyId===id||p.id===id)).filter(Boolean).slice(0,3);
+  const prods = ids.map(id=>PRODUCTS.find(p=>p.legacyId===id||p.id===id||p.firestoreId===id||(p.name&&p.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')===id))).filter(Boolean).slice(0,3);
   if(!prods.length){ section.style.display='none'; return; }
   section.style.display='block';
   grid.innerHTML = prods.map(p=>{
     const _so={halfLb:0,lb1:1,lb2:2,lb8:3,lb40:4,bar:0,bars10:0,bars100:1,litre:0,gallon:1,'5gal':2,caps100:0,caps1000:1,unit:0,kit:0,design:0};
-    const firstKey=Object.keys(p.pricing).sort((a,b)=>((_so[a]??99)-(_so[b]??99)))[0];
+    const firstKey=Object.keys(p.pricing||{}).sort((a,b)=>((_so[a]??99)-(_so[b]??99)))[0];
     const price='J$'+p.pricing[firstKey].price.toLocaleString();
     const imgCls=BS_IMG_CLASS[p.cat]||'img-cream';
     const img=p.img?`<img src="${p.img}" style="width:100%;height:100%;object-fit:cover;">`:`<span style="font-size:3.5rem;">${p.emoji||'🧴'}</span>`;
@@ -806,7 +806,7 @@ function renderAdminProducts(){
     const img=p.img?`<img src="${p.img}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">`:p.emoji;
     return `<div class="admin-prod-row">
       <div class="admin-prod-img ${IMG_CLASS[p.cat]}">${img}</div>
-      <div class="admin-prod-info"><div class="admin-prod-name">${p.name}</div><div class="admin-prod-meta">${price} · ${p.cat==='soap'?'By Bar':p.cat==='bundle'||p.cat==='label'?'Per Unit':Object.keys(p.pricing).some(k=>k.startsWith('lb'))?'By Weight':'By Volume'} · ${(REVIEWS[p.id]||[]).length} review(s)</div></div>
+      <div class="admin-prod-info"><div class="admin-prod-name">${p.name}</div><div class="admin-prod-meta">${price} · ${p.cat==='soap'?'By Bar':p.cat==='bundle'||p.cat==='label'?'Per Unit':Object.keys(p.pricing||{}).some(k=>k.startsWith('lb'))?'By Weight':'By Volume'} · ${(REVIEWS[p.id]||[]).length} review(s)</div></div>
       <div class="admin-actions">
         <button class="btn btn-ol btn-xs" onclick="editProduct('${p.id}')">Edit</button>
         <button class="btn btn-xs" style="background:${p.hidden?'#6B7280':'#059669'};color:white;border:none;" onclick="toggleProductHidden('${p.id}')">${p.hidden?'Hidden':'Visible'}</button>
