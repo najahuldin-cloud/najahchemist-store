@@ -49,7 +49,7 @@ const IMG_CLASS = {soap:'img-soap',cream:'img-cream',serum:'img-serum',wash:'img
 function showDashboard() {
   // Second layer: enforce admin email allowlist before rendering
   const _u = auth.currentUser;
-  if (!_u || _u.email !== 'start@najahchemistja.com') {
+  if (!_u || _u.email !== 'start@najahchemist.com') {
     if (_u) signOut(auth);
     showStorefront();
     return;
@@ -74,7 +74,7 @@ onAuthStateChanged(auth, async (user) => {
   const btn = document.getElementById('nav-admin');
   if (user) {
     // Second layer: enforce admin email allowlist
-    if (user.email !== 'start@najahchemistja.com') {
+    if (user.email !== 'start@najahchemist.com') {
       await signOut(auth);
       showStorefront();
       return;
