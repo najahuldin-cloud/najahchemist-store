@@ -43,7 +43,7 @@ Single-file wholesale storefront + admin panel for Najah Chemist, a Jamaican nat
 ANTHROPIC_API_KEY         = sk-ant-...
 GOOGLE_SERVICE_ACCOUNT    = { full JSON from service account key file }
 GOOGLE_SHEET_ID           = 10Gzprr55zedU0fai9lDHo85SljoGfHWL3MvxYEUyk5c
-GOOGLE_PLACES_API_KEY     = AIzaSyAgqVirZbsbV-sa7oVMLtRSOXGgtRAetaA
+GOOGLE_PLACES_API_KEY     = AIzaSyC7V48VgNvzr9JyxppC8QGfrNu3kIpaL4g
 RESEND_API_KEY            = re_...
 ```
 

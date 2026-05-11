@@ -1,20 +1,21 @@
 // ════════════════════════════════════════════════════
 // NAJAH CHEMIST — Single clean script. No duplicates.
-// Firebase: najah-chemist-staging project (STAGING BRANCH)
+// Firebase: najah-chemist production project
 // Admin email: start@najahchemistja.com
 // ════════════════════════════════════════════════════
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot, where, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCHSSW0hZldMIjhCTdSN27wgxxtcCMXlSE",
-  authDomain: "najah-chemist-staging.firebaseapp.com",
-  projectId: "najah-chemist-staging",
-  storageBucket: "najah-chemist-staging.firebasestorage.app",
-  messagingSenderId: "165284411356",
-  appId: "1:165284411356:web:7f9e654b4c24ebf64b0119"
+  apiKey: "AIzaSyDYdt_0wJNcfGl2WbIKPiESdVcmc-cqZgM",
+  authDomain: "najahchemistja.com",
+  projectId: "najah-chemist",
+  storageBucket: "najah-chemist.firebasestorage.app",
+  messagingSenderId: "89819999556",
+  appId: "1:89819999556:web:4e6eb5c0c881da5e763b11"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -22,6 +23,7 @@ const db  = getFirestore(app);
 window._db = db;
 window._app = app;
 const auth = getAuth(app);
+const functions = getFunctions(app);
 
 // ═══ DATA ═══
 // Module-scoped PRODUCTS — admin panel's own array, populated by loadFromDB().
@@ -45,6 +47,13 @@ const IMG_CLASS = {soap:'img-soap',cream:'img-cream',serum:'img-serum',wash:'img
 
 // ═══ UI SWITCHING ═══
 function showDashboard() {
+  // Second layer: enforce admin email allowlist before rendering
+  const _u = auth.currentUser;
+  if (!_u || _u.email !== 'start@najahchemistja.com') {
+    if (_u) signOut(auth);
+    showStorefront();
+    return;
+  }
   document.getElementById('storefront').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   updateProductStat();
@@ -64,6 +73,12 @@ let _lastOrdersSig = '';
 onAuthStateChanged(auth, async (user) => {
   const btn = document.getElementById('nav-admin');
   if (user) {
+    // Second layer: enforce admin email allowlist
+    if (user.email !== 'start@najahchemistja.com') {
+      await signOut(auth);
+      showStorefront();
+      return;
+    }
     btn.textContent = '✓ Admin';
     btn.classList.add('on');
     document.getElementById('admin-user-label').textContent = `Signed in as ${user.email}`;
@@ -881,6 +896,14 @@ window.toggleProductHidden = async function(id) {
   try {
     await setDoc(doc(db,'products',id), {hidden: newHidden}, {merge: true});
     showToast(newHidden ? 'Product hidden from shop' : 'Product visible in shop');
+    if (!newHidden) {
+      try {
+        const p = PRODUCTS[idx];
+        const notifyRestock = httpsCallable(functions, 'notifyRestock');
+        const result = await notifyRestock({ productId: id, productName: p.name });
+        if (result.data.count > 0) alert(`✅ Restock notifications sent to ${result.data.count} people for ${p.name}.`);
+      } catch(e) { console.warn('Restock notification failed:', e.message); }
+    }
   } catch(e) {
     PRODUCTS[idx].hidden = !newHidden;
     renderAdminProducts();

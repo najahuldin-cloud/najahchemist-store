@@ -215,10 +215,21 @@ tr:hover td{background:var(--warm);}
 .sf-section-h2 em { font-style:italic; font-weight:400; color:#8A8480; }
 .sf-section-sub { font-size:0.88rem; color:#8A8480; margin-bottom:2.5rem; max-width:500px; }
 
-.sf-cats { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:2rem; }
+.sf-cats { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.6rem; }
 .sf-cat { padding:0.35rem 1rem; border:1.5px solid #E8E4DE; border-radius:20px; font-size:0.75rem; font-weight:600; cursor:pointer; transition:all 0.18s; background:white; color:#8A8480; font-family:'Outfit',sans-serif; }
 .sf-cat.on { background:#0F0E0D; color:white; border-color:#0F0E0D; }
 .sf-cat:hover:not(.on) { border-color:#0F0E0D; color:#0F0E0D; }
+
+.sf-tags { display:flex; gap:0.4rem; flex-wrap:wrap; margin-bottom:1.6rem; }
+.sf-tag-btn { padding:0.28rem 0.85rem; border:1.5px solid #BBF7D0; border-radius:20px; font-size:0.72rem; font-weight:600; cursor:pointer; transition:all 0.18s; background:white; color:#15803D; font-family:'Outfit',sans-serif; }
+.sf-tag-btn.on { background:#15803D; color:white; border-color:#15803D; }
+.sf-tag-btn:hover:not(.on) { border-color:#15803D; background:#F0FDF4; }
+
+.sf-ingr-badges { display:flex; gap:0.3rem; flex-wrap:wrap; margin:0.3rem 0 0.45rem; }
+.sf-ingr-badge { font-size:0.6rem; font-weight:700; padding:2px 7px; border-radius:20px; line-height:1.6; }
+.sf-ingr-vegan { background:#DCFCE7; color:#15803D; }
+.sf-ingr-natural { background:#D1FAE5; color:#065F46; }
+.sf-ingr-nb { background:#ECFDF5; color:#047857; }
 
 .sf-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1.5rem; }
 .sf-card { background:white; border:1px solid #E8E4DE; border-radius:16px; overflow:hidden; cursor:pointer; transition:all 0.25s; }
@@ -326,6 +337,8 @@ tr:hover td{background:var(--warm);}
   .sf-why-desc{font-size:0.72rem;}
   .sf-cats{gap:0.35rem;}
   .sf-cat{font-size:0.68rem;padding:0.25rem 0.7rem;}
+  .sf-tags{gap:0.3rem;}
+  .sf-tag-btn{font-size:0.65rem;padding:0.22rem 0.6rem;}
   .sf-reviews-wrap{padding:2.5rem 1.2rem;}
   .sf-cta{padding:2.5rem 1.2rem;}
   .sf-cta-h2{font-size:1.6rem;}

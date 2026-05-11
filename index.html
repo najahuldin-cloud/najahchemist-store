@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<meta name="facebook-domain-verification" content="a2r36sxhq0h6shfk1k1jpm6qbmsimh"/>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -73,7 +74,8 @@
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAgqVirZbsbV-sa7oVMLtRSOXGgtRAetaA&libraries=places&callback=sfMapsReady" async defer></script>
+<script>window.sfMapsReady = function() { window._sfMapsLoaded = true; };</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC7V48VgNvzr9JyxppC8QGfrNu3kIpaL4g&libraries=places&callback=sfMapsReady" async></script>
 <link rel="stylesheet" href="/storefront.css">
 
 <!-- ═══ SCHEMA — Organization + WebSite (AEO entity disambiguation) ═══ -->
@@ -319,6 +321,11 @@
         <button class="sf-cat" onclick="sfFilter('bundle',this)">Bundles</button>
         <button class="sf-cat" onclick="sfFilter('label',this)">Design</button>
         <button class="sf-cat" onclick="sfFilter('containers',this)">Containers</button>
+      </div>
+      <div class="sf-tags" id="sf-tag-btns">
+        <button class="sf-tag-btn" onclick="sfSetTagFilter('vegan',this)">🌱 Vegan</button>
+        <button class="sf-tag-btn" onclick="sfSetTagFilter('natural',this)">🍃 Natural</button>
+        <button class="sf-tag-btn" onclick="sfSetTagFilter('naturalBased',this)">🌿 Natural-Based</button>
       </div>
       <div class="sf-grid" id="sf-products-grid"></div>
     </div>
@@ -1805,7 +1812,7 @@ Add anything else you want the chatbot to know..."></textarea>
 
 <div id="print-zone" style="display:none;"></div>
 <div id="bulk-print-zone" style="display:none;position:absolute;top:0;left:0;background:white;"></div>
-<script type="module" src="/admin-module.js?v=3"></script>
+<script type="module" src="/admin-module.js?v=5"></script>
 
 <!-- STOREFRONT + CART JS -->
 <script src="/storefront.js"></script>
