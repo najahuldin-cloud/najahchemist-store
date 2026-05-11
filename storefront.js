@@ -40,6 +40,8 @@ let sfDiscountAmount = 0;
 let sfDiscountLabel = '';
 let sfCartStep = 'cart';
 let sfSearchQuery = '';
+let sfTagFilter = null;   // 'vegan' | 'natural' | 'naturalBased' | null
+let sfCurrentCat = 'all';
 
 // ── Helpers ──────────────────────────────────────────
 function sfSizeLabel(k) {
@@ -54,7 +56,7 @@ function sfMinKey(pricing) {
   return keys.sort(function(a,b){ return ((SF_SIZE_ORDER[a]??99)-(SF_SIZE_ORDER[b]??99)); })[0];
 }
 function sfGetPrice(p) {
-  const keys = Object.keys(p.pricing);
+  const keys = Object.keys(p.pricing || {});
   if (!keys.length) return {price:'Contact us',moq:''};
   const k = sfMinKey(p.pricing) || keys[0];
   const entry = p.pricing[k];
@@ -171,7 +173,7 @@ async function sfLoadProductsFromFirestore() {
       import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js'),
       import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js'),
     ]);
-    const SF_FB_CONFIG = { apiKey: 'AIzaSyCHSSW0hZldMIjhCTdSN27wgxxtcCMXlSE', authDomain: 'najah-chemist-staging.firebaseapp.com', projectId: 'najah-chemist-staging', storageBucket: 'najah-chemist-staging.firebasestorage.app', messagingSenderId: '165284411356', appId: '1:165284411356:web:7f9e654b4c24ebf64b0119' };
+    const SF_FB_CONFIG = { apiKey: 'AIzaSyDYdt_0wJNcfGl2WbIKPiESdVcmc-cqZgM', authDomain: 'najahchemistja.com', projectId: 'najah-chemist', storageBucket: 'najah-chemist.firebasestorage.app', messagingSenderId: '89819999556', appId: '1:89819999556:web:4e6eb5c0c881da5e763b11' };
     const appName = 'sf-products';
     const existing = fbApp.getApps().find(a => a.name === appName);
     const app = existing || fbApp.initializeApp(SF_FB_CONFIG, appName);
@@ -187,31 +189,56 @@ async function sfLoadProductsFromFirestore() {
     const loaded = [];
     snap.forEach(docSnap => {
       const d = docSnap.data();
+      // Build pricing from variants array (original format) OR fall back to the
+      // pricing object stored directly by the admin panel's saveProduct function.
       const pricing = {};
-      (d.variants || []).forEach(v => {
-        const k = _SF_SIZE_KEY[v.size] || v.size;
-        pricing[k] = { price: v.price, moq: 1 };
-      });
+      if (Array.isArray(d.variants) && d.variants.length > 0) {
+        d.variants.forEach(v => {
+          const k = _SF_SIZE_KEY[v.size] || v.size;
+          pricing[k] = { price: v.price, moq: v.moq || 1 };
+        });
+      } else if (d.pricing && typeof d.pricing === 'object' && !Array.isArray(d.pricing)) {
+        Object.assign(pricing, d.pricing);
+      }
       loaded.push({
-        id:         d.legacyId || docSnap.id,
+        id:          d.legacyId || docSnap.id,
         firestoreId: docSnap.id,
-        name:       d.name,
-        cat:        _SF_CAT_CODE[d.category] || d.category,
-        tagline:    d.tagline || d.description || '',
-        emoji:      d.emoji || '🧴',
-        img:        d.img   || '',
-        tag:        d.tag   || '',
-        sku:        d.sku   || '',
+        name:        d.name,
+        cat:         d.cat || _SF_CAT_CODE[d.category] || d.category,
+        tagline:     d.tagline || d.description || '',
+        emoji:       d.emoji || '🧴',
+        img:         d.img   || '',
+        tag:         d.tag   || '',
+        sku:         d.sku   || '',
         pricing,
-        outOfStock: d.outOfStock || false,
-        hidden:     d.isHidden || d.hidden || false,
+        outOfStock:  d.outOfStock || false,
+        hidden:      d.isHidden || d.hidden || false,
+        ingredients: d.ingredients || d.inci || '',
+        usage:       d.usage || '',
+        benefits:    Array.isArray(d.benefits) ? d.benefits : (d.benefits ? String(d.benefits).split(',').map(s => s.trim()) : []),
+        vegan:       d.vegan       || false,
+        natural:     d.natural     || false,
+        naturalBased:d.naturalBased|| false,
       });
     });
 
     const containers = (window.PRODUCTS || []).filter(p => p.id.startsWith('con'));
     window.PRODUCTS  = [...loaded.filter(p => !p.hidden), ...containers];
+    console.log('[PRICE] sample product:', JSON.stringify(window.PRODUCTS && window.PRODUCTS[0]));
     sfRenderProducts('all');
     sfRenderHeroCards();
+
+    // Fetch best sellers setting so renderBestSellers has IDs ready
+    try {
+      const bsSnap = await fbFs.getDoc(fbFs.doc(db, 'settings', 'bestSellers'));
+      if (bsSnap.exists()) {
+        const bsData = bsSnap.data();
+        const bsIds = bsData.productIds || bsData.ids;
+        if (Array.isArray(bsIds)) window._bestSellerIds = bsIds;
+      }
+    } catch (bsErr) {}
+    sfRenderHeroCards();
+    if (typeof window.renderBestSellers === 'function') window.renderBestSellers();
   } catch (err) {
     console.warn('[storefront] Firestore product load failed, using fallback:', err);
     sfRenderProducts('all');
@@ -270,6 +297,7 @@ const SF_PRODUCT_PAGES = {
 };
 
 function sfRenderProducts(filter) {
+  sfCurrentCat = filter;
   const grid = document.getElementById('sf-products-grid');
   if (!grid) return;
   const prods = window.PRODUCTS || [];
@@ -277,6 +305,9 @@ function sfRenderProducts(filter) {
   if (sfSearchQuery) {
     const q = sfSearchQuery.toLowerCase();
     list = list.filter(p => (p.name||'').toLowerCase().includes(q) || (p.tagline||'').toLowerCase().includes(q));
+  }
+  if (sfTagFilter) {
+    list = list.filter(p => p[sfTagFilter] === true);
   }
   if (!list.length) {
     grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:3rem 1rem;color:#8A8480;font-size:0.88rem;">${sfSearchQuery ? `No products found for "<strong style="color:#1C1A18;">${sfSearchQuery}</strong>".` : 'No products found.'}</div>`;
@@ -296,11 +327,18 @@ function sfRenderProducts(filter) {
       ? `<a href="${learnMoreUrl}" target="_blank" onclick="event.stopPropagation()" style="display:inline-block;font-size:0.68rem;color:#8A8480;text-decoration:none;margin-top:0.2rem;margin-bottom:0.9rem;letter-spacing:0.01em;" onmouseover="this.style.color='#B45309'" onmouseout="this.style.color='#8A8480'">Learn More →</a>`
       : '';
     const oos = !!p.outOfStock;
+    const ingrBadges = [
+      p.vegan       ? '<span class="sf-ingr-badge sf-ingr-vegan">🌱 Vegan</span>' : '',
+      p.natural     ? '<span class="sf-ingr-badge sf-ingr-natural">🍃 Natural</span>' : '',
+      p.naturalBased? '<span class="sf-ingr-badge sf-ingr-nb">🌿 Natural-Based</span>' : '',
+    ].filter(Boolean).join('');
+    const ingrHtml = ingrBadges ? `<div class="sf-ingr-badges">${ingrBadges}</div>` : '';
     return `<div class="sf-card" onclick="sfOpenProduct('${p.id}')">
       <div class="sf-card-img ${SF_IMG_CLASS[p.cat]||'img-cream'}">${imgHtml}${p.tag&&!oos?`<span class="sf-card-badge">${p.tag}</span>`:''}${oos?'<span class="sf-card-badge" style="background:#DC2626;">Out of Stock</span>':''}</div>
       <div class="sf-card-body">
         <div class="sf-card-cat" style="display:flex;justify-content:space-between;align-items:center;">${SF_CAT_LABEL[p.cat]||p.cat}${starHtml}</div>
         <div class="sf-card-name">${p.name}</div>
+        ${ingrHtml}
         <div style="font-size:0.78rem;font-weight:700;color:#B45309;margin-bottom:0.1rem;">${price}</div>
         <div class="sf-card-tl" style="margin-top:0.3rem;${learnMoreUrl ? 'margin-bottom:0.2rem;' : ''}">${p.tagline}</div>
         ${learnMoreHtml}
@@ -320,7 +358,7 @@ function sfRenderHeroCards() {
   if (!el) return;
   const ids = window._bestSellerIds || [];
   const prods = window.PRODUCTS || [];
-  const list = ids.map(id => prods.find(p => p.id === id)).filter(Boolean).slice(0, 3);
+  const list = ids.map(id => prods.find(p => p.id === id || p.legacyId === id || p.firestoreId === id || (p.name && p.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') === id))).filter(Boolean).slice(0, 3);
   if (!list.length) { el.innerHTML = ''; return; }
   el.innerHTML = `<div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.18em;color:#c9a84c;margin-bottom:0.5rem;">⭐ Best Sellers</div>` +
     list.map(p => {
@@ -531,6 +569,7 @@ window.skAddToCart = function() {
 
 function sfFilter(cat, btn) {
   // Clear search when a category tab is clicked
+  sfCurrentCat = cat;
   sfSearchQuery = '';
   const inp = document.getElementById('sf-search');
   if (inp) inp.value = '';
@@ -541,6 +580,18 @@ function sfFilter(cat, btn) {
   sfRenderProducts(cat);
 }
 window.sfFilter = sfFilter;
+
+window.sfSetTagFilter = function(tag, btn) {
+  if (sfTagFilter === tag) {
+    sfTagFilter = null;
+    document.querySelectorAll('.sf-tag-btn').forEach(b => b.classList.remove('on'));
+  } else {
+    sfTagFilter = tag;
+    document.querySelectorAll('.sf-tag-btn').forEach(b => b.classList.remove('on'));
+    if (btn) btn.classList.add('on');
+  }
+  sfRenderProducts(sfCurrentCat);
+};
 
 window.sfSearch = function(val) {
   sfSearchQuery = val.trim();
@@ -593,16 +644,18 @@ function sfOpenProduct(id) {
   set('sf-modal-use', p.usage||'');
   setHTML('sf-modal-benefits', (Array.isArray(p.benefits)?p.benefits:[p.benefits||'']).map(b=>`<span class="sf-modal-benefit">${b}</span>`).join(''));
 
-  // Hide Best For / Key Ingredients for container products
+  // Hide Best For / Key Ingredients for containers or when empty
   const isContainer = p.cat === 'containers';
-  ['sf-modal-benefits','sf-modal-ing'].forEach(id => {
-    const sec = document.getElementById(id);
-    if(sec && sec.closest('.sf-modal-section')) sec.closest('.sf-modal-section').style.display = isContainer ? 'none' : '';
+  const hideMap = { 'sf-modal-benefits': isContainer || !p.benefits?.length, 'sf-modal-ing': isContainer || !p.ingredients };
+  Object.entries(hideMap).forEach(([elId, hide]) => {
+    const sec = document.getElementById(elId);
+    if (sec && sec.closest('.sf-modal-section')) sec.closest('.sf-modal-section').style.display = hide ? 'none' : '';
   });
 
   // Size buttons
-  const keys = Object.keys(p.pricing);
-  sfCurrentSize = keys[0];
+  const pricing = p.pricing || {};
+  const keys = Object.keys(pricing);
+  sfCurrentSize = keys[0] || null;
   const sizesWrap = document.getElementById('sf-modal-sizes-wrap');
   if (sizesWrap) {
     sizesWrap.style.display = keys.length > 1 ? 'block' : 'none';
@@ -614,8 +667,12 @@ function sfOpenProduct(id) {
   }
 
   // Price
-  const firstEntry = p.pricing[keys[0]];
-  setHTML('sf-modal-price-row', `<div class="sf-modal-price-item"><div class="sf-modal-price-lbl">Price</div><div class="sf-modal-price-val" id="sf-m-price">J$${firstEntry.price.toLocaleString()}</div></div><div class="sf-modal-price-item"><div class="sf-modal-price-lbl">Size</div><div class="sf-modal-price-val" id="sf-m-moq">${sfSizeLabel(keys[0])}</div></div>`);
+  const firstEntry = keys[0] ? pricing[keys[0]] : null;
+  if (firstEntry) {
+    setHTML('sf-modal-price-row', `<div class="sf-modal-price-item"><div class="sf-modal-price-lbl">Price</div><div class="sf-modal-price-val" id="sf-m-price">J$${firstEntry.price.toLocaleString()}</div></div><div class="sf-modal-price-item"><div class="sf-modal-price-lbl">Size</div><div class="sf-modal-price-val" id="sf-m-moq">${sfSizeLabel(keys[0])}</div></div>`);
+  } else {
+    setHTML('sf-modal-price-row', '<div class="sf-modal-price-item"><div class="sf-modal-price-lbl">Price</div><div class="sf-modal-price-val" id="sf-m-price">—</div></div>');
+  }
 
   // RRP — inject/update element immediately after price row
   const _priceRowEl = document.getElementById('sf-modal-price-row');
@@ -627,13 +684,13 @@ function sfOpenProduct(id) {
       _priceRowEl.parentNode.insertBefore(_rrpEl, _priceRowEl.nextSibling);
     }
     _rrpEl.style.cssText = 'padding:0.5rem 1.25rem 0;';
-    _rrpEl.innerHTML = sfRrpHtml(p, firstEntry.price);
+    _rrpEl.innerHTML = firstEntry ? sfRrpHtml(p, firstEntry.price) : '';
   }
 
   // Qty
   set('sf-modal-qty-val', '1');
-  set('sf-modal-moq-note', sfSizeLabel(keys[0]));
-  set('sf-modal-subtotal', 'J$'+firstEntry.price.toLocaleString());
+  set('sf-modal-moq-note', keys[0] ? sfSizeLabel(keys[0]) : '');
+  set('sf-modal-subtotal', firstEntry ? 'J$'+firstEntry.price.toLocaleString() : '—');
 
   // Scent pills — show for scent+mint products AND scent-only products,
   // but never for products explicitly listed in NO_SCENT_NAMES
@@ -1317,7 +1374,7 @@ window.sfCheckoutWA = function() {
     setTimeout(async function() {
       try {
         const totalQty = cartSnapshot.reduce(function(s,i){return s+i.qty;},0);
-        await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Unpaid',status:'Pending',date:date,total:grandTotal,payMethod:'Bank/Lynk',phone:phone||'—',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee,knutsfordBranch:knutsfordBranch,zipmailLocation:zipmailLocation,deliveryAddress:deliveryAddress,shippingDetail:shippingDetail,caribbeanCountry:sfSelectedShip==='caribbean'?sfCaribbeanCountry:'',caribbeanShippingCost:sfSelectedShip==='caribbean'?deliveryFee:0});
+        await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Unpaid',status:'Pending',date:date,total:grandTotal,payMethod:'Bank/Lynk',phone:phone||'—',email:custEmail||'',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee,knutsfordBranch:knutsfordBranch,zipmailLocation:zipmailLocation,deliveryAddress:deliveryAddress,shippingDetail:shippingDetail,caribbeanCountry:sfSelectedShip==='caribbean'?sfCaribbeanCountry:'',caribbeanShippingCost:sfSelectedShip==='caribbean'?deliveryFee:0});
         console.log('ORDER SAVED:', orderId);
       } catch(e) {
         console.error('SAVE FAILED:', e);
@@ -1438,7 +1495,7 @@ window.sfCheckoutFygaro = function() {
     // 1. SAVE ORDER FIRST — nothing before this
     try {
       const totalQty = cartSnapshot.reduce(function(s,i){return s+i.qty;},0);
-      await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Awaiting Payment',status:'Pending',date:date,total:cardTotal,payMethod:'Fygaro Card',phone:phone||'—',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee,knutsfordBranch:knutsfordBranch,zipmailLocation:zipmailLocation,deliveryAddress:deliveryAddress,shippingDetail:shippingDetail,caribbeanCountry:sfSelectedShip==='caribbean'?sfCaribbeanCountry:'',caribbeanShippingCost:sfSelectedShip==='caribbean'?deliveryFee:0});
+      await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Awaiting Payment',status:'Pending',date:date,total:cardTotal,payMethod:'Fygaro Card',phone:phone||'—',email:custEmail||'',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee,knutsfordBranch:knutsfordBranch,zipmailLocation:zipmailLocation,deliveryAddress:deliveryAddress,shippingDetail:shippingDetail,caribbeanCountry:sfSelectedShip==='caribbean'?sfCaribbeanCountry:'',caribbeanShippingCost:sfSelectedShip==='caribbean'?deliveryFee:0});
       console.log('ORDER SAVED:', orderId);
     } catch(e) {
       console.error('SAVE FAILED:', e);

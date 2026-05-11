@@ -1,20 +1,21 @@
 // ════════════════════════════════════════════════════
 // NAJAH CHEMIST — Single clean script. No duplicates.
-// Firebase: najah-chemist-staging project (STAGING BRANCH)
+// Firebase: najah-chemist production project
 // Admin email: start@najahchemistja.com
 // ════════════════════════════════════════════════════
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot, where, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCHSSW0hZldMIjhCTdSN27wgxxtcCMXlSE",
-  authDomain: "najah-chemist-staging.firebaseapp.com",
-  projectId: "najah-chemist-staging",
-  storageBucket: "najah-chemist-staging.firebasestorage.app",
-  messagingSenderId: "165284411356",
-  appId: "1:165284411356:web:7f9e654b4c24ebf64b0119"
+  apiKey: "AIzaSyDYdt_0wJNcfGl2WbIKPiESdVcmc-cqZgM",
+  authDomain: "najahchemistja.com",
+  projectId: "najah-chemist",
+  storageBucket: "najah-chemist.firebasestorage.app",
+  messagingSenderId: "89819999556",
+  appId: "1:89819999556:web:4e6eb5c0c881da5e763b11"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -22,6 +23,7 @@ const db  = getFirestore(app);
 window._db = db;
 window._app = app;
 const auth = getAuth(app);
+const functions = getFunctions(app);
 
 // ═══ DATA ═══
 // Module-scoped PRODUCTS — admin panel's own array, populated by loadFromDB().
@@ -45,6 +47,13 @@ const IMG_CLASS = {soap:'img-soap',cream:'img-cream',serum:'img-serum',wash:'img
 
 // ═══ UI SWITCHING ═══
 function showDashboard() {
+  // Second layer: enforce admin email allowlist before rendering
+  const _u = auth.currentUser;
+  if (!_u || _u.email !== 'start@najahchemistja.com') {
+    if (_u) signOut(auth);
+    showStorefront();
+    return;
+  }
   document.getElementById('storefront').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   updateProductStat();
@@ -64,6 +73,12 @@ let _lastOrdersSig = '';
 onAuthStateChanged(auth, async (user) => {
   const btn = document.getElementById('nav-admin');
   if (user) {
+    // Second layer: enforce admin email allowlist
+    if (user.email !== 'start@najahchemistja.com') {
+      await signOut(auth);
+      showStorefront();
+      return;
+    }
     btn.textContent = '✓ Admin';
     btn.classList.add('on');
     document.getElementById('admin-user-label').textContent = `Signed in as ${user.email}`;
@@ -268,6 +283,45 @@ async function saveReviewToDB(review) {
 }
 window.saveReviewToDB = saveReviewToDB;
 
+// ── Firestore → rendering schema transform ────────────────────────────────
+// Firestore stores products with variants[] + category + isHidden.
+// All rendering code expects p.pricing{}, p.cat, p.hidden.
+function transformFirestoreProduct(raw) {
+  const SIZE_MAP = {
+    '2 lbs':    'lb2',   '8 lbs':    'lb8',   '40 lbs':   'lb40',
+    '1 lb':     'lb1',   '½ lb':     'halfLb',
+    '1 litre':  'l1',    '1 liter':  'l1',
+    '2 litres': 'l2',    '2 liters': 'l2',
+    '5 litres': 'l5',    '5 liters': 'l5',
+    '1 gallon': 'gallon',
+    '5 gallon': '5gal',  '5 gallons':'gal5',
+    '10 bars':  'bars10','100 bars': 'bars100','1 bar': 'bar',
+  };
+  const CAT_MAP = {
+    'men care':  'mencare',  'skin care': 'skincare',
+    'bar soaps': 'soap',     'yoni care': 'yoni',
+    'hair care': 'haircare', 'bundles':   'bundle',
+  };
+  const p = Object.assign({}, raw);
+  // 1. variants[] → pricing{}
+  if (Array.isArray(p.variants) && !p.pricing) {
+    p.pricing = {};
+    p.variants.forEach(function(v) {
+      const norm = (v.size || '').toLowerCase().trim();
+      const key  = SIZE_MAP[norm] || v.size || norm;
+      p.pricing[key] = { price: Number(v.price) || 0, moq: Number(v.moq) || 1 };
+    });
+  }
+  // 2. category → cat
+  if (p.category && !p.cat) {
+    p.cat = CAT_MAP[(p.category || '').toLowerCase().trim()] ||
+            (p.category || '').toLowerCase().replace(/\s+/g, '');
+  }
+  // 3. isHidden → hidden
+  if ('isHidden' in p && !('hidden' in p)) p.hidden = p.isHidden;
+  return p;
+}
+
 async function loadFromDB() {
   // ── 1. Products — real-time listener keeps prices in sync with admin ──────
   // Using onSnapshot instead of getDocs so any price saved in admin.html
@@ -276,7 +330,7 @@ async function loadFromDB() {
     await new Promise(function(resolve) {
       var settled = false;
       onSnapshot(collection(db,'products'), function(snap) {
-        const dbProds = snap.docs.map(function(d){ return {...d.data()}; });
+        const dbProds = snap.docs.map(function(d){ return transformFirestoreProduct(d.data()); });
         PRODUCTS.length = 0;
         dbProds.forEach(function(dbP){ PRODUCTS.push(dbP); });
         console.log('[Najah] Products synced: ' + PRODUCTS.length);
@@ -288,7 +342,7 @@ async function loadFromDB() {
           sfRenderProducts(_pendingCat || 'all');
           if(typeof sfRenderHeroCards==='function') sfRenderHeroCards();
           if(typeof sfRenderStarterKit==='function') sfRenderStarterKit();
-          if(typeof renderBestSellers==='function') renderBestSellers();
+          if(typeof renderBestSellers==='function' && window._bestSellerIds && window._bestSellerIds.length) renderBestSellers();
         }
         if(!settled){
           var _openPid = new URLSearchParams(window.location.search).get('openProduct');
@@ -324,7 +378,7 @@ async function loadFromDB() {
       if(d.id==='bestSellers'){
         const bsData=d.data();
         const bsIds=bsData.productIds||bsData.ids;
-        if(Array.isArray(bsIds)) window._bestSellerIds = bsIds;
+        if(Array.isArray(bsIds)){ window._bestSellerIds = bsIds; renderBestSellers(); }
       }
     });
   } catch(e) {}
@@ -373,25 +427,29 @@ function renderBestSellers(){
   const section = document.getElementById('sf-bestsellers-section');
   const grid = document.getElementById('sf-bs-grid');
   if(!section||!grid) return;
-  const prods = ids.map(id=>PRODUCTS.find(p=>p.legacyId===id||p.id===id)).filter(Boolean).slice(0,3);
+  const prods = ids.map(id=>PRODUCTS.find(p=>p.legacyId===id||p.id===id||p.firestoreId===id||(p.name&&p.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')===id))).filter(Boolean).slice(0,3);
   if(!prods.length){ section.style.display='none'; return; }
   section.style.display='block';
-  grid.innerHTML = prods.map(p=>{
-    const _so={halfLb:0,lb1:1,lb2:2,lb8:3,lb40:4,bar:0,bars10:0,bars100:1,litre:0,gallon:1,'5gal':2,caps100:0,caps1000:1,unit:0,kit:0,design:0};
-    const firstKey=Object.keys(p.pricing).sort((a,b)=>((_so[a]??99)-(_so[b]??99)))[0];
-    const price='J$'+p.pricing[firstKey].price.toLocaleString();
-    const imgCls=BS_IMG_CLASS[p.cat]||'img-cream';
-    const img=p.img?`<img src="${p.img}" style="width:100%;height:100%;object-fit:cover;">`:`<span style="font-size:3.5rem;">${p.emoji||'🧴'}</span>`;
-    return `<div class="sf-bs-card" onclick="sfOpenProduct('${p.id}')">
-      <div class="sf-bs-img ${imgCls}">${img}${p.tag?`<span class="pc-tag">${p.tag}</span>`:''}</div>
-      <div class="sf-bs-body">
-        <div class="sf-bs-name">${p.name}</div>
-        <div class="sf-bs-tl">${p.tagline}</div>
-        <div class="sf-bs-price">From ${price}</div>
-        <button class="sf-bs-btn" onclick="event.stopPropagation();sfOpenProduct('${p.id}')">View Product</button>
-      </div>
-    </div>`;
-  }).join('');
+  try {
+    grid.innerHTML = prods.filter(p=>p!=null&&typeof p==='object'&&p.id&&p.name).map(p=>{
+      const _so={halfLb:0,lb1:1,lb2:2,lb8:3,lb40:4,bar:0,bars10:0,bars100:1,litre:0,gallon:1,'5gal':2,caps100:0,caps1000:1,unit:0,kit:0,design:0};
+      const firstKey=Object.keys(p.pricing||{}).sort((a,b)=>((_so[a]??99)-(_so[b]??99)))[0];
+      const price='J$'+(p.pricing&&firstKey&&p.pricing[firstKey]?p.pricing[firstKey].price:0).toLocaleString();
+      const imgCls=BS_IMG_CLASS[p.cat]||'img-cream';
+      const img=p.img?`<img src="${p.img}" style="width:100%;height:100%;object-fit:cover;">`:`<span style="font-size:3.5rem;">${p.emoji||'🧴'}</span>`;
+      return `<div class="sf-bs-card" onclick="sfOpenProduct('${p.id}')">
+        <div class="sf-bs-img ${imgCls}">${img}${p.tag?`<span class="pc-tag">${p.tag}</span>`:''}</div>
+        <div class="sf-bs-body">
+          <div class="sf-bs-name">${p.name}</div>
+          <div class="sf-bs-tl">${p.tagline}</div>
+          <div class="sf-bs-price">From ${price}</div>
+          <button class="sf-bs-btn" onclick="event.stopPropagation();sfOpenProduct('${p.id}')">View Product</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    console.error('renderBestSellers error:', e);
+  }
 }
 window.renderBestSellers = renderBestSellers;
 
@@ -499,13 +557,13 @@ window.openProduct = function(id){
   const sw=document.getElementById('pd-sizes-wrap');
   if(p.cat==='soap'){
     sw.style.display='none';
-    const bk=Object.keys(p.pricing).find(k=>k.startsWith('bars')||k==='bar')||Object.keys(p.pricing)[0];
+    const bk=Object.keys(p.pricing||{}).find(k=>k.startsWith('bars')||k==='bar')||Object.keys(p.pricing||{})[0];
     const sp=p.pricing[bk]||{price:0,moq:1};
     document.getElementById('pd-price').textContent='J$'+sp.price.toLocaleString()+'/bar';
     document.getElementById('pd-moq').textContent='Min '+sp.moq+' bars';
   } else {
     sw.style.display='block';
-    const keys=Object.keys(p.pricing);
+    const keys=Object.keys(p.pricing||{});
     const isUnit=keys.some(k=>k==='kit'||k==='unit'||k==='design');
     document.getElementById('pd-size-btns').innerHTML=keys.map((k,i)=>{
       const lbl=isUnit&&p.unitDesc?p.unitDesc:(p.pricing[k]?.desc||sizeLabel(k));
@@ -801,12 +859,12 @@ function updateStatRevs(){
 // ═══ ADMIN ═══
 function renderAdminProducts(){
   const el=document.getElementById('admin-prod-list'); if(!el) return;
-  el.innerHTML=PRODUCTS.map(p=>{
+  el.innerHTML=PRODUCTS.filter(p=>p&&p.id&&p.name).map(p=>{
     const {price}=getDisplayPrice(p);
     const img=p.img?`<img src="${p.img}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">`:p.emoji;
     return `<div class="admin-prod-row">
       <div class="admin-prod-img ${IMG_CLASS[p.cat]}">${img}</div>
-      <div class="admin-prod-info"><div class="admin-prod-name">${p.name}</div><div class="admin-prod-meta">${price} · ${p.cat==='soap'?'By Bar':p.cat==='bundle'||p.cat==='label'?'Per Unit':Object.keys(p.pricing).some(k=>k.startsWith('lb'))?'By Weight':'By Volume'} · ${(REVIEWS[p.id]||[]).length} review(s)</div></div>
+      <div class="admin-prod-info"><div class="admin-prod-name">${p.name}</div><div class="admin-prod-meta">${price} · ${p.cat==='soap'?'By Bar':p.cat==='bundle'||p.cat==='label'?'Per Unit':Object.keys(p.pricing||{}).some(k=>k.startsWith('lb'))?'By Weight':'By Volume'} · ${(REVIEWS[p.id]||[]).length} review(s)</div></div>
       <div class="admin-actions">
         <button class="btn btn-ol btn-xs" onclick="editProduct('${p.id}')">Edit</button>
         <button class="btn btn-xs" style="background:${p.hidden?'#6B7280':'#059669'};color:white;border:none;" onclick="toggleProductHidden('${p.id}')">${p.hidden?'Hidden':'Visible'}</button>
@@ -838,6 +896,14 @@ window.toggleProductHidden = async function(id) {
   try {
     await setDoc(doc(db,'products',id), {hidden: newHidden}, {merge: true});
     showToast(newHidden ? 'Product hidden from shop' : 'Product visible in shop');
+    if (!newHidden) {
+      try {
+        const p = PRODUCTS[idx];
+        const notifyRestock = httpsCallable(functions, 'notifyRestock');
+        const result = await notifyRestock({ productId: id, productName: p.name });
+        if (result.data.count > 0) alert(`✅ Restock notifications sent to ${result.data.count} people for ${p.name}.`);
+      } catch(e) { console.warn('Restock notification failed:', e.message); }
+    }
   } catch(e) {
     PRODUCTS[idx].hidden = !newHidden;
     renderAdminProducts();
@@ -940,7 +1006,7 @@ window.editProduct = function(id){
   document.getElementById('ap-use').value=p.usage;
   if(p.img){document.getElementById('img-preview').src=p.img;document.getElementById('img-preview').style.display='block';}
   else document.getElementById('img-preview').style.display='none';
-  const pKeys = Object.keys(p.pricing);
+  const pKeys = Object.keys(p.pricing||{});
   let pType = 'liquid';
   if (pKeys.some(k => k.startsWith('bars') || k === 'bar')) pType = 'bar';
   else if (pKeys.some(k => k === 'lb2' || k === 'lb8' || k === 'lb40' || k === 'halfLb' || k === 'lb1')) pType = 'weight';

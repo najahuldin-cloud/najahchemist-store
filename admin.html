@@ -1248,12 +1248,12 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "http
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCHSSW0hZldMIjhCTdSN27wgxxtcCMXlSE",
-  authDomain: "najah-chemist-staging.firebaseapp.com",
-  projectId: "najah-chemist-staging",
-  storageBucket: "najah-chemist-staging.firebasestorage.app",
-  messagingSenderId: "165284411356",
-  appId: "1:165284411356:web:7f9e654b4c24ebf64b0119"
+  apiKey: "AIzaSyDYdt_0wJNcfGl2WbIKPiESdVcmc-cqZgM",
+  authDomain: "najahchemistja.com",
+  projectId: "najah-chemist",
+  storageBucket: "najah-chemist.firebasestorage.app",
+  messagingSenderId: "89819999556",
+  appId: "1:89819999556:web:4e6eb5c0c881da5e763b11"
 };
 
 const firebaseApp = initializeApp(firebaseConfig);
@@ -1262,18 +1262,6 @@ window._db = db;
 const auth = getAuth(firebaseApp);
 const storage = getStorage(firebaseApp);
 const functions = getFunctions(firebaseApp);
-
-// Leads are saved by start.html into the production project — read them from there
-const prodFirebaseConfig = {
-  apiKey: "AIzaSyDYdt_0wJNcfGl2WbIKPiESdVcmc-cqZgM",
-  authDomain: "najahchemistja.com",
-  projectId: "najah-chemist",
-  storageBucket: "najah-chemist.firebasestorage.app",
-  messagingSenderId: "89819999556",
-  appId: "1:89819999556:web:4e6eb5c0c881da5e763b11"
-};
-const prodApp = initializeApp(prodFirebaseConfig, 'prod-leads');
-const prodDb = getFirestore(prodApp);
 
 // ── STATE ──
 let PRODUCTS = [];
@@ -1351,12 +1339,13 @@ async function initAdmin() {
   });
 
   _ordersUnsub = onSnapshot(
-    query(collection(db,'orders'), orderBy('createdAt','desc')),
+    collection(db,'orders'),
     snap => {
       const _sig = snap.docs.map(d => d.id+'|'+(d.data().status||'')+'|'+(d.data().paymentStatus||'')).join(',');
       const _changed = _sig !== _lastOrdersSig;
       _lastOrdersSig = _sig;
       ORDERS = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+      ORDERS.sort((a,b) => { const da=_parseOrderDate(a), db_=_parseOrderDate(b); return (db_||0)-(da||0); });
       window.ordersMap = {}; ORDERS.forEach(o => { window.ordersMap[o.id||o.orderId||''] = o; });
       if (_changed) {
         renderOrdersTable();
@@ -1381,7 +1370,7 @@ async function initAdmin() {
     backfillMissingClientIds();
   });
 
-  onSnapshot(query(collection(prodDb,'leads'), orderBy('createdAt','desc')), snap => {
+  onSnapshot(query(collection(db,'leads'), orderBy('createdAt','desc')), snap => {
     LEADS = snap.docs.map(d => ({...d.data(), _docId: d.id}));
     updateDashStats();
   });
@@ -1450,15 +1439,37 @@ function _fmtRevDate(d) {
   return d.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
 }
 function _parseOrderDate(o) {
-  // Prefer createdAt (always a reliable Firestore serverTimestamp).
-  // o.date is a locale string set by the storefront ("03/04/2026, 11:30:00") which
-  // new Date() can't parse reliably — only use it as a last resort.
-  const raw = o.createdAt || o.date;
-  if (!raw) return null;
-  if (raw.toDate) return raw.toDate();           // Firestore Timestamp object
-  if (raw.seconds) return new Date(raw.seconds * 1000); // serialised Timestamp
-  const d = new Date(raw);
-  return isNaN(d.getTime()) ? null : d;
+  // 1. createdAt — Firestore Timestamp, serialised, JS Date, number, or string
+  const ca = o.createdAt;
+  if (ca) {
+    if (ca.toDate) return ca.toDate();
+    if (ca.seconds) return new Date(ca.seconds * 1000);
+    if (ca instanceof Date) return ca;
+    if (typeof ca === 'number') return new Date(ca);
+    if (typeof ca === 'string') { const d = new Date(ca); if (!isNaN(d.getTime())) return d; }
+  }
+  // 2. date string — storefront format "DD/MM/YYYY, H:MM:SS AM/PM"
+  const ds = o.date;
+  if (typeof ds === 'string' && ds) {
+    const m = ds.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(,?\s*.+)?$/);
+    if (m) {
+      const d2 = new Date(`${m[2]}/${m[1]}/${m[3]}${m[4] ? m[4].replace(',','') : ''}`);
+      if (!isNaN(d2.getTime())) return d2;
+    }
+    const d3 = new Date(ds);
+    if (!isNaN(d3.getTime())) return d3;
+  }
+  // 3. Any other date-like field
+  for (const key of ['savedAt','timestamp','orderDate','created']) {
+    const v = o[key];
+    if (!v) continue;
+    if (v.toDate) return v.toDate();
+    if (v.seconds) return new Date(v.seconds * 1000);
+    if (v instanceof Date) return v;
+    if (typeof v === 'number') return new Date(v);
+    if (typeof v === 'string') { const d = new Date(v); if (!isNaN(d.getTime())) return d; }
+  }
+  return null;
 }
 
 function updateDashStats() {
@@ -1494,13 +1505,17 @@ function updateDashStats() {
 
   // Build lookup sets from all orders (match regardless of order date)
   const orderEmails = new Set(ORDERS.map(o => (o.email||o.customerEmail||'').trim().toLowerCase()).filter(Boolean));
-  const orderPhones = new Set(ORDERS.map(o => (o.phone||o.customerWhatsApp||o.wa||'').replace(/\D/g,'')).filter(Boolean));
+  const _rawOrderPhones = ORDERS.map(o => (o.phone||o.customerWhatsApp||o.wa||'').replace(/\D/g,'')).filter(p => p.length >= 7);
+  const orderPhones = new Set(_rawOrderPhones);
+  const orderPhones10 = new Set(_rawOrderPhones.map(p => p.slice(-10)));
+
+  const _phoneMatch = (lp) => lp.length >= 7 && (orderPhones.has(lp) || orderPhones10.has(lp.slice(-10)));
 
   let converted = 0;
   filteredLeads.forEach(l => {
     const le = (l.email||'').trim().toLowerCase();
     const lp = (l.whatsapp||'').replace(/\D/g,'');
-    if ((le && orderEmails.has(le)) || (lp && lp.length >= 7 && orderPhones.has(lp))) converted++;
+    if ((le && orderEmails.has(le)) || _phoneMatch(lp)) converted++;
   });
 
   const rate = totalLeads > 0 ? Math.round((converted / totalLeads) * 100) + '%' : '—';
@@ -2240,7 +2255,7 @@ function renderProductsTable(){
     const cat = escHtml(p.category || p.cat || '—');
     const docId = p._docId;
     return `<tr>
-      <td><strong>${escHtml(p.name||'—')}</strong><br><span class="text-sm">${escHtml(p.tagline||p.description||'')}</span></td>
+      <td><strong>${escHtml(p.name||'—')}</strong><br><span style="font-size:0.7rem;color:#9CA3AF;font-family:monospace;">ID: ${docId||'—'}</span><br><span class="text-sm">${escHtml(p.tagline||p.description||'')}</span></td>
       <td><span class="pill">${cat}</span></td>
       <td><span class="text-sm">${variantCount} variant${variantCount!==1?'s':''}</span></td>
       <td><span class="badge ${hidden?'b-hidden':'b-visible'}">${hidden?'Hidden':'Visible'}</span>${p.outOfStock?'&nbsp;<span class="badge b-oos">OUT OF STOCK</span>':''}</td>
@@ -2447,41 +2462,13 @@ window.restockProduct = async function(id) {
   const productName = p.name || id;
 
   try {
-    // a. Mark product back in stock
     await updateDoc(doc(db,'products',docId), { outOfStock: false });
     toast('Back in stock ✓');
 
-    // b. Query waitlist for unnotified entries for this product
-    const waitSnap = await getDocs(query(
-      collection(db, 'waitlist'),
-      where('productId', '==', id),
-      where('notified', '==', false)
-    ));
-    const entries = waitSnap.docs;
-
-    if (entries.length === 0) {
-      alert(`${productName} marked as restocked. No waitlist entries to notify.`);
-      return;
-    }
-
-    // c. Send restock notification to each waitlist entry
-    await Promise.all(entries.map(async (entry) => {
-      const d = entry.data();
-      try {
-        await fetch('/.netlify/functions/send-restock-notification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: d.email, productName, productId: id })
-        });
-        // d. Mark waitlist doc as notified
-        await updateDoc(doc(db, 'waitlist', entry.id), { notified: true });
-      } catch(notifyErr) {
-        console.error('Restock notify failed for', d.email, notifyErr);
-      }
-    }));
-
-    // e. Confirm to admin
-    alert(`Restocked! ${entries.length} waitlist client${entries.length !== 1 ? 's' : ''} have been notified by email.`);
+    const notifyRestock = httpsCallable(functions, 'notifyRestock');
+    const result = await notifyRestock({ productId: id, productName });
+    const count = result.data.count || 0;
+    alert(`Restocked! ${count} people notified by email.`);
   } catch(e) {
     toast('Error: ' + e.message);
     console.error('restockProduct error:', e);
@@ -3205,7 +3192,7 @@ window.loadLeads = async function() {
   const tbody = document.getElementById('leads-tbody');
   tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--mid);">Loading…</td></tr>';
   try {
-    const snap = await getDocs(query(collection(prodDb,'leads'), orderBy('createdAt','desc')));
+    const snap = await getDocs(query(collection(db,'leads'), orderBy('createdAt','desc')));
     _leadsCache = [];
     snap.forEach(d => _leadsCache.push({ id: d.id, ...d.data() }));
     if (_leadsCache.length === 0) {
@@ -3311,7 +3298,7 @@ async function bcLoadCounts() {
   try {
     const [subSnap, leadSnap] = await Promise.all([
       getDocs(query(collection(db,'subscribers'))),
-      getDocs(query(collection(prodDb,'leads')))
+      getDocs(query(collection(db,'leads')))
     ]);
     _bcSubCount = 0;
     subSnap.forEach(d => { if (!d.data().unsubscribed && d.data().email) _bcSubCount++; });
@@ -3528,12 +3515,14 @@ function renderBI() {
   var aov = paid.length > 0 ? Math.round(totalPaidRev / paid.length) : 0;
 
   var oEmails = new Set(ORDERS.map(function(o){ return (o.email||o.customerEmail||'').trim().toLowerCase(); }).filter(Boolean));
-  var oPhones = new Set(ORDERS.map(function(o){ return (o.phone||o.customerWhatsApp||o.wa||'').replace(/\D/g,''); }).filter(Boolean));
+  var _rawOPhones = ORDERS.map(function(o){ return (o.phone||o.customerWhatsApp||o.wa||'').replace(/\D/g,''); }).filter(function(p){ return p.length >= 7; });
+  var oPhones = new Set(_rawOPhones);
+  var oPhones10 = new Set(_rawOPhones.map(function(p){ return p.slice(-10); }));
   var converted = 0;
   LEADS.forEach(function(l) {
     var le = (l.email||'').trim().toLowerCase();
     var lp = (l.whatsapp||'').replace(/\D/g,'');
-    if ((le && oEmails.has(le)) || (lp && lp.length >= 7 && oPhones.has(lp))) converted++;
+    if ((le && oEmails.has(le)) || (lp && lp.length >= 7 && (oPhones.has(lp) || oPhones10.has(lp.slice(-10))))) converted++;
   });
   var convRate = LEADS.length > 0 ? ((converted / LEADS.length) * 100).toFixed(1) : '0.0';
 

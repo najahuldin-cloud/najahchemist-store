@@ -1,0 +1,8 @@
+node_modules/
+*.log
+.git/
+scripts/
+migrate-*.js
+fix-images.js
+staging-service-account.json
+prod-service-account.json
