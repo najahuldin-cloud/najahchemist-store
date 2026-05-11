@@ -260,7 +260,7 @@ select.finp{cursor:pointer;}
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
 <!-- ── SIDEBAR ── -->
-<div id="sidebar">
+<div id="sidebar" style="display:none;">
   <div class="sb-logo">
     <div class="sb-nc">Nc</div>
     <div class="sb-brand">Najah Chemist<span>Admin System</span></div>
@@ -288,7 +288,7 @@ select.finp{cursor:pointer;}
 </div>
 
 <!-- ── MAIN ── -->
-<div id="main">
+<div id="main" style="display:none;">
   <div class="topbar">
     <div style="display:flex;align-items:center;gap:0.7rem;">
       <button id="menu-toggle" onclick="toggleSidebar()">☰</button>
@@ -1292,10 +1292,14 @@ let _productSearch = '';
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('sidebar').style.display = 'flex';
+    document.getElementById('main').style.display = 'flex';
     document.getElementById('sb-user-email').textContent = user.email;
     initAdmin();
   } else {
     document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('sidebar').style.display = 'none';
+    document.getElementById('main').style.display = 'none';
     if (_ordersUnsub) { _ordersUnsub(); _ordersUnsub = null; }
     if (_productsUnsub) { _productsUnsub(); _productsUnsub = null; }
   }
