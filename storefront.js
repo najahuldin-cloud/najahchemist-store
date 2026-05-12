@@ -167,6 +167,11 @@ const _SF_CAT_CODE = {
   'Men Care':'mencare','Hair Care':'haircare','Body Care':'bodycare','Bundles':'bundle','Design Services':'label',
 };
 
+// Normalize category strings so "Men Care" matches "mencare", etc.
+function sfNormCat(c) {
+  return (c == null ? '' : String(c)).toLowerCase().replace(/\s+/g, '');
+}
+
 async function sfLoadProductsFromFirestore() {
   try {
     const [fbApp, fbFs] = await Promise.all([
@@ -301,7 +306,8 @@ function sfRenderProducts(filter) {
   const grid = document.getElementById('sf-products-grid');
   if (!grid) return;
   const prods = window.PRODUCTS || [];
-  let list = filter === 'all' ? prods.filter(p => !p.hidden) : prods.filter(p => p.cat === filter && !p.hidden);
+  const nf = sfNormCat(filter);
+  let list = nf === 'all' ? prods.filter(p => !p.hidden) : prods.filter(p => sfNormCat(p.cat) === nf && !p.hidden);
   if (sfSearchQuery) {
     const q = sfSearchQuery.toLowerCase();
     list = list.filter(p => (p.name||'').toLowerCase().includes(q) || (p.tagline||'').toLowerCase().includes(q));
@@ -1033,8 +1039,9 @@ function sfRenderUpsell() {
   const seen = new Set();
   const suggestions = [];
   for (const cat of cartCats) {
+    const nc = sfNormCat(cat);
     for (const p of prods) {
-      if (p.cat === cat && !p.hidden && !cartIds.has(p.id) && !seen.has(p.id)) {
+      if (sfNormCat(p.cat) === nc && !p.hidden && !cartIds.has(p.id) && !seen.has(p.id)) {
         seen.add(p.id);
         suggestions.push(p);
         if (suggestions.length === 3) break;
