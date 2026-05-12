@@ -1697,17 +1697,7 @@ function sfAddChatMsg(text, isUser, isTyping) {
 // ── Container products (hardcoded) ───────────────────────────────────────
 (function() {
   const containers = [
-    { id:'con1',  cat:'containers', name:'Small Pouch',          tagline:'Ideal for boric acid and small dry products. Clients typically sell in sets of 7\u201310 for J$1,000.', emoji:'🛍️', pricing:[{key:'unit',price:65}],  unitDesc:'Each', tag:'Packaging', hidden:false },
-    { id:'con2',  cat:'containers', name:'Large Pouch',          tagline:'Larger pouch for packaging dry or powdered products.',                                                  emoji:'🛍️', pricing:[{key:'unit',price:85}],  unitDesc:'Each', tag:'Packaging', hidden:false },
-    { id:'con3',  cat:'containers', name:'2oz Spray / Mist Bottle', tagline:'Plastic spray bottle for toners, facial mists, and lightweight liquid products.',                  emoji:'🧴', pricing:[{key:'unit',price:170}], unitDesc:'Each', tag:'Packaging', hidden:false },
-    { id:'con4',  cat:'containers', name:'4oz Flip Top Bottle',  tagline:'Plastic flip top for body wash, conditioners, and thicker liquid products.',                           emoji:'🧴', pricing:[{key:'unit',price:250}], unitDesc:'Each', tag:'Packaging', hidden:false },
-    { id:'con5',  cat:'containers', name:'4oz Spray Bottle',     tagline:'Plastic spray bottle for body mists, setting sprays, and larger liquid volumes.',                      emoji:'🧴', pricing:[{key:'unit',price:250}], unitDesc:'Each', tag:'Packaging', hidden:false },
     { id:'con6',  cat:'containers', name:'4oz Double Wall Jar',  tagline:'Plastic double wall jar in natural or white. For body butter, scrubs, and thick creams.',              emoji:'🫙', pricing:[{key:'unit',price:300}], unitDesc:'Each', tag:'Packaging', hidden:false },
-    { id:'con7',  cat:'containers', name:'4oz Foam Bottle',      tagline:'Plastic foaming pump bottle for yoni washes, facial cleansers, and liquid soaps.',                    emoji:'🧴', pricing:[{key:'unit',price:300}], unitDesc:'Each', tag:'Packaging', hidden:false },
-    { id:'con8',  cat:'containers', name:'2oz Foam Bottle',      tagline:'Plastic foaming pump bottle for serums, cleansers, and liquid products.',                             emoji:'🧴', pricing:[{key:'unit',price:222}], unitDesc:'Each', tag:'Packaging', hidden:false },
-    { id:'con9',  cat:'containers', name:'2oz Double Wall Jar',  tagline:'Plastic double wall jar in natural or white. For small-batch thick products.',                         emoji:'🫙', pricing:[{key:'unit',price:250}], unitDesc:'Each', tag:'Packaging', hidden:false },
-    { id:'con10', cat:'containers', name:'2oz Dropper Bottle',   tagline:'Clear glass dropper bottle with gold top. For serums, facial oils, and tinctures.',                   emoji:'💧', pricing:[{key:'unit',price:270}], unitDesc:'Each', tag:'Packaging', hidden:false },
-    { id:'con11', cat:'containers', name:'White Pill Bottle',    tagline:'White plastic pill bottle for capsules, tablets, and supplements.',                                    emoji:'💊', pricing:[{key:'unit',price:120}], unitDesc:'Each', tag:'Packaging', hidden:false },
   ];
   window.PRODUCTS = window.PRODUCTS || [];
   // Remove any previously injected container entries before re-adding
