@@ -26,6 +26,10 @@ const CARIB_USD_TO_JMD = 157;
 
 // ── State ────────────────────────────────────────────
 let sfCart = [];
+// ── Cart persistence ─────────────────────────────────
+function sfPersistCart() {
+  try { localStorage.setItem('nc_cart', JSON.stringify(sfCart)); } catch(e) {}
+}
 let sfCurrentProd = null;
 let sfCurrentSize = null;
 let sfCurrentModalQty = 1;
@@ -565,6 +569,7 @@ window.skAddToCart = function() {
   sfDiscountApplied = true;
   sfDiscountAmount = Math.round(kitTotal * 0.05);
   sfDiscountLabel = 'Starter Kit \u22125%';
+  sfPersistCart();
   sfUpdateCartBtn();
   sfOpenCart();
   sfShowToast('\u2713 Starter kit added to cart');
@@ -827,6 +832,7 @@ window.sfAddToCart = function() {
   const ex = sfCart.find(i => i._key === key);
   if (ex) { ex.qty += qty; }
   else { sfCart.push({_key:key, id:p.id, name:p.name, size:displaySize, price, qty, emoji:p.emoji, cat:p.cat}); }
+  sfPersistCart();
   sfUpdateCartBtn();
   window.closeSfModal();
   sfShowToast('✓ Added: '+p.name);
@@ -857,12 +863,15 @@ window.sfCloseCart = function() {
 
 window.sfCartQty = function(i, d) {
   sfCart[i].qty = Math.max(1, sfCart[i].qty + d);
+  sfPersistCart();
   sfRenderCart(); sfUpdateCartBtn();
   sfSaveAbandonedCart();
 };
 
 window.sfRemoveItem = function(i) {
-  sfCart.splice(i,1); sfRenderCart(); sfUpdateCartBtn();
+  sfCart.splice(i,1);
+  sfPersistCart();
+  sfRenderCart(); sfUpdateCartBtn();
   sfSaveAbandonedCart();
 };
 
@@ -1375,6 +1384,7 @@ window.sfCheckoutWA = function() {
     sfSelectedPayment = 'wa';
     sfDiscountApplied = false;
     sfDiscountAmount = 0;
+    sfPersistCart();
     sfUpdateCartBtn();
     sfCloseCart();
 
@@ -1494,6 +1504,7 @@ window.sfCheckoutFygaro = function() {
   sfSelectedPayment = 'wa';
   sfDiscountApplied = false;
   sfDiscountAmount = 0;
+  sfPersistCart();
   sfUpdateCartBtn();
   sfCloseCart();
 
@@ -2099,9 +2110,23 @@ if (window.location.search.includes('staff=true')) {
     if (ex) { ex.qty += 1; } else {
       sfCart.push({ _key: cartKey, id: prod.id, name: prod.name, size: sizeLabel, price: price, qty: 1, emoji: prod.emoji || '🧴', cat: prod.cat });
     }
+    sfPersistCart();
     sfUpdateCartBtn();
     sfOpenCart();
     history.replaceState(null, '', window.location.pathname);
   }
   setTimeout(tryAddBundle, 300);
+})();
+
+// ── Cart persistence: restore from localStorage on page load ──────────
+(function sfRestoreCart() {
+  try {
+    var raw = localStorage.getItem('nc_cart');
+    if (!raw) return;
+    var saved = JSON.parse(raw);
+    if (!Array.isArray(saved) || saved.length === 0) return;
+    sfCart = saved;
+    try { sfUpdateCartBtn(); } catch(e) {}
+    try { sfRenderCart(); } catch(e) {}
+  } catch(e) {}
 })();
