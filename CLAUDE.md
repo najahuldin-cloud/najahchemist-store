@@ -56,7 +56,7 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
 ---
 
 ## Key Credentials (also in env vars above)
-- Firebase project: `najah-chemist-362ad`
+- Firebase project: `najah-chemist`
 - Firebase API key: `AIzaSyDYdt_0wJNcfGl2WbIKPiESdVcmc-cqZgM`
 - Admin email: `start@najahchemist.com`
 - WhatsApp number: `18768851099`
