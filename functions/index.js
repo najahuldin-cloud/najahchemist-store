@@ -35,6 +35,14 @@ function normalizePhone(p) {
   return (p || '').replace(/\D/g, '');
 }
 
+// Convert a phone number to international format for the WhatsApp Cloud API.
+// Jamaican numbers entered as 876XXXXXXX need the country code "1" prepended.
+function toIntlPhone(p) {
+  const digits = normalizePhone(p);
+  if (digits.startsWith('876')) return '1' + digits;
+  return digits;
+}
+
 function getPhone(order) {
   return normalizePhone(
     order.phone || order.wa || order.customerWhatsApp || order.whatsapp || ''
@@ -189,6 +197,27 @@ exports.onOrderCreated = onDocumentCreated(
       console.log(`[onOrderCreated] Owner notified for order ${displayId}`);
     } catch (err) {
       console.error(`[onOrderCreated] Notification failed for ${displayId}:`, err.message);
+    }
+
+    // Send WhatsApp confirmation to the client
+    const clientPhone = toIntlPhone(phone);
+    if (clientPhone) {
+      try {
+        const clientMsg =
+          `Hi ${clientName}, thank you for your order with Najah Chemist! 🌿 ` +
+          `Your order NC-${displayId} has been received. Total: ${total}. ` +
+          `Please send payment to NCB account 354-747-294 (JMD) or 354-747-308 (USD), ` +
+          `then send proof of payment to this number. ` +
+          `We'll process your order within 2-3 business days after payment is confirmed. ` +
+          `For Caribbean orders, shipping is via Jamaica Post airmail (16-24 business days). ` +
+          `Questions? Reply to this message. — Najah Chemist`;
+        await sendWhatsApp(clientPhone, clientMsg);
+        console.log(`[onOrderCreated] Client WhatsApp sent to ${clientPhone} for ${displayId}`);
+      } catch (err) {
+        console.error(`[onOrderCreated] Client WhatsApp failed for ${displayId}:`, err.message);
+      }
+    } else {
+      console.log(`[onOrderCreated] No phone on order ${displayId} — skipping client WhatsApp`);
     }
   }
 );
@@ -345,7 +374,11 @@ exports.reorderReminder = onSchedule(
         const items      = buildItemsList(order);
 
         // Action 1: Send WhatsApp message
-        await sendWhatsApp(phone, clientName);
+        const reorderMsg =
+          `Hi ${clientName} 👋 It's been 25 days since your Najah Chemist order — ` +
+          `your products might be running low soon! Ready to reorder before you sell out? ` +
+          `Place your next order here: https://najahchemistja.com/start — Najah Chemist 🌿`;
+        await sendWhatsApp(toIntlPhone(phone), reorderMsg);
 
         // Action 2: Send email via Resend (silently skip if no email)
         if (email) {
@@ -373,19 +406,14 @@ exports.reorderReminder = onSchedule(
 
 // ── WhatsApp via Meta Business Cloud API ──────────────────────────────────────
 
-async function sendWhatsApp(phone, clientName) {
+async function sendWhatsApp(phone, message) {
   const token   = process.env.WHATSAPP_TOKEN;
   const phoneId = process.env.WHATSAPP_PHONE_ID;
 
   if (!token || !phoneId) {
-    console.warn('[reorderReminder] WHATSAPP_TOKEN or WHATSAPP_PHONE_ID not configured — skipping WhatsApp');
+    console.warn('[whatsapp] WHATSAPP_TOKEN or WHATSAPP_PHONE_ID not configured — skipping WhatsApp');
     return;
   }
-
-  const message =
-    `Hi ${clientName} 👋 It's been 25 days since your Najah Chemist order — ` +
-    `your products might be running low soon! Ready to reorder before you sell out? ` +
-    `Place your next order here: https://najahchemistja.com/start — Najah Chemist 🌿`;
 
   const res = await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
     method: 'POST',
