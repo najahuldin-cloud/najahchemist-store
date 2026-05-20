@@ -35,6 +35,7 @@ let sfCurrentSize = null;
 let sfCurrentModalQty = 1;
 let sfCurrentModalScent = null;
 let sfCurrentModalMint = null;
+let sfCurrentHerbQty = 0;
 let sfSelectedShip = null;
 let sfCaribbeanCountry = '';
 let sfSelectedPayment = 'wa'; // 'wa' = bank/lynk, 'card' = Fygaro
@@ -736,6 +737,40 @@ function sfOpenProduct(id) {
     }
   }
 
+  // Herb blend add-on — only for Hair Growth Oil
+  const isHairGrowthOil =
+    (p.name || '').toLowerCase().includes('hair growth oil') ||
+    (p.sku  || '').toLowerCase().includes('hgo');
+  let herbWrap = document.getElementById('sf-herb-wrap');
+  if (!herbWrap && isHairGrowthOil) {
+    const addBtnEl = document.getElementById('sf-modal-add-btn');
+    if (addBtnEl && addBtnEl.parentNode) {
+      herbWrap = document.createElement('div');
+      herbWrap.id = 'sf-herb-wrap';
+      herbWrap.style.cssText = 'padding:1rem 1.25rem;border-top:1px solid #E8E4DE;margin-top:0.5rem;';
+      herbWrap.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;">' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div style="font-weight:700;font-size:0.92rem;color:#0F0E0D;">🌿 Add Herb Blend</div>' +
+            '<div style="font-size:0.78rem;color:#8A8480;margin-top:0.2rem;">Rose petals, lavender, fenugreek, calendula &amp; cloves</div>' +
+            '<div style="font-size:0.78rem;color:#0F0E0D;margin-top:0.3rem;font-weight:600;">J$500 per 20g pouch</div>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0;">' +
+            '<button type="button" onclick="sfHerbQty(-1)" style="width:32px;height:32px;border:1px solid #E8E4DE;background:white;border-radius:6px;cursor:pointer;font-size:1.1rem;line-height:1;">−</button>' +
+            '<span id="sf-herb-qty-val" style="min-width:1.5rem;text-align:center;font-weight:700;font-size:0.95rem;">0</span>' +
+            '<button type="button" onclick="sfHerbQty(1)" style="width:32px;height:32px;border:1px solid #E8E4DE;background:white;border-radius:6px;cursor:pointer;font-size:1.1rem;line-height:1;">+</button>' +
+          '</div>' +
+        '</div>';
+      addBtnEl.parentNode.insertBefore(herbWrap, addBtnEl);
+    }
+  }
+  if (herbWrap) {
+    herbWrap.style.display = isHairGrowthOil ? 'block' : 'none';
+    const herbQtyEl = document.getElementById('sf-herb-qty-val');
+    if (herbQtyEl) herbQtyEl.textContent = '0';
+  }
+  sfCurrentHerbQty = 0;
+
   // WA button
   const waBtn = document.getElementById('sf-modal-wa-btn');
   if (waBtn) waBtn.onclick = () => {
@@ -804,6 +839,12 @@ window.sfModalQty = function(delta) {
   if (sub) sub.textContent = 'J$'+(price * sfCurrentModalQty).toLocaleString();
 };
 
+window.sfHerbQty = function(delta) {
+  sfCurrentHerbQty = Math.max(0, sfCurrentHerbQty + delta);
+  const el = document.getElementById('sf-herb-qty-val');
+  if (el) el.textContent = String(sfCurrentHerbQty);
+};
+
 window.sfPickScent = function(scent, btn) {
   sfCurrentModalScent = scent;
   document.querySelectorAll('#sf-scent-pills .sf-modal-scent-pill').forEach(b => b.classList.remove('on'));
@@ -832,6 +873,15 @@ window.sfAddToCart = function() {
   const ex = sfCart.find(i => i._key === key);
   if (ex) { ex.qty += qty; }
   else { sfCart.push({_key:key, id:p.id, name:p.name, size:displaySize, price, qty, emoji:p.emoji, cat:p.cat}); }
+
+  if (sfCurrentHerbQty > 0) {
+    const herbKey = 'herb-blend';
+    const exHerb = sfCart.find(i => i._key === herbKey);
+    if (exHerb) { exHerb.qty += sfCurrentHerbQty; }
+    else { sfCart.push({_key:herbKey, id:'herb-blend', name:'Herb Blend (20g)', size:'20g pouch', price:500, qty:sfCurrentHerbQty, emoji:'🌿', cat:p.cat}); }
+    sfCurrentHerbQty = 0;
+  }
+
   sfPersistCart();
   sfUpdateCartBtn();
   window.closeSfModal();
