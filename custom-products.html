@@ -117,6 +117,24 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
 .footer-links a{color:rgba(255,255,255,0.5);font-size:0.78rem;text-decoration:none;transition:color 0.2s;}
 .footer-links a:hover{color:var(--gold);}
 
+/* ── Consultation Form ── */
+#consultation{background:var(--cream);}
+.cf-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem 1.25rem;max-width:760px;margin:2.5rem auto 0;}
+.cf-full{grid-column:1 / -1;}
+.cf-label{display:block;font-size:0.78rem;font-weight:600;color:var(--text);margin-bottom:0.4rem;letter-spacing:0.01em;}
+.cf-label .req{color:var(--gold);}
+.cf-input,.cf-textarea,.cf-select{width:100%;padding:0.7rem 0.85rem;border:1.5px solid var(--border);border-radius:10px;background:white;font-family:'Outfit',sans-serif;font-size:0.92rem;color:var(--text);transition:border-color 0.2s,box-shadow 0.2s;}
+.cf-input:focus,.cf-textarea:focus,.cf-select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,134,11,0.12);}
+.cf-textarea{resize:vertical;min-height:90px;line-height:1.55;}
+.cf-actions{grid-column:1 / -1;margin-top:0.75rem;display:flex;justify-content:center;}
+.cf-submit{min-width:260px;}
+.cf-submit:disabled{opacity:0.65;cursor:not-allowed;transform:none;box-shadow:none;}
+.cf-success{display:none;text-align:center;max-width:560px;margin:2.5rem auto 0;padding:2.5rem 1.5rem;background:white;border:1.5px solid var(--gold-border);border-radius:16px;}
+.cf-success.show{display:block;}
+.cf-success-icon{font-size:2.5rem;margin-bottom:0.75rem;color:var(--gold);}
+.cf-success-title{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;margin-bottom:0.5rem;color:var(--text);}
+.cf-success-body{font-size:0.95rem;color:var(--mid);line-height:1.65;}
+
 /* ── Responsive ── */
 @media(max-width:900px){
   .steps-grid{grid-template-columns:1fr 1fr;}
@@ -131,6 +149,8 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
   .hero-ctas .btn,.cta-btns .btn{width:100%;justify-content:center;}
   .pricing-card{padding:2rem 1.5rem;}
   .pricing-amount{font-size:1.2rem;}
+  .cf-grid{grid-template-columns:1fr;}
+  .cf-submit{min-width:0;width:100%;}
 }
 @media(max-width:380px){
   .categories-grid{grid-template-columns:1fr;}
@@ -283,6 +303,73 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
   </div>
 </section>
 
+<!-- ═══ 7. CONSULTATION FORM ═══ -->
+<section id="consultation" class="section">
+  <div class="container">
+    <div class="section-label">Get Started</div>
+    <h2 class="section-title">Request a <em style="font-style:italic;color:var(--gold);">Consultation</em></h2>
+    <p class="section-sub">Tell us about the product you want to create and we'll be in touch on WhatsApp within one business day.</p>
+
+    <form id="cp-form" class="cf-grid">
+      <div>
+        <label class="cf-label" for="cp-name">Full Name <span class="req">*</span></label>
+        <input class="cf-input" id="cp-name" type="text" autocomplete="name" required>
+      </div>
+      <div>
+        <label class="cf-label" for="cp-brand">Brand Name <span class="req">*</span></label>
+        <input class="cf-input" id="cp-brand" type="text" required>
+      </div>
+      <div>
+        <label class="cf-label" for="cp-wa">WhatsApp Number <span class="req">*</span></label>
+        <input class="cf-input" id="cp-wa" type="tel" placeholder="876-XXX-XXXX" autocomplete="tel" required>
+      </div>
+      <div>
+        <label class="cf-label" for="cp-email">Email <span class="req">*</span></label>
+        <input class="cf-input" id="cp-email" type="email" autocomplete="email" required>
+      </div>
+      <div>
+        <label class="cf-label" for="cp-category">Product Category <span class="req">*</span></label>
+        <select class="cf-select" id="cp-category" required>
+          <option value="">Select a category…</option>
+          <option>Skincare</option>
+          <option>Feminine Care</option>
+          <option>Men's Care</option>
+          <option>Hair Care</option>
+        </select>
+      </div>
+      <div>
+        <label class="cf-label" for="cp-type">Product Type <span class="req">*</span></label>
+        <input class="cf-input" id="cp-type" type="text" placeholder="e.g. serum, body wash" required>
+      </div>
+      <div class="cf-full">
+        <label class="cf-label" for="cp-concern">Target Skin/Hair Concern <span class="req">*</span></label>
+        <textarea class="cf-textarea" id="cp-concern" required></textarea>
+      </div>
+      <div class="cf-full">
+        <label class="cf-label" for="cp-ingredients">Any specific ingredients you want included?</label>
+        <textarea class="cf-textarea" id="cp-ingredients" placeholder="List ingredients you'd like in the formula (optional)"></textarea>
+      </div>
+      <div class="cf-full">
+        <label class="cf-label" for="cp-scent">Scent Preference</label>
+        <input class="cf-input" id="cp-scent" type="text" placeholder="e.g. lavender, unscented">
+      </div>
+      <div class="cf-full">
+        <label class="cf-label" for="cp-notes">Additional Notes</label>
+        <textarea class="cf-textarea" id="cp-notes"></textarea>
+      </div>
+      <div class="cf-actions">
+        <button class="btn btn-gold cf-submit" id="cp-submit" type="submit">Submit Consultation Request</button>
+      </div>
+    </form>
+
+    <div id="cp-success" class="cf-success">
+      <div class="cf-success-icon">✓</div>
+      <div class="cf-success-title">Request Received</div>
+      <p class="cf-success-body">Thanks — we've got your consultation request. A WhatsApp message with your details should have opened in a new tab; we'll reply within one business day.</p>
+    </div>
+  </div>
+</section>
+
 <!-- ═══ FOOTER ═══ -->
 <footer id="nc-footer">
   <div class="container">
@@ -299,6 +386,72 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
     </div>
   </div>
 </footer>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+import { getFirestore, collection, addDoc, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+const app = initializeApp({
+  apiKey: "AIzaSyDYdt_0wJNcfGl2WbIKPiESdVcmc-cqZgM",
+  authDomain: "najahchemistja.com",
+  projectId: "najah-chemist",
+  storageBucket: "najah-chemist.firebasestorage.app",
+  messagingSenderId: "89819999556",
+  appId: "1:89819999556:web:4e6eb5c0c881da5e763b11"
+});
+const db = getFirestore(app);
+
+document.getElementById('cp-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const val = id => (document.getElementById(id).value || '').trim();
+
+  const fullName    = val('cp-name');
+  const brandName   = val('cp-brand');
+  const whatsapp    = val('cp-wa');
+  const email       = val('cp-email');
+  const category    = val('cp-category');
+  const productType = val('cp-type');
+  const concern     = val('cp-concern');
+  const ingredients = val('cp-ingredients');
+  const scent       = val('cp-scent');
+  const notes       = val('cp-notes');
+
+  // WhatsApp message — open SYNCHRONOUSLY from the click so the popup isn't blocked
+  const waMsg =
+    'New Custom Product Consultation\n\n' +
+    'Name: ' + fullName + '\n' +
+    'Brand: ' + brandName + '\n' +
+    'WhatsApp: ' + whatsapp + '\n' +
+    'Email: ' + email + '\n' +
+    'Category: ' + category + '\n' +
+    'Product Type: ' + productType + '\n\n' +
+    'Target Concern:\n' + concern + '\n\n' +
+    (ingredients ? 'Ingredients Requested:\n' + ingredients + '\n\n' : '') +
+    (scent       ? 'Scent Preference: ' + scent + '\n\n' : '') +
+    (notes       ? 'Additional Notes:\n' + notes + '\n' : '');
+  window.open('https://wa.me/18768851099?text=' + encodeURIComponent(waMsg), '_blank');
+
+  const btn = document.getElementById('cp-submit');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+
+  // Save to Firestore (non-blocking — runs after the wa.me open)
+  addDoc(collection(db, 'consultations'), {
+    fullName, brandName, whatsapp, email, category, productType, concern,
+    ingredients: ingredients || null,
+    scent:       scent       || null,
+    notes:       notes       || null,
+    source: 'custom-products',
+    status: 'New',
+    createdAt: serverTimestamp()
+  }).catch(err => console.error('[consult] Firestore save failed:', err));
+
+  document.getElementById('cp-form').style.display = 'none';
+  document.getElementById('cp-success').classList.add('show');
+});
+</script>
 
 </body>
 </html>
