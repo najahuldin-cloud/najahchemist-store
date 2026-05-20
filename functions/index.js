@@ -122,7 +122,7 @@ exports.onOrderComplete = onDocumentUpdated(
 // ── Firestore Trigger: notify owner when new order created ────────────────────
 
 exports.onOrderCreated = onDocumentCreated(
-  { document: 'orders/{orderId}', secrets: ['RESEND_API_KEY'] },
+  { document: 'orders/{orderId}', secrets: ['RESEND_API_KEY', 'WHATSAPP_TOKEN', 'WHATSAPP_PHONE_ID'] },
   async (event) => {
     const data    = event.data.data();
     const orderId = event.params.orderId;
@@ -307,7 +307,7 @@ async function sendOrderCompleteEmail(email, order, docId) {
 // Runs daily at 9:00am Jamaica time (America/Jamaica = UTC-5, no DST)
 
 exports.reorderReminder = onSchedule(
-  { schedule: '0 9 * * *', timeZone: 'America/Jamaica' },
+  { schedule: '0 9 * * *', timeZone: 'America/Jamaica', secrets: ['WHATSAPP_TOKEN', 'WHATSAPP_PHONE_ID'] },
   async () => {
     const db = getFirestore();
 
