@@ -1749,6 +1749,14 @@ function sfRenderReviews() {
   fetch('/.netlify/functions/get-reviews')
     .then(function(r){ return r.json(); })
     .then(function(data) {
+      if (data && typeof data.rating === 'number') {
+        const r = document.getElementById('sf-reviews-rating');
+        if (r) r.textContent = data.rating.toFixed(1);
+      }
+      if (data && typeof data.total === 'number') {
+        const t = document.getElementById('sf-reviews-total');
+        if (t) t.textContent = data.total;
+      }
       if (!data.reviews || !data.reviews.length) return; // keep hardcoded cards
       renderReviewCards(el, data.reviews);
     })

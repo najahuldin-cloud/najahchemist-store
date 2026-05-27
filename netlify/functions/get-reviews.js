@@ -30,13 +30,15 @@ exports.handler = async (event) => {
     }
 
     const result = data.result;
-    const reviews = (result.reviews || []).map(r => ({
-      name: r.author_name,
-      stars: r.rating,
-      text: r.text,
-      date: new Date(r.time * 1000).toLocaleDateString("en-JM", { month: "short", year: "numeric" }),
-      photo: r.profile_photo_url || ""
-    }));
+    const reviews = (result.reviews || [])
+      .filter(r => r.text && r.text.trim())
+      .map(r => ({
+        name: r.author_name,
+        stars: r.rating,
+        text: r.text,
+        date: new Date(r.time * 1000).toLocaleDateString("en-JM", { month: "short", year: "numeric" }),
+        photo: r.profile_photo_url || ""
+      }));
 
     return {
       statusCode: 200,
