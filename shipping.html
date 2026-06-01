@@ -140,6 +140,9 @@ footer a:hover{text-decoration:underline;}
             <option>Guyana</option>
             <option>St. Lucia</option>
             <option>Trinidad &amp; Tobago</option>
+            <option>United States</option>
+            <option>Canada</option>
+            <option>United Kingdom</option>
           </select>
         </div>
         <div>
@@ -153,12 +156,16 @@ footer a:hover{text-decoration:underline;}
         <div class="result-sub" id="calc-result-sub"></div>
         <div class="result-split" id="calc-result-split"></div>
       </div>
+      <div class="info-box" id="us-duty-notice" style="display:none;margin-top:1rem;margin-bottom:0;">
+        <div class="info-box-icon">⚠️</div>
+        <div class="info-box-text"><strong>US orders</strong> require duty prepayment via the Zonos Prepay app before visiting the post office. Download the app, enter shipment details, prepay duties, and present your Declaration ID at the post office.</div>
+      </div>
     </div>
 
     <!-- Info boxes -->
     <div class="info-box">
       <div class="info-box-icon">⚖️</div>
-      <div class="info-box-text"><strong>Rates are estimates.</strong> Actual cost may vary based on courier, parcel dimensions, and current exchange rates. All rates shown in USD. JMD equivalent shown at ~J$157/USD.</div>
+      <div class="info-box-text"><strong>Rates based on Jamaica Post airmail parcels</strong> plus J$500 bearer fee. Exchange rate J$163/USD.</div>
     </div>
     <div class="info-box">
       <div class="info-box-icon">📦</div>
@@ -230,17 +237,20 @@ footer a:hover{text-decoration:underline;}
 
 <script>
 const CARIBBEAN_RATES = {
-  'Antigua & Barbuda': [42, 68, 95, 130, 170],
-  'Bahamas':           [40, 65, 90, 120, 160],
-  'Barbados':          [38, 60, 85, 115, 155],
-  'Cayman Islands':    [35, 55, 78, 108, 145],
-  'Grenada':           [40, 62, 88, 118, 158],
-  'Guyana':            [50, 78, 108, 145, 195],
-  'St. Lucia':         [40, 62, 88, 118, 158],
-  'Trinidad & Tobago': [35, 55, 80, 110, 148],
+  'Antigua & Barbuda': [8, 10, 11, 13, 15],
+  'Bahamas':           [6, 7, 8, 9, 10],
+  'Barbados':          [6, 7, 8, 9, 10],
+  'Cayman Islands':    [5, 7, 8, 9, 10],
+  'Grenada':           [7, 8, 9, 11, 13],
+  'Guyana':            [7, 9, 11, 13, 14],
+  'St. Lucia':         [8, 10, 13, 15, 17],
+  'Trinidad & Tobago': [6, 8, 9, 10, 12],
+  'United States':     [9, 10, 11, 14, 17],
+  'Canada':            [6, 7, 8, 10, 12],
+  'United Kingdom':    [7, 8, 10, 12, 15],
 };
 const CARIB_KG_BRACKETS = [1, 2, 3, 5, 10];
-const CARIB_USD_TO_JMD = 157;
+const CARIB_USD_TO_JMD = 163;
 
 function calcRateUSD(country, kg) {
   const rates = CARIBBEAN_RATES[country];
@@ -271,6 +281,7 @@ function calcShipping() {
   sub.textContent = country + ' · ' + kg.toFixed(1) + 'kg · exchange rate ~J$' + CARIB_USD_TO_JMD + '/USD';
   split.textContent = r.parcels > 1 ? r.parcels + ' parcels × USD $' + CARIBBEAN_RATES[country][4] + ' each' : '';
   result.style.display = 'block';
+  document.getElementById('us-duty-notice').style.display = country === 'United States' ? 'flex' : 'none';
 }
 
 // Render rate table
