@@ -9,24 +9,26 @@ const NO_SCENT_NAMES = ['Brightening Body Scrub','Dark Spot Remover','Skin Light
 // Scent options
 const SCENTS = ['Unscented','Strawberry','Watermelon','Coconut','Lavender','Pineapple'];
 
-// ── Caribbean Shipping Rates (USD) ───────────────────
+// ── Shipping Rates (USD) ─────────────────────────────
+// Jamaica Post airmail parcels incl. J$500 bearer fee, converted at J$163/USD.
 // Brackets: ≤1kg, ≤2kg, ≤3kg, ≤5kg, ≤10kg. Over 10kg: ceil(kg/10) parcels at ≤10kg rate each.
+// Must stay in sync with shipping.html.
 const CARIBBEAN_RATES = {
-  'Antigua & Barbuda': [42, 68, 95, 130, 170],
-  'Bahamas':           [40, 65, 90, 120, 160],
-  'Barbados':          [38, 60, 85, 115, 155],
-  'Cayman Islands':    [35, 55, 78, 108, 145],
-  'Grenada':           [40, 62, 88, 118, 158],
-  'Guyana':            [50, 78, 108, 145, 195],
-  'St. Lucia':         [40, 62, 88, 118, 158],
-  'Trinidad & Tobago': [35, 55, 80, 110, 148],
-  // International (non-Caribbean) — Jamaica Post airmail incl. J$500 bearer fee
+  'Antigua & Barbuda': [8, 10, 11, 13, 15],
+  'Bahamas':           [6, 7, 8, 9, 10],
+  'Barbados':          [6, 7, 8, 9, 10],
+  'Cayman Islands':    [5, 7, 8, 9, 10],
+  'Grenada':           [7, 8, 9, 11, 13],
+  'Guyana':            [7, 9, 11, 13, 14],
+  'St. Lucia':         [8, 10, 13, 15, 17],
+  'Trinidad & Tobago': [6, 8, 9, 10, 12],
+  // International (non-Caribbean)
   'United States':     [9, 10, 11, 14, 17],
   'Canada':            [6, 7, 8, 10, 12],
   'United Kingdom':    [7, 8, 10, 12, 15],
 };
 const CARIB_KG_BRACKETS = [1, 2, 3, 5, 10];
-const CARIB_USD_TO_JMD = 157;
+const CARIB_USD_TO_JMD = 163;
 
 // ── State ────────────────────────────────────────────
 let sfCart = [];
