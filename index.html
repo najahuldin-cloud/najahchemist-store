@@ -1053,6 +1053,26 @@
           </div>
           <div class="sf-ship-opt-fee" id="sf-caribbean-fee-badge" style="color:#1D4ED8;font-size:0.68rem;font-weight:700;">USD<br><span style="font-size:0.62rem;font-weight:400;color:#8A8480;">by weight</span></div>
         </div>
+        <div class="sf-ship-opt" id="sf-ship-international" onclick="sfSelectShip('international',this)">
+          <input type="radio" name="sf-ship" id="sfr-international">
+          <div class="sf-ship-opt-info">
+            <div class="sf-ship-opt-name">✈️ International Shipping</div>
+            <div class="sf-ship-opt-desc">United States, Canada, United Kingdom · Rate by weight · USD</div>
+            <div class="sf-ship-extra" id="sf-international-extra">
+              <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-top:0.5rem;margin-bottom:0.25rem;">Destination Country</div>
+              <select class="sf-fi" id="sf-international-country" onchange="sfInternationalCountryChange()" style="margin-bottom:0;">
+                <option value="">— Select country —</option>
+                <option>United States</option>
+                <option>Canada</option>
+                <option>United Kingdom</option>
+              </select>
+              <div id="sf-international-cost-display" style="font-size:0.73rem;color:#065F46;font-weight:600;margin-top:0.3rem;display:none;padding:0.25rem 0;"></div>
+              <div id="sf-international-us-note" style="display:none;font-size:0.68rem;color:#92400E;background:#FEF3C7;border:1px solid #FDE68A;border-radius:6px;padding:0.4rem 0.55rem;margin-top:0.35rem;">⚠️ <strong>US orders:</strong> Zonos Prepay duty prepayment required.</div>
+              <div style="font-size:0.68rem;color:#8A8480;margin-top:0.2rem;">Rates vary by weight. <a href="/shipping" target="_blank" style="color:#1D4ED8;text-decoration:underline;">View rate table</a></div>
+            </div>
+          </div>
+          <div class="sf-ship-opt-fee" id="sf-international-fee-badge" style="color:#1D4ED8;font-size:0.68rem;font-weight:700;">USD<br><span style="font-size:0.62rem;font-weight:400;color:#8A8480;">by weight</span></div>
+        </div>
       </div>
 
       <!-- Payment info banner -->

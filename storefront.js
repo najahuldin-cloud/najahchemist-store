@@ -20,6 +20,10 @@ const CARIBBEAN_RATES = {
   'Guyana':            [50, 78, 108, 145, 195],
   'St. Lucia':         [40, 62, 88, 118, 158],
   'Trinidad & Tobago': [35, 55, 80, 110, 148],
+  // International (non-Caribbean) — Jamaica Post airmail incl. J$500 bearer fee
+  'United States':     [9, 10, 11, 14, 17],
+  'Canada':            [6, 7, 8, 10, 12],
+  'United Kingdom':    [7, 8, 10, 12, 15],
 };
 const CARIB_KG_BRACKETS = [1, 2, 3, 5, 10];
 const CARIB_USD_TO_JMD = 157;
@@ -38,6 +42,7 @@ let sfCurrentModalMint = null;
 let sfCurrentHerbQty = 0;
 let sfSelectedShip = null;
 let sfCaribbeanCountry = '';
+let sfInternationalCountry = '';
 let sfSelectedPayment = 'wa'; // 'wa' = bank/lynk, 'card' = Fygaro
 let sfTermsChecked = false;
 let sfDiscountApplied = false;
@@ -1057,6 +1062,28 @@ window.sfCaribbeanCountryChange = function() {
   sfRenderCartFooter();
 };
 
+window.sfInternationalCountryChange = function() {
+  const sel = document.getElementById('sf-international-country');
+  sfInternationalCountry = sel ? sel.value : '';
+  const display = document.getElementById('sf-international-cost-display');
+  const badge = document.getElementById('sf-international-fee-badge');
+  const usNote = document.getElementById('sf-international-us-note');
+  if (sfInternationalCountry) {
+    const kg = sfGetCartWeightKg();
+    const result = sfCalcCaribbeanShipping(sfInternationalCountry, kg);
+    if (display) {
+      display.textContent = 'Est. weight: ' + kg.toFixed(1) + 'kg · USD $' + result.usd + ' (~J$' + result.jmd.toLocaleString() + ')';
+      display.style.display = 'block';
+    }
+    if (badge) badge.innerHTML = '~J$' + result.jmd.toLocaleString() + '<br><span style="font-size:0.62rem;font-weight:400;color:#8A8480;">shipping</span>';
+  } else {
+    if (display) display.style.display = 'none';
+    if (badge) badge.innerHTML = 'USD<br><span style="font-size:0.62rem;font-weight:400;color:#8A8480;">by weight</span>';
+  }
+  if (usNote) usNote.style.display = sfInternationalCountry === 'United States' ? 'block' : 'none';
+  sfRenderCartFooter();
+};
+
 function sfGetShippingInfo() {
   let knutsfordBranch = '', zipmailLocation = '', deliveryAddress = '', shippingDetail = '', deliveryLocation = '', deliveryFee = 0;
   if (sfSelectedShip === 'knutsford') {
@@ -1084,6 +1111,13 @@ function sfGetShippingInfo() {
     const result = sfCalcCaribbeanShipping(country, kg);
     shippingDetail = 'Caribbean Shipping — ' + country + ' (USD $' + result.usd + ', ' + kg.toFixed(1) + 'kg)';
     deliveryLocation = 'Caribbean — ' + country;
+    deliveryFee = result.jmd;
+  } else if (sfSelectedShip === 'international') {
+    const country = sfInternationalCountry;
+    const kg = sfGetCartWeightKg();
+    const result = sfCalcCaribbeanShipping(country, kg);
+    shippingDetail = 'International Shipping — ' + country + ' (USD $' + result.usd + ', ' + kg.toFixed(1) + 'kg)' + (country === 'United States' ? ' [Zonos Prepay duty prepayment required]' : '');
+    deliveryLocation = 'International — ' + country;
     deliveryFee = result.jmd;
   }
   return { knutsfordBranch, zipmailLocation, deliveryAddress, shippingDetail, deliveryLocation, deliveryFee };
@@ -1228,6 +1262,21 @@ function sfRenderCart() {
         }
         if (badge && result) badge.innerHTML = '~J$' + result.jmd.toLocaleString() + '<br><span style="font-size:0.62rem;font-weight:400;color:#8A8480;">shipping</span>';
       }
+      if (sfSelectedShip === 'international' && sfInternationalCountry) {
+        const countryEl = document.getElementById('sf-international-country');
+        if (countryEl) countryEl.value = sfInternationalCountry;
+        const kg = sfGetCartWeightKg();
+        const result = sfCalcCaribbeanShipping(sfInternationalCountry, kg);
+        const display = document.getElementById('sf-international-cost-display');
+        const badge = document.getElementById('sf-international-fee-badge');
+        const usNote = document.getElementById('sf-international-us-note');
+        if (display && result) {
+          display.textContent = 'Est. weight: ' + kg.toFixed(1) + 'kg · USD $' + result.usd + ' (~J$' + result.jmd.toLocaleString() + ')';
+          display.style.display = 'block';
+        }
+        if (badge && result) badge.innerHTML = '~J$' + result.jmd.toLocaleString() + '<br><span style="font-size:0.62rem;font-weight:400;color:#8A8480;">shipping</span>';
+        if (usNote) usNote.style.display = sfInternationalCountry === 'United States' ? 'block' : 'none';
+      }
     }
   }
 }
@@ -1241,8 +1290,12 @@ function sfRenderCartFooter() {
     if (sfSelectedShip !== 'caribbean' || !sfCaribbeanCountry) return 0;
     return sfCalcCaribbeanShipping(sfCaribbeanCountry, sfGetCartWeightKg()).jmd;
   })();
-  const shipFees = {knutsford:500, zipmail:1000, kingston:1000, caribbean: caribFee};
-  const shipLabels = {knutsford:'Knutsford (+J$500)', zipmail:'Zipmail (+~J$1,000)', kingston:'Kingston Delivery (+~J$1,000)', caribbean: sfCaribbeanCountry ? sfCaribbeanCountry + ' (~J$' + caribFee.toLocaleString() + ')' : 'Caribbean — select country above'};
+  const intlFee = (function() {
+    if (sfSelectedShip !== 'international' || !sfInternationalCountry) return 0;
+    return sfCalcCaribbeanShipping(sfInternationalCountry, sfGetCartWeightKg()).jmd;
+  })();
+  const shipFees = {knutsford:500, zipmail:1000, kingston:1000, caribbean: caribFee, international: intlFee};
+  const shipLabels = {knutsford:'Knutsford (+J$500)', zipmail:'Zipmail (+~J$1,000)', kingston:'Kingston Delivery (+~J$1,000)', caribbean: sfCaribbeanCountry ? sfCaribbeanCountry + ' (~J$' + caribFee.toLocaleString() + ')' : 'Caribbean — select country above', international: sfInternationalCountry ? sfInternationalCountry + ' (~J$' + intlFee.toLocaleString() + ')' : 'International — select country above'};
   const fee = sfSelectedShip ? shipFees[sfSelectedShip] : 0;
   const grandTotal = sub + fee;
   const cardFee = Math.round(grandTotal * 0.15);
@@ -1383,6 +1436,8 @@ window.sfCheckoutWA = function() {
     if (!addr) { sfShowToast('Please enter your delivery address'); return; }
   } else if (sfSelectedShip === 'caribbean') {
     if (!sfCaribbeanCountry) { sfShowToast('Please select your destination country'); return; }
+  } else if (sfSelectedShip === 'international') {
+    if (!sfInternationalCountry) { sfShowToast('Please select your destination country'); return; }
   }
   const { knutsfordBranch, zipmailLocation, deliveryAddress, shippingDetail, deliveryLocation, deliveryFee } = sfGetShippingInfo();
   const shipDetail = shippingDetail;
@@ -1513,6 +1568,8 @@ window.sfCheckoutFygaro = function() {
     if (!addr) { sfShowToast('Please enter your delivery address'); return; }
   } else if (sfSelectedShip === 'caribbean') {
     if (!sfCaribbeanCountry) { sfShowToast('Please select your destination country'); return; }
+  } else if (sfSelectedShip === 'international') {
+    if (!sfInternationalCountry) { sfShowToast('Please select your destination country'); return; }
   }
   const { knutsfordBranch, zipmailLocation, deliveryAddress, shippingDetail, deliveryLocation, deliveryFee } = sfGetShippingInfo();
   const shipDetail = shippingDetail;
