@@ -1315,10 +1315,10 @@ function sfRenderCartFooter() {
     <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#8A8480;margin-bottom:0.45rem;">Payment Method</div>
     <div class="sf-pay-opts">
       <label class="sf-pay-opt-lbl ${!isCard?'on':''}" onclick="sfSetPayment('wa')">
-        <input type="radio" name="sf-pay" ${!isCard?'checked':''} readonly> 🏦 Bank Transfer / Lynk &mdash; <strong>no extra fee</strong>
+        <input type="radio" name="sf-pay" ${!isCard?'checked':''} readonly> 🏦 Bank Transfer
       </label>
       <label class="sf-pay-opt-lbl ${isCard?'on':''}" onclick="sfSetPayment('card')">
-        <input type="radio" name="sf-pay" ${isCard?'checked':''} readonly> 💳 Pay by Card via Fygaro &mdash; <strong>15% fee applies</strong>
+        <input type="radio" name="sf-pay" ${isCard?'checked':''} readonly> 💳 Pay by Card
       </label>
     </div>
     ${isCard ? `<div class="sf-card-fee-box">Card processing fee (15%): <strong>J$${cardFee.toLocaleString()}</strong> &nbsp;&middot;&nbsp; Total charged to card: <strong>J$${cardTotal.toLocaleString()}</strong></div>` : ''}
