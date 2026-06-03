@@ -1022,8 +1022,12 @@
             <div class="sf-ship-opt-name">🏠 Kingston / St. Andrew Delivery</div>
             <div class="sf-ship-opt-desc">Hand delivery · Kingston &amp; St. Andrew only · Starts at J$1,000</div>
             <div class="sf-ship-extra" id="sf-kingston-extra">
-              <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-top:0.5rem;margin-bottom:0.25rem;">Delivery Address</div>
-              <input class="sf-fi" id="sf-delivery-address" placeholder="Start typing your address..." autocomplete="off" style="margin-bottom:0;">
+              <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-top:0.5rem;margin-bottom:0.25rem;">Full Name</div>
+              <input class="sf-fi" id="sf-kingston-fullname" placeholder="Recipient full name *" style="margin-bottom:0.35rem;">
+              <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-bottom:0.25rem;">Delivery Address</div>
+              <input class="sf-fi" id="sf-delivery-address" placeholder="Start typing your address..." autocomplete="off" style="margin-bottom:0.35rem;">
+              <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-bottom:0.25rem;">Nearest Landmark (optional)</div>
+              <input class="sf-fi" id="sf-kingston-landmark" placeholder="e.g. near the plaza, blue gate" style="margin-bottom:0;">
             </div>
           </div>
           <div class="sf-ship-opt-fee">From<br>J$1,000</div>
@@ -1049,6 +1053,18 @@
               </select>
               <div id="sf-caribbean-cost-display" style="font-size:0.73rem;color:#065F46;font-weight:600;margin-top:0.3rem;display:none;padding:0.25rem 0;"></div>
               <div style="font-size:0.68rem;color:#8A8480;margin-top:0.2rem;">Rates vary by weight. <a href="/shipping" target="_blank" style="color:#1D4ED8;text-decoration:underline;">View rate table</a></div>
+              <div style="margin-top:0.55rem;border-top:1px dashed #E8E4DE;padding-top:0.55rem;">
+                <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-bottom:0.25rem;">Full Name</div>
+                <input class="sf-fi" id="sf-carib-fullname" placeholder="Recipient full name *" style="margin-bottom:0.35rem;">
+                <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-bottom:0.25rem;">Address Line 1</div>
+                <input class="sf-fi" id="sf-carib-addr1" placeholder="Street address *" style="margin-bottom:0.35rem;">
+                <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-bottom:0.25rem;">Address Line 2 (optional)</div>
+                <input class="sf-fi" id="sf-carib-addr2" placeholder="Apartment, suite, etc." style="margin-bottom:0.35rem;">
+                <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-bottom:0.25rem;">City</div>
+                <input class="sf-fi" id="sf-carib-city" placeholder="City *" style="margin-bottom:0.35rem;">
+                <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-bottom:0.25rem;">Country</div>
+                <input class="sf-fi" id="sf-carib-country" placeholder="Country" readonly style="margin-bottom:0;background:#F5F2ED;cursor:not-allowed;">
+              </div>
             </div>
           </div>
           <div class="sf-ship-opt-fee" id="sf-caribbean-fee-badge" style="color:#1D4ED8;font-size:0.68rem;font-weight:700;">USD<br><span style="font-size:0.62rem;font-weight:400;color:#8A8480;">by weight</span></div>
@@ -1069,6 +1085,22 @@
               <div id="sf-international-cost-display" style="font-size:0.73rem;color:#065F46;font-weight:600;margin-top:0.3rem;display:none;padding:0.25rem 0;"></div>
               <div id="sf-international-us-note" style="display:none;font-size:0.68rem;color:#92400E;background:#FEF3C7;border:1px solid #FDE68A;border-radius:6px;padding:0.4rem 0.55rem;margin-top:0.35rem;">⚠️ <strong>US orders:</strong> Zonos Prepay duty prepayment required.</div>
               <div style="font-size:0.68rem;color:#8A8480;margin-top:0.2rem;">Rates vary by weight. <a href="/shipping" target="_blank" style="color:#1D4ED8;text-decoration:underline;">View rate table</a></div>
+              <div style="margin-top:0.55rem;border-top:1px dashed #E8E4DE;padding-top:0.55rem;">
+                <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-bottom:0.25rem;">Full Name</div>
+                <input class="sf-fi" id="sf-intl-fullname" placeholder="Recipient full name *" style="margin-bottom:0.35rem;">
+                <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-bottom:0.25rem;">Address Line 1</div>
+                <input class="sf-fi" id="sf-intl-addr1" placeholder="Street address *" style="margin-bottom:0.35rem;">
+                <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-bottom:0.25rem;">Address Line 2 (optional)</div>
+                <input class="sf-fi" id="sf-intl-addr2" placeholder="Apartment, suite, etc." style="margin-bottom:0.35rem;">
+                <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-bottom:0.25rem;">City</div>
+                <input class="sf-fi" id="sf-intl-city" placeholder="City *" style="margin-bottom:0.35rem;">
+                <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-bottom:0.25rem;">State/Province</div>
+                <input class="sf-fi" id="sf-intl-state" placeholder="State/Province" style="margin-bottom:0.35rem;">
+                <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-bottom:0.25rem;">Postal/ZIP Code</div>
+                <input class="sf-fi" id="sf-intl-postal" placeholder="Postal/ZIP code" style="margin-bottom:0.35rem;">
+                <div style="font-size:0.72rem;font-weight:600;color:#4B4846;margin-bottom:0.25rem;">Country</div>
+                <input class="sf-fi" id="sf-intl-country" placeholder="Country" readonly style="margin-bottom:0;background:#F5F2ED;cursor:not-allowed;">
+              </div>
             </div>
           </div>
           <div class="sf-ship-opt-fee" id="sf-international-fee-badge" style="color:#1D4ED8;font-size:0.68rem;font-weight:700;">USD<br><span style="font-size:0.62rem;font-weight:400;color:#8A8480;">by weight</span></div>

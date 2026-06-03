@@ -1047,6 +1047,8 @@ function sfGetCartWeightKg() {
 window.sfCaribbeanCountryChange = function() {
   const sel = document.getElementById('sf-caribbean-country');
   sfCaribbeanCountry = sel ? sel.value : '';
+  const countryFld = document.getElementById('sf-carib-country');
+  if (countryFld) countryFld.value = sfCaribbeanCountry;
   const display = document.getElementById('sf-caribbean-cost-display');
   const badge = document.getElementById('sf-caribbean-fee-badge');
   if (sfCaribbeanCountry) {
@@ -1067,6 +1069,8 @@ window.sfCaribbeanCountryChange = function() {
 window.sfInternationalCountryChange = function() {
   const sel = document.getElementById('sf-international-country');
   sfInternationalCountry = sel ? sel.value : '';
+  const countryFld = document.getElementById('sf-intl-country');
+  if (countryFld) countryFld.value = sfInternationalCountry;
   const display = document.getElementById('sf-international-cost-display');
   const badge = document.getElementById('sf-international-fee-badge');
   const usNote = document.getElementById('sf-international-us-note');
@@ -1123,6 +1127,43 @@ function sfGetShippingInfo() {
     deliveryFee = result.jmd;
   }
   return { knutsfordBranch, zipmailLocation, deliveryAddress, shippingDetail, deliveryLocation, deliveryFee };
+}
+
+// Collect the address fields shown for the selected shipping method.
+// Returns the labelled lines (for WhatsApp), a one-line summary (for Fygaro/orders),
+// and a waBlock ready to splice into the WhatsApp message ('' when no address applies).
+function sfGetDeliveryAddress() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  let fields = [];
+  if (sfSelectedShip === 'international') {
+    fields = [
+      ['Full Name', v('sf-intl-fullname')],
+      ['Address Line 1', v('sf-intl-addr1')],
+      ['Address Line 2', v('sf-intl-addr2')],
+      ['City', v('sf-intl-city')],
+      ['State/Province', v('sf-intl-state')],
+      ['Postal/ZIP Code', v('sf-intl-postal')],
+      ['Country', v('sf-intl-country') || sfInternationalCountry]
+    ];
+  } else if (sfSelectedShip === 'caribbean') {
+    fields = [
+      ['Full Name', v('sf-carib-fullname')],
+      ['Address Line 1', v('sf-carib-addr1')],
+      ['Address Line 2', v('sf-carib-addr2')],
+      ['City', v('sf-carib-city')],
+      ['Country', v('sf-carib-country') || sfCaribbeanCountry]
+    ];
+  } else if (sfSelectedShip === 'kingston') {
+    fields = [
+      ['Full Name', v('sf-kingston-fullname')],
+      ['Delivery Address', v('sf-delivery-address')],
+      ['Nearest Landmark', v('sf-kingston-landmark')]
+    ];
+  }
+  const filled = fields.filter(f => f[1]);
+  const text = filled.map(f => f[0] + ': ' + f[1]).join('\n');
+  const oneLine = filled.map(f => f[1]).join(', ');
+  return { text, oneLine, waBlock: text ? '\n\nDELIVERY ADDRESS\n' + text : '' };
 }
 
 // ── Upsell: "You might also like" ────────────────────────────────────
@@ -1254,6 +1295,8 @@ function sfRenderCart() {
       if (sfSelectedShip === 'caribbean' && sfCaribbeanCountry) {
         const countryEl = document.getElementById('sf-caribbean-country');
         if (countryEl) countryEl.value = sfCaribbeanCountry;
+        const caribCountryFld = document.getElementById('sf-carib-country');
+        if (caribCountryFld) caribCountryFld.value = sfCaribbeanCountry;
         const kg = sfGetCartWeightKg();
         const result = sfCalcCaribbeanShipping(sfCaribbeanCountry, kg);
         const display = document.getElementById('sf-caribbean-cost-display');
@@ -1267,6 +1310,8 @@ function sfRenderCart() {
       if (sfSelectedShip === 'international' && sfInternationalCountry) {
         const countryEl = document.getElementById('sf-international-country');
         if (countryEl) countryEl.value = sfInternationalCountry;
+        const intlCountryFld = document.getElementById('sf-intl-country');
+        if (intlCountryFld) intlCountryFld.value = sfInternationalCountry;
         const kg = sfGetCartWeightKg();
         const result = sfCalcCaribbeanShipping(sfInternationalCountry, kg);
         const display = document.getElementById('sf-international-cost-display');
@@ -1436,13 +1481,24 @@ window.sfCheckoutWA = function() {
   } else if (sfSelectedShip === 'kingston') {
     const addr = (document.getElementById('sf-delivery-address')?.value||'').trim();
     if (!addr) { sfShowToast('Please enter your delivery address'); return; }
+    const fn = (document.getElementById('sf-kingston-fullname')?.value||'').trim();
+    if (!fn) { sfShowToast('Please enter the recipient full name'); return; }
   } else if (sfSelectedShip === 'caribbean') {
     if (!sfCaribbeanCountry) { sfShowToast('Please select your destination country'); return; }
+    const fn = (document.getElementById('sf-carib-fullname')?.value||'').trim();
+    const a1 = (document.getElementById('sf-carib-addr1')?.value||'').trim();
+    const city = (document.getElementById('sf-carib-city')?.value||'').trim();
+    if (!fn || !a1 || !city) { sfShowToast('Please complete your delivery address (name, address line 1, city)'); return; }
   } else if (sfSelectedShip === 'international') {
     if (!sfInternationalCountry) { sfShowToast('Please select your destination country'); return; }
+    const fn = (document.getElementById('sf-intl-fullname')?.value||'').trim();
+    const a1 = (document.getElementById('sf-intl-addr1')?.value||'').trim();
+    const city = (document.getElementById('sf-intl-city')?.value||'').trim();
+    if (!fn || !a1 || !city) { sfShowToast('Please complete your delivery address (name, address line 1, city)'); return; }
   }
   const { knutsfordBranch, zipmailLocation, deliveryAddress, shippingDetail, deliveryLocation, deliveryFee } = sfGetShippingInfo();
   const shipDetail = shippingDetail;
+  const deliveryAddr = sfGetDeliveryAddress();
 
   const rawSub = sfCart.reduce((s,i)=>s+i.price*i.qty,0);
   const sub = rawSub - sfDiscountAmount;
@@ -1462,7 +1518,7 @@ window.sfCheckoutWA = function() {
     const WA = window.WA_NUMBER || '18768851099';
     const fillingLine = fillingFee > 0 ? '\n🧴 Container Filling Service: J$' + fillingFee.toLocaleString() : '';
     const grandTotal = total + fillingFee;
-    const msg = 'Hi Najah Chemist! I would like to place an order.\n\nORDER ID: ' + orderId + '\n\nCUSTOMER\nName: ' + name + (phone?'\nPhone: '+phone:'') + '\n\nORDER\n' + items + '\n\nSUBTOTAL: J$' + rawSub.toLocaleString() + discountNote + '\nSHIPPING: ' + shipDetail + fillingLine + '\nTOTAL: J$' + grandTotal.toLocaleString() + '\n\nPAYMENT\nI understand payment is required upfront (no COD).\nI will pay via bank transfer, Fygaro, or Lynk.\n\nPlease confirm my order. Thank you!';
+    const msg = 'Hi Najah Chemist! I would like to place an order.\n\nORDER ID: ' + orderId + '\n\nCUSTOMER\nName: ' + name + (phone?'\nPhone: '+phone:'') + deliveryAddr.waBlock + '\n\nORDER\n' + items + '\n\nSUBTOTAL: J$' + rawSub.toLocaleString() + discountNote + '\nSHIPPING: ' + shipDetail + fillingLine + '\nTOTAL: J$' + grandTotal.toLocaleString() + '\n\nPAYMENT\nI understand payment is required upfront (no COD).\nI will pay via bank transfer, Fygaro, or Lynk.\n\nPlease confirm my order. Thank you!';
     window.open('https://wa.me/' + WA + '?text=' + encodeURIComponent(msg), '_blank');
 
     document.getElementById('cf-order-id').textContent = orderId;
@@ -1498,7 +1554,7 @@ window.sfCheckoutWA = function() {
     setTimeout(async function() {
       try {
         const totalQty = cartSnapshot.reduce(function(s,i){return s+i.qty;},0);
-        await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Unpaid',status:'Pending',date:date,total:grandTotal,payMethod:'Bank/Lynk',phone:phone||'—',email:custEmail||'',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee,knutsfordBranch:knutsfordBranch,zipmailLocation:zipmailLocation,deliveryAddress:deliveryAddress,shippingDetail:shippingDetail,caribbeanCountry:sfSelectedShip==='caribbean'?sfCaribbeanCountry:'',caribbeanShippingCost:sfSelectedShip==='caribbean'?deliveryFee:0});
+        await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Unpaid',status:'Pending',date:date,total:grandTotal,payMethod:'Bank/Lynk',phone:phone||'—',email:custEmail||'',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee,knutsfordBranch:knutsfordBranch,zipmailLocation:zipmailLocation,deliveryAddress:deliveryAddress,shippingDetail:shippingDetail,caribbeanCountry:sfSelectedShip==='caribbean'?sfCaribbeanCountry:'',caribbeanShippingCost:sfSelectedShip==='caribbean'?deliveryFee:0,deliveryAddressDetails:deliveryAddr.oneLine});
         console.log('ORDER SAVED:', orderId);
       } catch(e) {
         console.error('SAVE FAILED:', e);
@@ -1568,13 +1624,24 @@ window.sfCheckoutFygaro = function() {
   } else if (sfSelectedShip === 'kingston') {
     const addr = (document.getElementById('sf-delivery-address')?.value||'').trim();
     if (!addr) { sfShowToast('Please enter your delivery address'); return; }
+    const fn = (document.getElementById('sf-kingston-fullname')?.value||'').trim();
+    if (!fn) { sfShowToast('Please enter the recipient full name'); return; }
   } else if (sfSelectedShip === 'caribbean') {
     if (!sfCaribbeanCountry) { sfShowToast('Please select your destination country'); return; }
+    const fn = (document.getElementById('sf-carib-fullname')?.value||'').trim();
+    const a1 = (document.getElementById('sf-carib-addr1')?.value||'').trim();
+    const city = (document.getElementById('sf-carib-city')?.value||'').trim();
+    if (!fn || !a1 || !city) { sfShowToast('Please complete your delivery address (name, address line 1, city)'); return; }
   } else if (sfSelectedShip === 'international') {
     if (!sfInternationalCountry) { sfShowToast('Please select your destination country'); return; }
+    const fn = (document.getElementById('sf-intl-fullname')?.value||'').trim();
+    const a1 = (document.getElementById('sf-intl-addr1')?.value||'').trim();
+    const city = (document.getElementById('sf-intl-city')?.value||'').trim();
+    if (!fn || !a1 || !city) { sfShowToast('Please complete your delivery address (name, address line 1, city)'); return; }
   }
   const { knutsfordBranch, zipmailLocation, deliveryAddress, shippingDetail, deliveryLocation, deliveryFee } = sfGetShippingInfo();
   const shipDetail = shippingDetail;
+  const deliveryAddr = sfGetDeliveryAddress();
 
   const rawSub = sfCart.reduce((s,i)=>s+i.price*i.qty,0);
   const sub = rawSub - sfDiscountAmount;
@@ -1590,11 +1657,12 @@ window.sfCheckoutFygaro = function() {
 
   // 1. Open Fygaro IMMEDIATELY — synchronous to avoid browser popup block
   const FYGARO_URL = 'https://www.fygaro.com/en/pb/817f634a-4ee0-41c7-9ad2-6508ae2048c2/';
-  window.open(FYGARO_URL + '?amount=' + cardTotal + '&clientnote=' + encodeURIComponent(orderId), '_blank');
+  const fygaroNote = orderId + (deliveryAddr.oneLine ? ' | Ship to: ' + deliveryAddr.oneLine : '');
+  window.open(FYGARO_URL + '?amount=' + cardTotal + '&clientnote=' + encodeURIComponent(fygaroNote), '_blank');
 
   // 1b. Open WhatsApp notification — same user gesture, fires alongside Fygaro
   const WA = window.WA_NUMBER || '18768851099';
-  const waMsg = 'Hi Najah Chemist! I would like to place an order.\n\nORDER ID: ' + orderId + '\n\nCUSTOMER\nName: ' + name + (phone ? '\nPhone: ' + phone : '') + '\n\nORDER\n' + items + '\n\nSUBTOTAL: J$' + rawSub.toLocaleString() + discountNote + '\nSHIPPING: ' + shipDetail + '\nTOTAL: J$' + cardTotal.toLocaleString() + ' (incl. 15% card fee)\n\nPAYMENT\nPaying by card via Fygaro.\n\nPlease confirm my order. Thank you!';
+  const waMsg = 'Hi Najah Chemist! I would like to place an order.\n\nORDER ID: ' + orderId + '\n\nCUSTOMER\nName: ' + name + (phone ? '\nPhone: ' + phone : '') + deliveryAddr.waBlock + '\n\nORDER\n' + items + '\n\nSUBTOTAL: J$' + rawSub.toLocaleString() + discountNote + '\nSHIPPING: ' + shipDetail + '\nTOTAL: J$' + cardTotal.toLocaleString() + ' (incl. 15% card fee)\n\nPAYMENT\nPaying by card via Fygaro.\n\nPlease confirm my order. Thank you!';
   window.open('https://wa.me/' + WA + '?text=' + encodeURIComponent(waMsg), '_blank');
 
   // 2. Show confirmation modal
@@ -1622,7 +1690,7 @@ window.sfCheckoutFygaro = function() {
     // 1. SAVE ORDER FIRST — nothing before this
     try {
       const totalQty = cartSnapshot.reduce(function(s,i){return s+i.qty;},0);
-      await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Awaiting Payment',status:'Pending',date:date,total:cardTotal,payMethod:'Fygaro Card',phone:phone||'—',email:custEmail||'',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee,knutsfordBranch:knutsfordBranch,zipmailLocation:zipmailLocation,deliveryAddress:deliveryAddress,shippingDetail:shippingDetail,caribbeanCountry:sfSelectedShip==='caribbean'?sfCaribbeanCountry:'',caribbeanShippingCost:sfSelectedShip==='caribbean'?deliveryFee:0});
+      await window.saveOrderSilent({id:orderId,client:name,product:productsStr,size:'—',qty:totalQty,source:'Website',payment:'Unpaid',paymentStatus:'Awaiting Payment',status:'Pending',date:date,total:cardTotal,payMethod:'Fygaro Card',phone:phone||'—',email:custEmail||'',deliveryLocation:deliveryLocation,deliveryFee:deliveryFee,knutsfordBranch:knutsfordBranch,zipmailLocation:zipmailLocation,deliveryAddress:deliveryAddress,shippingDetail:shippingDetail,caribbeanCountry:sfSelectedShip==='caribbean'?sfCaribbeanCountry:'',caribbeanShippingCost:sfSelectedShip==='caribbean'?deliveryFee:0,deliveryAddressDetails:deliveryAddr.oneLine});
       console.log('ORDER SAVED:', orderId);
     } catch(e) {
       console.error('SAVE FAILED:', e);
