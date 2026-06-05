@@ -3250,17 +3250,109 @@ function leadSegment(l) {
   return 'General';
 }
 
-// Pre-written WhatsApp quick-reply message per segment
+// Returns a clean first name to greet with, or 'there' if the captured
+// "name" looks like junk (chatbot noise, test entries, single words, etc.)
+function leadSafeName(raw) {
+  const name = (raw || '').trim();
+  if (!/^[A-Za-z ]{2,20}$/.test(name)) return 'there';
+  const banned = ['you','me','sauce','test','hello','hi','hey','na','n/a'];
+  const words = name.toLowerCase().split(/\s+/);
+  if (words.some(w => banned.includes(w))) return 'there';
+  return name;
+}
+
+// Pre-written WhatsApp quick-reply message per segment.
+// Body care has its own message even though it shares the "Skincare" display badge.
 function leadQuickReplyMsg(l) {
-  const name = l.name || 'there';
+  const name = leadSafeName(l.name);
+  const b = (l.brandType || '').toLowerCase().trim();
+  let key;
+  if (b.includes('hair'))                           key = 'Haircare';
+  else if (b.includes('feminine') || b.includes('yoni')) key = 'Feminine';
+  else if (b.includes('men'))                       key = "Men's";
+  else if (b.includes('body'))                      key = 'Body';
+  else if (b.includes('skin') || b.includes('face')) key = 'Skincare';
+  else                                              key = 'General';
   const msgs = {
-    'Skincare': "Hi "+name+" 👋🏾 I saw you're interested in starting your skincare brand — great timing! Based on your budget, I'd recommend starting with our Turmeric & Kojic Soap or Dark Spot Corrector Cream. Both are high demand and easy to sell. Visit najahchemistja.com to browse or reply here to chat. — Najah Chemist 🌿",
-    'Haircare': "Hi "+name+" 👋🏾 Thanks for your interest in Najah Chemist! For haircare brands, our best sellers are the Hair Growth Oil and Hair Butter — clients love them. Low MOQ so you can start small. Visit najahchemistja.com or reply here. — Najah Chemist 🌿",
-    'Feminine': "Hi "+name+" 👋🏾 Thanks for reaching out! Our feminine care range includes Yoni Wash, Yoni Scrub, Yoni Oil and more — all wholesale, ready to label. Visit najahchemistja.com to see the full range or reply here. — Najah Chemist 🌿",
-    "Men's":    "Hi "+name+" 👋🏾 Thanks for your interest! Our men's grooming range includes Beard Oil, Beard Balm and Beard Shampoo — all wholesale ready to label under your brand. Visit najahchemistja.com or reply here. — Najah Chemist 🌿",
-    'General':  "Hi "+name+" 👋🏾 Thanks for reaching out to Najah Chemist! We manufacture wholesale skincare, body care, and feminine care products you can brand and sell. Browse our full range at najahchemistja.com or reply here to discuss your needs. — Najah Chemist 🌿"
+    'Skincare': `Hi ${name} 👋
+I saw you're interested in starting your skincare brand — great timing, skincare is one of the fastest moving categories in Jamaica right now.
+Based on your budget, the smartest way to start is with 1–2 proven products so you can begin making sales quickly without overspending.
+I'd recommend starting with:
+- Turmeric & Kojic Soap — high demand, easy to sell
+- Dark Spot Corrector Cream — consistent best-seller
+You package and brand them under your own business name. We manufacture, you sell.
+Most of our clients start with these and make their first sales within the week.
+👉 Choose your starter here: najahchemistja.com
+Use our Starter Kit builder to select any 3 products and save 5% automatically.
+View our wholesale price list: najahchemistja.com/guide/wholesale-price-list
+Our HydraGlow Skincare Bundle is J$25,200 — 24 products (4 types × 6 pieces each) ready to label and sell. Retail value J$60,000+.
+Note: Bundles are pre-set and cannot be customised. For a custom product mix, visit najahchemistja.com/customise
+Are you looking to test with 1–2 products first or build out a fuller line from the start?`,
+    'Haircare': `Hi ${name} 👋
+I saw you're interested in starting a hair care brand — strong and growing market in Jamaica right now.
+To start smart, I'd recommend focusing on 1–2 products with high repeat purchase.
+Best starting products:
+- Hair Growth Oil — high demand, customers reorder monthly
+- Hair Butter — pairs naturally, builds a complete hair care routine
+You brand them under your own business. We manufacture everything here in Jamaica.
+👉 Choose your starter here: najahchemistja.com
+Use our Starter Kit builder to select any 3 products and save 5% automatically.
+View our wholesale price list: najahchemistja.com/guide/wholesale-price-list
+Our Hair Care range starts from J$5,500 per litre — fills 16 × 2oz bottles, retail value J$32,000+.
+Note: For a custom product mix, visit najahchemistja.com/customise
+Are you looking to start with 1–2 products first or build a complete hair care line?`,
+    'Body': `Hi ${name} 👋
+I saw you're interested in starting your body care brand — strong market right now especially for glow and brightening products.
+The best move is starting with 1–2 fast-moving products so you can test and make sales quickly.
+I'd recommend:
+- Body Butter — sells consistently year round
+- Turmeric Kojic Scrub — very popular, high repeat purchase
+You brand and package them under your own label. We handle the manufacturing.
+Most of our clients start here and have their first sales within the week.
+👉 Choose your products here: najahchemistja.com
+Use our Starter Kit builder to select any 3 products and save 5% automatically.
+View our wholesale price list: najahchemistja.com/guide/wholesale-price-list
+Note: For a custom product mix, visit najahchemistja.com/customise
+Are you going for a small test start or building a fuller line right away?`,
+    'Feminine': `Hi ${name} 👋
+I saw you're interested in starting a feminine care brand — one of the highest-demand niches in Jamaica right now and it builds strong customer loyalty.
+To start smart, I'd recommend focusing on 1–2 core products that sell consistently.
+Best starting products:
+- Yoni Foaming Wash — daily use, high repeat purchase
+- Yoni Pops (Boric Acid) — very high demand, customers come back monthly
+You brand them under your own business. We manufacture everything here in Jamaica.
+👉 Choose your starter here: najahchemistja.com
+Use our Starter Kit builder to select any 3 products and save 5% automatically.
+View our wholesale price list: najahchemistja.com/guide/wholesale-price-list
+Our Girls Night In Luxury Bundle is J$13,000 — 24 products (4 types × 6 pieces each) ready to label and sell. Retail value J$30,000+.
+Note: Bundles are pre-set and cannot be customised. For a custom product mix, visit najahchemistja.com/customise
+Are you looking to start with 1–2 products first or build a complete feminine care line?`,
+    "Men's": `Hi ${name} 👋
+I saw you're interested in starting a men's grooming brand — solid niche, strong demand and low competition locally.
+With your budget, the best move is starting with 1–2 products you can sell quickly.
+I'd recommend:
+- Beard Oil — consistent top seller
+- Beard Shampoo — pairs naturally, customers buy both together
+You brand and package under your own name. We supply everything manufactured in Jamaica.
+👉 Choose your products here: najahchemistja.com
+Use our Starter Kit builder to select any 3 products and save 5% automatically.
+View our wholesale price list: najahchemistja.com/guide/wholesale-price-list
+Our Mencare Bundle is J$11,000 — 18 products (3 types × 6 pieces each) ready to label and sell. Retail value J$28,000+.
+Note: Bundles are pre-set and cannot be customised. For a custom product mix, visit najahchemistja.com/customise
+Are you starting small to test first or going in with a fuller line?`,
+    'General': `Hi ${name} 👋
+Thanks for reaching out to Najah Chemist! Our best sellers right now are:
+- Turmeric & Kojic Soap — high demand, easy to sell
+- Dark Spot Corrector Cream — consistent best-seller
+- Yoni Foaming Wash — daily use, high repeat purchase
+- Hair Growth Oil — customers reorder monthly
+All wholesale, ready for you to brand and sell. Low MOQ so you can start small.
+👉 Browse the full range: najahchemistja.com
+Use our Starter Kit builder to select any 3 products and save 5% automatically.
+View our wholesale price list: najahchemistja.com/guide/wholesale-price-list
+Reply here to chat about what suits your brand best.`
   };
-  return msgs[leadSegment(l)] || msgs['General'];
+  return msgs[key] || msgs['General'];
 }
 
 function leadCreatedDate(l) {
@@ -3339,6 +3431,7 @@ window.renderLeads = function() {
     const waBtn = wa
       ? `<a href="https://wa.me/${wa}?text=${encodeURIComponent(leadQuickReplyMsg(l))}" target="_blank" rel="noopener" onclick="leadMarkContacted('${l.id}')" style="display:inline-flex;align-items:center;gap:0.3rem;background:#166534;color:white;padding:0.3rem 0.7rem;border-radius:6px;font-size:0.68rem;font-weight:700;text-decoration:none;white-space:nowrap;">💬 ${seg}</a>`
       : '<span style="color:var(--mid);font-size:0.72rem;">no number</span>';
+    const priceBtn = `<a href="https://najahchemistja.com/guide/wholesale-price-list" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;background:#DBEAFE;color:#1D4ED8;padding:0.3rem 0.7rem;border-radius:6px;font-size:0.68rem;font-weight:700;text-decoration:none;white-space:nowrap;">📋 Price List</a>`;
     return `<tr>
       <td style="white-space:nowrap;font-size:0.75rem;color:var(--mid);">${createdStr}</td>
       <td style="font-weight:600;">${l.name||'—'}</td>
@@ -3353,7 +3446,7 @@ window.renderLeads = function() {
         <input type="date" class="status-sel" value="${l.followUpDate||''}" onchange="updateLeadFollowUp('${l.id}',this.value)" style="font-size:0.7rem;">
         ${followBadge}
       </td>
-      <td>${waBtn}</td>
+      <td><div style="display:flex;gap:0.4rem;flex-wrap:wrap;">${waBtn}${priceBtn}</div></td>
     </tr>`;
   }).join('');
 };
