@@ -926,26 +926,74 @@ select.finp{cursor:pointer;}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:0.75rem;">
         <div>
           <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--mid);margin-bottom:0.2rem;">Brand Builder</div>
-          <div style="font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:700;">Leads from /start</div>
+          <div style="font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:700;">Lead Manager</div>
         </div>
         <button class="btn btn-sm btn-ol" onclick="leadsExportCSV()">⬇ Export CSV</button>
       </div>
+
+      <!-- ── Stats bar ── -->
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-lbl">Total Leads</div><div class="stat-val" id="lead-stat-total">0</div><div class="stat-sub" id="lead-stat-total-sub">All time</div></div>
+        <div class="stat-card"><div class="stat-lbl">New Today</div><div class="stat-val" id="lead-stat-newtoday" style="color:var(--blue);">0</div><div class="stat-sub">Came in today</div></div>
+        <div class="stat-card"><div class="stat-lbl">Contacted</div><div class="stat-val" id="lead-stat-contacted" style="color:var(--gold);">0</div><div class="stat-sub">Reached out</div></div>
+        <div class="stat-card"><div class="stat-lbl">Converted</div><div class="stat-val" id="lead-stat-converted" style="color:var(--green);">0</div><div class="stat-sub">Ordered status</div></div>
+        <div class="stat-card"><div class="stat-lbl">Follow Up Today</div><div class="stat-val" id="lead-stat-followup" style="color:var(--red);">0</div><div class="stat-sub">Due or overdue</div></div>
+      </div>
+
+      <!-- ── Filters ── -->
+      <div class="card" style="margin-bottom:1.2rem;padding:1rem 1.2rem;">
+        <div style="display:flex;gap:0.9rem;align-items:flex-end;flex-wrap:wrap;">
+          <div style="flex:1;min-width:130px;">
+            <label style="display:block;font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--mid);margin-bottom:0.3rem;">Segment</label>
+            <select class="finp" id="lead-filter-segment" onchange="renderLeads()">
+              <option value="">All Segments</option>
+              <option value="Skincare">Skincare</option>
+              <option value="Haircare">Haircare</option>
+              <option value="Feminine">Feminine</option>
+              <option value="Men's">Men's</option>
+              <option value="General">General</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:130px;">
+            <label style="display:block;font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--mid);margin-bottom:0.3rem;">Status</label>
+            <select class="finp" id="lead-filter-status" onchange="renderLeads()">
+              <option value="">All Statuses</option>
+              <option value="New">New</option>
+              <option value="Contacted">Contacted</option>
+              <option value="Interested">Interested</option>
+              <option value="Ordered">Ordered</option>
+              <option value="Cold">Cold</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:130px;">
+            <label style="display:block;font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--mid);margin-bottom:0.3rem;">From Date</label>
+            <input class="finp" type="date" id="lead-filter-from" onchange="renderLeads()">
+          </div>
+          <div style="flex:1;min-width:130px;">
+            <label style="display:block;font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--mid);margin-bottom:0.3rem;">To Date</label>
+            <input class="finp" type="date" id="lead-filter-to" onchange="renderLeads()">
+          </div>
+          <button class="btn btn-sm btn-ol" style="margin-bottom:0.05rem;" onclick="leadsClearFilters()">Clear</button>
+        </div>
+      </div>
+
       <div class="tbl-wrap">
         <table id="leads-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>WhatsApp</th>
-              <th>Email</th>
-              <th>Brand Type</th>
-              <th>Budget</th>
-              <th>Branch</th>
               <th>Date</th>
-              <th></th>
+              <th>Name</th>
+              <th>Segment</th>
+              <th>Budget</th>
+              <th>WhatsApp</th>
+              <th>Status</th>
+              <th>Last Contacted</th>
+              <th>Follow-up</th>
+              <th>Quick Reply</th>
             </tr>
           </thead>
           <tbody id="leads-tbody">
-            <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--mid);">Loading…</td></tr>
+            <tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--mid);">Loading…</td></tr>
           </tbody>
         </table>
       </div>
@@ -3188,45 +3236,176 @@ observer.observe(newOrderModal,{attributes:true,attributeFilter:['class']});
 // ── LEADS ──
 let _leadsCache = [];
 
+const LEAD_STATUSES = ['New','Contacted','Interested','Ordered','Cold'];
+const LEAD_STATUS_BADGE = { New:'b-processing', Contacted:'b-pending', Interested:'b-refund', Ordered:'b-shipped', Cold:'b-cancelled' };
+
+// Normalise a lead's brandType into one of the 5 quick-reply segments
+function leadSegment(l) {
+  const b = (l.brandType || '').toLowerCase().trim();
+  if (b.includes('hair'))                         return 'Haircare';
+  if (b.includes('feminine') || b.includes('yoni')) return 'Feminine';
+  if (b.includes('men'))                          return "Men's";
+  if (b.includes('skin') || b.includes('body') || b.includes('face')) return 'Skincare';
+  if (!b || b === '—' || b === 'not specified')   return 'General';
+  return 'General';
+}
+
+// Pre-written WhatsApp quick-reply message per segment
+function leadQuickReplyMsg(l) {
+  const name = l.name || 'there';
+  const msgs = {
+    'Skincare': "Hi "+name+" 👋🏾 I saw you're interested in starting your skincare brand — great timing! Based on your budget, I'd recommend starting with our Turmeric & Kojic Soap or Dark Spot Corrector Cream. Both are high demand and easy to sell. Visit najahchemistja.com to browse or reply here to chat. — Najah Chemist 🌿",
+    'Haircare': "Hi "+name+" 👋🏾 Thanks for your interest in Najah Chemist! For haircare brands, our best sellers are the Hair Growth Oil and Hair Butter — clients love them. Low MOQ so you can start small. Visit najahchemistja.com or reply here. — Najah Chemist 🌿",
+    'Feminine': "Hi "+name+" 👋🏾 Thanks for reaching out! Our feminine care range includes Yoni Wash, Yoni Scrub, Yoni Oil and more — all wholesale, ready to label. Visit najahchemistja.com to see the full range or reply here. — Najah Chemist 🌿",
+    "Men's":    "Hi "+name+" 👋🏾 Thanks for your interest! Our men's grooming range includes Beard Oil, Beard Balm and Beard Shampoo — all wholesale ready to label under your brand. Visit najahchemistja.com or reply here. — Najah Chemist 🌿",
+    'General':  "Hi "+name+" 👋🏾 Thanks for reaching out to Najah Chemist! We manufacture wholesale skincare, body care, and feminine care products you can brand and sell. Browse our full range at najahchemistja.com or reply here to discuss your needs. — Najah Chemist 🌿"
+  };
+  return msgs[leadSegment(l)] || msgs['General'];
+}
+
+function leadCreatedDate(l) {
+  if (l.createdAt?.toDate) return l.createdAt.toDate();
+  if (l.createdAt?.seconds) return new Date(l.createdAt.seconds*1000);
+  return null;
+}
+function leadDateStr(d) { return d ? d.toISOString().slice(0,10) : ''; }
+function leadFmtDate(d) { return d ? d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—'; }
+
 window.loadLeads = async function() {
   const tbody = document.getElementById('leads-tbody');
-  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--mid);">Loading…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--mid);">Loading…</td></tr>';
   try {
     const snap = await getDocs(query(collection(db,'leads'), orderBy('createdAt','desc')));
     _leadsCache = [];
     snap.forEach(d => _leadsCache.push({ id: d.id, ...d.data() }));
-    if (_leadsCache.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--mid);">No leads yet.</td></tr>';
-      return;
-    }
-    tbody.innerHTML = _leadsCache.map(l => {
-      const wa = (l.whatsapp||'').replace(/\D/g,'');
-      const waLink = wa ? `<a href="https://wa.me/${wa}?text=${encodeURIComponent('Hi '+( l.name||'there')+'! I\'m from Najah Chemist — following up on your interest in starting a brand. How can I help?')}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;background:#166534;color:white;padding:0.25rem 0.6rem;border-radius:6px;font-size:0.68rem;font-weight:700;text-decoration:none;">💬 WA</a>` : '—';
-      const date = l.createdAt?.toDate ? l.createdAt.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
-      const branch = l.branch === 'starting' ? '<span class="badge b-processing">Starting</span>' : l.branch === 'existing' ? '<span class="badge b-shipped">Existing</span>' : '—';
-      return `<tr>
-        <td style="font-weight:600;">${l.name||'—'}</td>
-        <td style="font-family:monospace;font-size:0.78rem;">${l.whatsapp||'—'}</td>
-        <td style="font-size:0.78rem;">${l.email||'—'}</td>
-        <td>${l.brandType||'—'}</td>
-        <td>${l.budget||'—'}</td>
-        <td>${branch}</td>
-        <td style="white-space:nowrap;font-size:0.75rem;color:var(--mid);">${date}</td>
-        <td>${waLink}</td>
-      </tr>`;
-    }).join('');
+    renderLeads();
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2rem;color:#DC2626;">Error: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:2rem;color:#DC2626;">Error: ${e.message}</td></tr>`;
     console.error('loadLeads error:', e);
   }
 };
 
+window.renderLeads = function() {
+  const tbody = document.getElementById('leads-tbody');
+  if (!tbody) return;
+  const fSeg    = document.getElementById('lead-filter-segment').value;
+  const fStatus = document.getElementById('lead-filter-status').value;
+  const fFrom   = document.getElementById('lead-filter-from').value;
+  const fTo     = document.getElementById('lead-filter-to').value;
+  const todayStr = new Date().toISOString().slice(0,10);
+
+  const list = _leadsCache.filter(l => {
+    if (fSeg    && leadSegment(l) !== fSeg) return false;
+    if (fStatus && (l.status || 'New') !== fStatus) return false;
+    const ds = leadDateStr(leadCreatedDate(l));
+    if (fFrom && (!ds || ds < fFrom)) return false;
+    if (fTo   && (!ds || ds > fTo))   return false;
+    return true;
+  });
+
+  // ── Stats (computed over the full cache, not the filtered view) ──
+  let sTotal=0,sNew=0,sContacted=0,sConverted=0,sFollow=0;
+  _leadsCache.forEach(l => {
+    sTotal++;
+    const st = l.status || 'New';
+    if (leadDateStr(leadCreatedDate(l)) === todayStr) sNew++;
+    if (st === 'Contacted') sContacted++;
+    if (st === 'Ordered') sConverted++;
+    if (l.followUpDate && l.followUpDate <= todayStr && st !== 'Ordered' && st !== 'Cold') sFollow++;
+  });
+  document.getElementById('lead-stat-total').textContent = sTotal;
+  document.getElementById('lead-stat-newtoday').textContent = sNew;
+  document.getElementById('lead-stat-contacted').textContent = sContacted;
+  document.getElementById('lead-stat-converted').textContent = sConverted;
+  document.getElementById('lead-stat-followup').textContent = sFollow;
+
+  if (!_leadsCache.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--mid);">No leads yet.</td></tr>';
+    return;
+  }
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--mid);">No leads match the current filters.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = list.map(l => {
+    const wa = (l.whatsapp||'').replace(/\D/g,'');
+    const seg = leadSegment(l);
+    const status = l.status || 'New';
+    const createdStr = leadFmtDate(leadCreatedDate(l));
+    const lastContacted = l.lastContacted ? leadFmtDate(new Date(l.lastContacted+'T00:00:00')) : '—';
+    const followDue = l.followUpDate && l.followUpDate <= todayStr && status !== 'Ordered' && status !== 'Cold';
+    const followBadge = followDue ? '<span class="badge b-cancelled" style="margin-left:0.35rem;">Follow up today</span>' : '';
+    const waBtn = wa
+      ? `<a href="https://wa.me/${wa}?text=${encodeURIComponent(leadQuickReplyMsg(l))}" target="_blank" rel="noopener" onclick="leadMarkContacted('${l.id}')" style="display:inline-flex;align-items:center;gap:0.3rem;background:#166534;color:white;padding:0.3rem 0.7rem;border-radius:6px;font-size:0.68rem;font-weight:700;text-decoration:none;white-space:nowrap;">💬 ${seg}</a>`
+      : '<span style="color:var(--mid);font-size:0.72rem;">no number</span>';
+    return `<tr>
+      <td style="white-space:nowrap;font-size:0.75rem;color:var(--mid);">${createdStr}</td>
+      <td style="font-weight:600;">${l.name||'—'}</td>
+      <td><span class="badge b-visible">${seg}</span></td>
+      <td style="font-size:0.78rem;">${l.budget||'—'}</td>
+      <td style="font-family:monospace;font-size:0.78rem;white-space:nowrap;">${l.whatsapp||'—'}</td>
+      <td><select class="status-sel" onchange="updateLeadStatus('${l.id}',this.value)">
+        ${LEAD_STATUSES.map(s=>`<option${status===s?' selected':''}>${s}</option>`).join('')}
+      </select></td>
+      <td style="white-space:nowrap;font-size:0.75rem;color:var(--mid);">${lastContacted}</td>
+      <td style="white-space:nowrap;">
+        <input type="date" class="status-sel" value="${l.followUpDate||''}" onchange="updateLeadFollowUp('${l.id}',this.value)" style="font-size:0.7rem;">
+        ${followBadge}
+      </td>
+      <td>${waBtn}</td>
+    </tr>`;
+  }).join('');
+};
+
+window.leadsClearFilters = function() {
+  document.getElementById('lead-filter-segment').value = '';
+  document.getElementById('lead-filter-status').value = '';
+  document.getElementById('lead-filter-from').value = '';
+  document.getElementById('lead-filter-to').value = '';
+  renderLeads();
+};
+
+window.updateLeadStatus = async function(id, status) {
+  const lead = _leadsCache.find(l => l.id === id);
+  if (lead) lead.status = status;
+  renderLeads();
+  try {
+    await updateDoc(doc(db,'leads',id), { status });
+    toast('Status → ' + status);
+  } catch(e) { toast('Update failed: ' + e.message); }
+};
+
+window.updateLeadFollowUp = async function(id, date) {
+  const lead = _leadsCache.find(l => l.id === id);
+  if (lead) lead.followUpDate = date;
+  renderLeads();
+  try {
+    await updateDoc(doc(db,'leads',id), { followUpDate: date });
+    toast(date ? 'Follow-up set for ' + date : 'Follow-up cleared');
+  } catch(e) { toast('Update failed: ' + e.message); }
+};
+
+// Called when the WhatsApp quick-reply button is clicked — records contact date
+// and advances a brand-new lead to "Contacted". Fired alongside the link opening.
+window.leadMarkContacted = async function(id) {
+  const lead = _leadsCache.find(l => l.id === id);
+  if (!lead) return;
+  const today = new Date().toISOString().slice(0,10);
+  const patch = { lastContacted: today };
+  if ((lead.status || 'New') === 'New') patch.status = 'Contacted';
+  lead.lastContacted = today;
+  if (patch.status) lead.status = patch.status;
+  renderLeads();
+  try { await updateDoc(doc(db,'leads',id), patch); } catch(e) { console.error('leadMarkContacted error:', e); }
+};
+
 window.leadsExportCSV = function() {
   if (!_leadsCache.length) { toast('No leads to export'); return; }
-  const headers = ['Name','WhatsApp','Email','Brand Type','Budget','Branch','Journey','Target Customer','Date'];
+  const headers = ['Date','Name','Segment','Budget','WhatsApp','Email','Status','Last Contacted','Follow-up','Brand Type','Branch','Journey','Target Customer'];
   const rows = _leadsCache.map(l => {
-    const date = l.createdAt?.toDate ? l.createdAt.toDate().toISOString().slice(0,10) : '';
-    return [l.name,l.whatsapp,l.email,l.brandType,l.budget,l.branch,l.journey,l.targetCustomer,date]
+    const date = leadDateStr(leadCreatedDate(l));
+    return [date,l.name,leadSegment(l),l.budget,l.whatsapp,l.email,l.status||'New',l.lastContacted,l.followUpDate,l.brandType,l.branch,l.journey,l.targetCustomer]
       .map(v => '"'+(v||'').toString().replace(/"/g,'""')+'"').join(',');
   });
   const csv = [headers.join(','), ...rows].join('\n');
