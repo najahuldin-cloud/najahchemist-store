@@ -1210,7 +1210,7 @@ exports.sendScheduledEmails = onSchedule(
 // Args: { subject, body, sendToSubscribers, sendToLeads }
 // Returns: { sent, failed }
 
-exports.sendBroadcastEmail = onCall({ cors: true, enforceAppCheck: false, secrets: ['RESEND_API_KEY'] }, async (request) => {
+exports.sendBroadcastEmail = onCall({ cors: true, enforceAppCheck: false, timeoutSeconds: 540, secrets: ['RESEND_API_KEY'] }, async (request) => {
   const { subject, body, sendToSubscribers, sendToLeads, segments } = request.data || {};
 
   const isSegmented = !!segments;
@@ -1303,7 +1303,17 @@ exports.sendBroadcastEmail = onCall({ cors: true, enforceAppCheck: false, secret
     throw new HttpsError('internal', `Failed to create broadcast log: ${err.message}`);
   }
 
+  // Email format check (local@domain.tld) — invalid addresses are skipped, not sent
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   for (const r of recipients) {
+    // Validate email format — skip invalid addresses silently, count them as failed
+    if (!EMAIL_RE.test((r.email || '').trim())) {
+      console.warn(`[sendBroadcastEmail] Skipping invalid email: ${r.email}`);
+      failures.push({ email: r.email, name: r.name, col: r.col, reason: 'Invalid email format' });
+      failed++;
+      continue;
+    }
     try {
       const unsubscribeUrl = `${UNSUBSCRIBE_BASE}?col=${r.col}&id=${r.id}`;
       const greeting = r.name ? `Hi ${r.name},` : 'Hi there,';
