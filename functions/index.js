@@ -1210,7 +1210,7 @@ exports.sendScheduledEmails = onSchedule(
 // Args: { subject, body, sendToSubscribers, sendToLeads }
 // Returns: { sent, failed }
 
-exports.sendBroadcastEmail = onCall({ cors: true, secrets: ['RESEND_API_KEY'] }, async (request) => {
+exports.sendBroadcastEmail = onCall({ cors: true, enforceAppCheck: false, secrets: ['RESEND_API_KEY'] }, async (request) => {
   const { subject, body, sendToSubscribers, sendToLeads, segments } = request.data || {};
 
   const isSegmented = !!segments;
