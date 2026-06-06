@@ -1306,13 +1306,14 @@ exports.sendBroadcastEmail = onCall({ cors: true, enforceAppCheck: false, timeou
   // Email format check (local@domain.tld) — invalid addresses are skipped, not sent
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  for (const r of recipients) {
+  // Send a single recipient — validation, logging, and error handling unchanged
+  async function processRecipient(r) {
     // Validate email format — skip invalid addresses silently, count them as failed
     if (!EMAIL_RE.test((r.email || '').trim())) {
       console.warn(`[sendBroadcastEmail] Skipping invalid email: ${r.email}`);
       failures.push({ email: r.email, name: r.name, col: r.col, reason: 'Invalid email format' });
       failed++;
-      continue;
+      return;
     }
     try {
       const unsubscribeUrl = `${UNSUBSCRIBE_BASE}?col=${r.col}&id=${r.id}`;
@@ -1381,8 +1382,17 @@ exports.sendBroadcastEmail = onCall({ cors: true, enforceAppCheck: false, timeou
       failures.push({ email: r.email, name: r.name, col: r.col, reason });
       failed++;
     }
-    // Stay under Resend's 5 req/sec rate limit
-    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+
+  // Process recipients in batches of 50 with a 1s pause between batches so large
+  // broadcasts (445+) complete well under the timeout instead of deadline-exceeding
+  const BATCH_SIZE = 50;
+  for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
+    const batch = recipients.slice(i, i + BATCH_SIZE);
+    await Promise.all(batch.map(r => processRecipient(r)));
+    if (i + BATCH_SIZE < recipients.length) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
   }
 
   // Write each failure as a sub-document under the run
