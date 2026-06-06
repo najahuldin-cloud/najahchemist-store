@@ -435,6 +435,55 @@ async function sendWhatsApp(phone, message) {
   }
 }
 
+// ── Morning digest: daily 8am Jamaica lead/order summary to the owner ──────────
+
+exports.morningDigest = onSchedule(
+  { schedule: '0 8 * * *', timeZone: 'America/Jamaica', secrets: ['WHATSAPP_TOKEN', 'WHATSAPP_PHONE_ID'] },
+  async () => {
+    const db = getFirestore();
+
+    // Today's date in Jamaica (YYYY-MM-DD) — followUpDate is stored as that string
+    const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Jamaica' }).format(new Date());
+
+    const [leadsSnap, ordersSnap] = await Promise.all([
+      db.collection('leads').get(),
+      db.collection('orders').get()
+    ]);
+
+    let newLeads = 0;
+    let followUpsDue = 0;
+    leadsSnap.forEach(doc => {
+      const l = doc.data();
+      const status = l.status || 'New';
+      if (status === 'New') newLeads++;
+      if (l.followUpDate && l.followUpDate <= todayStr && status !== 'Ordered' && status !== 'Cold') {
+        followUpsDue++;
+      }
+    });
+
+    let ordersPending = 0;
+    ordersSnap.forEach(doc => {
+      const status = doc.data().status;
+      if (status === 'Pending' || status === 'Processing') ordersPending++;
+    });
+
+    const message =
+      `Good morning Najah 👋🏾\n\n` +
+      `Here's your lead summary for today:\n\n` +
+      `🆕 New leads: ${newLeads}\n` +
+      `📅 Follow-ups due today: ${followUpsDue}\n` +
+      `📦 Orders pending: ${ordersPending}\n\n` +
+      `Open Lead Manager: https://najahchemistja.com/admin\n\n` +
+      `— Najah Chemist System 🌿`;
+
+    console.log(`[morningDigest] ${todayStr} — new:${newLeads} followups:${followUpsDue} pending:${ordersPending}`);
+
+    await sendWhatsApp('18768851099', message);
+
+    console.log('[morningDigest] Sent.');
+  }
+);
+
 // ── Email via Resend ──────────────────────────────────────────────────────────
 
 async function sendEmail(email, clientName, items) {
