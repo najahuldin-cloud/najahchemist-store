@@ -1,4 +1,4 @@
-// functions/index.js
+// v2 functions/index.js
 // Firebase Cloud Functions for Najah Chemist
 //
 // Functions:
@@ -199,19 +199,15 @@ exports.onOrderCreated = onDocumentCreated(
       console.error(`[onOrderCreated] Notification failed for ${displayId}:`, err.message);
     }
 
-    // Send WhatsApp confirmation to the client
+    // Send WhatsApp confirmation to the client via approved Meta template
     const clientPhone = toIntlPhone(phone);
     if (clientPhone) {
       try {
-        const clientMsg =
-          `Hi ${clientName}, thank you for your order with Najah Chemist! 🌿 ` +
-          `Your order NC-${displayId} has been received. Total: ${total}. ` +
-          `Please send payment to NCB account 354-747-294 (JMD) or 354-747-308 (USD), ` +
-          `then send proof of payment to this number. ` +
-          `We'll process your order within 2-3 business days after payment is confirmed. ` +
-          `For Caribbean orders, shipping is via Jamaica Post airmail (16-24 business days). ` +
-          `Questions? Reply to this message. — Najah Chemist`;
-        await sendWhatsApp(clientPhone, clientMsg);
+        await sendWhatsApp(clientPhone, null, {
+          name: 'order_confirmation',
+          language: 'en',
+          params: [clientName, `NC-${displayId}`, total]
+        });
         console.log(`[onOrderCreated] Client WhatsApp sent to ${clientPhone} for ${displayId}`);
       } catch (err) {
         console.error(`[onOrderCreated] Client WhatsApp failed for ${displayId}:`, err.message);
@@ -406,7 +402,7 @@ exports.reorderReminder = onSchedule(
 
 // ── WhatsApp via Meta Business Cloud API ──────────────────────────────────────
 
-async function sendWhatsApp(phone, message) {
+async function sendWhatsApp(phone, message, templateOpts) {
   const token   = process.env.WHATSAPP_TOKEN;
   const phoneId = process.env.WHATSAPP_PHONE_ID;
 
@@ -415,18 +411,34 @@ async function sendWhatsApp(phone, message) {
     return;
   }
 
+  const body = templateOpts
+    ? {
+        messaging_product: 'whatsapp',
+        to: phone,
+        type: 'template',
+        template: {
+          name: templateOpts.name,
+          language: { code: templateOpts.language },
+          components: [{
+            type: 'body',
+            parameters: templateOpts.params.map(p => ({ type: 'text', text: String(p) }))
+          }]
+        }
+      }
+    : {
+        messaging_product: 'whatsapp',
+        to: phone,
+        type: 'text',
+        text: { body: message }
+      };
+
   const res = await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      to: phone,
-      type: 'text',
-      text: { body: message }
-    })
+    body: JSON.stringify(body)
   });
 
   if (!res.ok) {
