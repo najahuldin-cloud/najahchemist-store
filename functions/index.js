@@ -449,6 +449,7 @@ async function sendWhatsApp(phone, message, templateOpts) {
 
 // ── Morning digest: daily 8am Jamaica lead/order summary to the owner ──────────
 
+// TODO: Switch back to sendWhatsApp once +18763499729 is activated on WABA 505936159266553
 exports.morningDigest = onSchedule(
   { schedule: '0 8 * * *', timeZone: 'America/Jamaica', secrets: ['RESEND_API_KEY'] },
   async () => {
@@ -499,6 +500,7 @@ exports.morningDigest = onSchedule(
 
 // ── Evening digest: daily 6pm Jamaica lead/order summary to the owner ──────────
 
+// TODO: Switch back to sendWhatsApp once +18763499729 is activated on WABA 505936159266553
 exports.eveningDigest = onSchedule(
   { schedule: '0 18 * * *', timeZone: 'America/Jamaica', secrets: ['RESEND_API_KEY'] },
   async () => {
