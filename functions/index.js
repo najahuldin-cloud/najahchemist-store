@@ -12,10 +12,12 @@
 
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onDocumentUpdated, onDocumentCreated } = require('firebase-functions/v2/firestore');
-const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const functionsV1 = require('firebase-functions/v1');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue, Timestamp } = require('firebase-admin/firestore');
+const Anthropic = require('@anthropic-ai/sdk');
+const { google } = require('googleapis');
 
 initializeApp();
 
@@ -1077,64 +1079,60 @@ exports.onSubscriberCreated = onDocumentCreated('subscribers/{id}', async (event
 
 // ── Trigger: onLeadCreated ────────────────────────────────────────────────────
 
+// Two-way AI email auto-responder (leads only). Sends a segment-personalised
+// first email via Resend, opens the conversation thread, and marks the lead
+// "Contacted". Replies are handled by handleEmailReply (Gmail Pub/Sub → Claude).
+// NOTE: this replaces the old lead drip (emails 2/3/8). The subscriber sequence
+// (onSubscriberCreated) is intentionally left untouched.
 exports.onLeadCreated = onDocumentCreated({ document: 'leads/{id}', secrets: ['RESEND_API_KEY'] }, async (event) => {
   const data  = event.data.data();
-  const email = data.email;
+  const email = (data.email || '').trim();
   const name  = data.name || '';
+  const docId = event.params.id;
+  const brandType = data.brandType || '';
+
+  // (D) Skip if no email address
   if (!email) {
     console.warn('[onLeadCreated] No email field — skipping');
     return;
   }
 
-  const db        = getFirestore();
-  const now       = Date.now();
-  const DAY_MS    = 24 * 60 * 60 * 1000;
-  const first     = (name || 'friend').split(' ')[0];
-  const docId     = event.params.id;
-  const brandType = data.brandType || '';
-  const unsubUrl  = `${UNSUBSCRIBE_BASE}?col=leads&id=${encodeURIComponent(docId)}`;
+  const db = getFirestore();
 
-  // Email 1: send immediately (separate from send-guide.js PDF email)
+  // (E) Deduplication — skip if another lead doc already exists with this email
+  const dupSnap = await db.collection('leads').where('email', '==', email).get();
+  if (dupSnap.docs.some(d => d.id !== docId)) {
+    console.log(`[onLeadCreated] Duplicate email ${email} — skipping AI outreach`);
+    return;
+  }
+
+  const first   = (name || 'there').split(' ')[0];
+  const seg      = leadSegment(brandType);
+  const subject  = seg.key === 'general'
+    ? 'Your wholesale brand starts here 🌿 — Najah Chemist'
+    : `Your ${seg.word} brand starts here 🌿 — Najah Chemist`;
+  const bodyText = leadFirstEmailBody(seg.key, first);
+
+  // (A) Send the instant first email via Resend (X-Lead-ID header = doc ID)
   try {
-    await sendResendEmail(email, `You're one step closer, ${first} 🌿`, leadEmail1Html(name, unsubUrl));
-    console.log(`[onLeadCreated] Email 1 sent to ${email}`);
+    await sendLeadEmail({ to: email, subject, text: bodyText, leadId: docId });
+    console.log(`[onLeadCreated] First AI email sent to ${email} (segment: ${seg.key})`);
   } catch (err) {
-    console.error(`[onLeadCreated] Email 1 failed for ${email}:`, err.message);
+    console.error(`[onLeadCreated] First email failed for ${email}:`, err.message);
+    return; // don't mark Contacted if the send failed
   }
 
-  // Email 2 subject — segmented by brandType
-  const email2SubjectMap = {
-    'Skincare':       'The fastest way to launch your skincare brand',
-    'Feminine Care':  'The fastest way to launch your feminine care brand',
-    "Men's Grooming": "The fastest way to launch your men's grooming brand",
-    'Hair Care':      'The fastest way to launch your hair care brand',
-    'Hair care':      'The fastest way to launch your hair care brand',
-  };
-  const email2Subject = email2SubjectMap[brandType] || 'The products Jamaican brands are reordering every month';
+  // (B/C) Store conversation history + (C) update status to Contacted
+  await event.data.ref.set({
+    status:            'Contacted',
+    emailCount:        1,
+    emailSubject:      subject,
+    segment:           seg.key,
+    followUpSent:      false,
+    emailConversation: [{ role: 'assistant', text: bodyText, subject, at: new Date().toISOString() }]
+  }, { merge: true });
 
-  // Schedule Emails 2 (day 3), 3 (day 7), and 8 (day 14 re-engagement)
-  // Email 8 is only sent if the lead has not converted — checked at send time.
-  const toSchedule = [
-    { emailNumber: 2, delayMs:  3 * DAY_MS, subject: email2Subject },
-    { emailNumber: 3, delayMs:  7 * DAY_MS, subject: `${first}, I'll help you place your first order today` },
-    { emailNumber: 8, delayMs: 14 * DAY_MS, subject: "Still thinking it over? Let's talk 👋" },
-  ];
-  for (const s of toSchedule) {
-    await db.collection('scheduledEmails').add({
-      sequence:         'lead',
-      recipientEmail:   email,
-      recipientName:    name,
-      brandType:        brandType,
-      emailNumber:      s.emailNumber,
-      subject:          s.subject,
-      scheduledAt:      Timestamp.fromMillis(now + s.delayMs),
-      sent:             false,
-      createdAt:        FieldValue.serverTimestamp(),
-      sourceCollection: 'leads',
-      sourceDocId:      docId
-    });
-  }
-  console.log(`[onLeadCreated] Scheduled emails 2, 3 & 8 for ${email} (brandType: ${brandType||'fallback'})`);
+  console.log(`[onLeadCreated] Lead ${docId} marked Contacted (segment: ${seg.key})`);
 });
 
 // ── Scheduled: sendScheduledEmails (hourly) ───────────────────────────────────
@@ -1872,3 +1870,773 @@ exports.unsubscribe = functionsV1.https.onRequest(async (req, res) => {
 </body>
 </html>`);
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TWO-WAY AI EMAIL AUTO-RESPONDER FOR LEADS
+// ──────────────────────────────────────────────────────────────────────────────
+//   onLeadCreated (above)  → sends segment-personalised first email
+//   handleEmailReply       → Gmail Pub/Sub push → Claude reads reply → AI responds
+//   checkLeadFollowUps     → daily 9am: 3-day no-reply nudge for emailCount==1 leads
+//
+// Lead doc fields used: email, name, brandType, status, emailCount, emailSubject,
+//   segment, followUpSent, unsubscribed, emailConversation [{role,text,subject,at}]
+// Email cap: we send at most 7 emails per lead; the 7th (if not a hot lead) is the
+//   closing "staying in touch" email and the lead is marked Cold.
+// ══════════════════════════════════════════════════════════════════════════════
+
+const LEAD_FROM = 'Najah <start@najahchemistja.com>';
+const ADMIN_EMAIL = 'start@najahchemistja.com';
+
+// Map a lead.brandType to a segment for first-email personalisation.
+function leadSegment(brandType) {
+  const bt = (brandType || '').trim().toLowerCase();
+  if (bt.includes('hair'))                          return { key: 'haircare', word: 'hair care' };
+  if (bt.includes('feminine') || bt.includes('yoni')) return { key: 'feminine', word: 'feminine care' };
+  if (bt.includes('men'))                           return { key: 'mens',     word: "men's grooming" };
+  if (bt.includes('body'))                          return { key: 'bodycare', word: 'body care' };
+  if (bt.includes('skin'))                          return { key: 'skincare', word: 'skincare' };
+  return { key: 'general', word: 'wholesale' };
+}
+
+const LEAD_SIGNATURE =
+  `Najah\n` +
+  `Brand Consultant | Najah Chemist 🌿\n` +
+  `najahchemistja.com | start@najahchemistja.com\n` +
+  `WhatsApp: +1 876-885-1099`;
+
+// Segment-personalised first-email body (plain text). [Name] → first name.
+function leadFirstEmailBody(key, first) {
+  const name = first || 'there';
+  const browse =
+    `👉 Browse products and pricing:\n` +
+    `- Full product range: https://najahchemistja.com\n` +
+    `- Wholesale price list: https://najahchemistja.com/guide/wholesale-price-list`;
+
+  if (key === 'skincare') {
+    return `Hi ${name},
+
+I saw you're interested in starting your skincare brand — great timing, skincare is one of the fastest moving categories in Jamaica right now.
+
+The smartest way to start is with 1–2 proven products so you can begin making sales quickly.
+
+I'd recommend starting with:
+- Turmeric & Kojic Soap — high demand, easy to sell
+- Dark Spot Corrector Cream — consistent best-seller
+
+You package and brand them under your own business name. We manufacture, you sell.
+
+500+ clients island-wide have built their brands with us — most make their first sales within the week.
+
+Prices start from J$3,550 per litre (under US$22) so you can start small.
+
+${browse}
+- Starter Kit (save 5%): https://najahchemistja.com
+
+Our HydraGlow Skincare Bundle is J$25,200 — 24 products (4 types × 6 pieces each) ready to label and sell. Retail value J$60,000+.
+
+Are you looking to test with 1–2 products first or build out a fuller line from the start?
+
+${LEAD_SIGNATURE}`;
+  }
+
+  if (key === 'haircare') {
+    return `Hi ${name},
+
+I saw you're interested in starting a hair care brand — strong and growing market in Jamaica right now.
+
+To start smart, I'd recommend focusing on 1–2 products with high repeat purchase.
+
+Best starting products:
+- Hair Growth Oil — J$7,500 per litre, high demand, customers reorder monthly
+- Hair Butter — J$4,600 per 2 lbs, pairs naturally, builds a complete hair care routine
+
+You brand them under your own business. We manufacture everything here in Jamaica.
+
+500+ clients island-wide have built their brands with us.
+
+Prices start from J$4,600 per 2 lbs so you can start small and scale up.
+
+${browse}
+
+Are you looking to start with 1–2 products first or build a complete hair care line?
+
+${LEAD_SIGNATURE}`;
+  }
+
+  if (key === 'feminine') {
+    return `Hi ${name},
+
+I saw you're interested in starting a feminine care brand — one of the highest-demand niches in Jamaica right now and it builds strong customer loyalty.
+
+To start smart, I'd recommend focusing on 1–2 core products that sell consistently.
+
+Best starting products:
+- Yoni Foaming Wash — J$3,550 per litre, daily use, high repeat purchase
+- Boric Acid Capsules — 100 caps J$3,750, very high demand, customers come back monthly
+
+You brand them under your own business. We manufacture everything here in Jamaica.
+
+500+ clients island-wide have built their brands with us.
+
+Prices start from J$3,550 per litre so you can start small.
+
+${browse}
+
+Are you looking to start with 1–2 products first or build a complete feminine care line?
+
+${LEAD_SIGNATURE}`;
+  }
+
+  if (key === 'bodycare') {
+    return `Hi ${name},
+
+I saw you're interested in starting your body care brand — strong market right now especially for glow and brightening products.
+
+The best move is starting with 1–2 fast-moving products so you can test and make sales quickly.
+
+I'd recommend:
+- Body Butter — J$4,000 per 2 lbs, sells consistently year round
+- Brightening Body Scrub — J$5,500 per 2 lbs, very popular, high repeat purchase
+
+You brand and package them under your own label. We handle the manufacturing.
+
+500+ clients island-wide have built their brands with us — most make their first sales within the week.
+
+Prices start from J$4,000 per 2 lbs.
+
+${browse}
+
+Are you going for a small test start or building a fuller line right away?
+
+${LEAD_SIGNATURE}`;
+  }
+
+  if (key === 'mens') {
+    return `Hi ${name},
+
+I saw you're interested in starting a men's grooming brand — solid niche, strong demand and low competition locally.
+
+With your budget, the best move is starting with 1–2 products you can sell quickly.
+
+I'd recommend:
+- Beard Oil — J$6,750 per litre, consistent top seller
+- Beard Shampoo — J$4,700 per litre, pairs naturally, customers buy both together
+
+You brand and package under your own name. We supply everything manufactured in Jamaica.
+
+500+ clients island-wide have built their brands with us.
+
+Prices start from J$3,750 per litre.
+
+${browse}
+
+Are you starting small to test first or going in with a fuller line?
+
+${LEAD_SIGNATURE}`;
+  }
+
+  // general / unknown
+  return `Hi ${name},
+
+Thanks for reaching out to Najah Chemist! Our best sellers right now are:
+- Yoni Foaming Wash — J$3,550 per litre
+- Body Butter — J$4,000 per 2 lbs
+- Hair Growth Oil — J$7,500 per litre
+- Beard Oil — J$6,750 per litre
+
+All wholesale, ready for you to brand and sell.
+
+500+ clients island-wide have built their brands with us.
+
+MOQ is 1 litre or 2 lbs so you can start small.
+
+${browse}
+
+Reply here to chat about what suits your brand best.
+
+${LEAD_SIGNATURE}`;
+}
+
+// 3-day no-reply follow-up body (plain text).
+function leadFollowUpBody(first, word) {
+  const seg = (word && word !== 'wholesale') ? word + ' ' : '';
+  return `Hi ${first || 'there'},
+
+Just checking in — are you still interested in starting your ${seg}brand?
+
+MOQ is 1 litre or 2 lbs so you can start small and test the market before going big.
+
+👉 Browse our full range: najahchemistja.com
+📋 Wholesale price list: najahchemistja.com/guide/wholesale-price-list
+
+Reply here anytime — I'm happy to help.
+
+Najah
+Brand Consultant | Najah Chemist 🌿`;
+}
+
+// Final "staying in touch" email after 7 emails with no order (plain text).
+function leadGoodbyeBody(first) {
+  return `Hi ${first || 'there'},
+
+I've enjoyed our conversation and wanted to check in one last time.
+
+Whenever you're ready to start your brand — whether that's today or in 6 months — we're here. Browse our full range anytime at najahchemistja.com.
+
+Wishing you all the best,
+
+${LEAD_SIGNATURE}`;
+}
+
+// Render a plain-text email body as simple, personal-looking HTML (links clickable).
+function plainTextToHtml(text) {
+  const esc = (text || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const linked = esc.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#1a1a1a;">$1</a>');
+  const body = linked.replace(/\n/g, '<br>');
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>` +
+    `<body style="margin:0;padding:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;">` +
+    `<div style="max-width:600px;margin:0 auto;padding:20px;font-size:15px;line-height:1.6;">${body}</div>` +
+    `</body></html>`;
+}
+
+// Send a lead email via Resend. Sets reply-to + X-Lead-ID and (for replies) the
+// In-Reply-To / References headers so the message stays in the same email thread.
+async function sendLeadEmail({ to, subject, text, leadId, inReplyTo, references }) {
+  const resendKey = process.env.RESEND_API_KEY;
+  if (!resendKey) {
+    console.warn('[lead-email] RESEND_API_KEY not configured — skipping');
+    return null;
+  }
+  const headers = {};
+  if (leadId)     headers['X-Lead-ID']    = leadId;
+  if (inReplyTo)  headers['In-Reply-To']  = inReplyTo;
+  if (references) headers['References']    = references;
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from:     LEAD_FROM,
+      reply_to: ADMIN_EMAIL,
+      to:       [to],
+      subject,
+      text,
+      html:     plainTextToHtml(text),
+      headers:  Object.keys(headers).length ? headers : undefined
+    })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(`Resend error ${res.status}: ${err.message || JSON.stringify(err)}`);
+  }
+  return res.json().catch(() => ({}));
+}
+
+// Render the full conversation as HTML for admin alert emails.
+function conversationToHtml(conversation) {
+  return (conversation || []).map(t => {
+    const who = t.role === 'user' ? 'Lead' : 'Najah (AI)';
+    const colour = t.role === 'user' ? '#1a5e1a' : '#8a5a00';
+    const safe = (t.text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+    return `<p style="margin:0 0 14px;"><strong style="color:${colour};">${who}:</strong><br>${safe}</p>`;
+  }).join('');
+}
+
+// Send an internal admin alert email via the existing Resend sequence sender.
+async function sendAdminAlert(subject, html) {
+  try {
+    await sendResendEmail(ADMIN_EMAIL, subject, html);
+  } catch (err) {
+    console.error('[admin-alert] failed:', err.message);
+  }
+}
+
+// ── Gmail helpers ─────────────────────────────────────────────────────────────
+
+function gmailClient() {
+  const oauth2 = new google.auth.OAuth2(
+    process.env.GMAIL_CLIENT_ID,
+    process.env.GMAIL_CLIENT_SECRET
+  );
+  oauth2.setCredentials({ refresh_token: process.env.GMAIL_REFRESH_TOKEN });
+  return google.gmail({ version: 'v1', auth: oauth2 });
+}
+
+function extractEmailAddress(fromHeader) {
+  const m = (fromHeader || '').match(/<([^>]+)>/);
+  return (m ? m[1] : (fromHeader || '')).trim().toLowerCase();
+}
+
+function decodeB64Url(data) {
+  return Buffer.from((data || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+}
+
+// Pull the best plain-text body out of a Gmail message payload (falls back to HTML).
+function extractPlainText(payload) {
+  function walk(part, want) {
+    if (!part) return '';
+    if (part.mimeType === want && part.body && part.body.data) return decodeB64Url(part.body.data);
+    if (Array.isArray(part.parts)) {
+      for (const p of part.parts) {
+        const found = walk(p, want);
+        if (found) return found;
+      }
+    }
+    return '';
+  }
+  let text = walk(payload, 'text/plain');
+  if (!text) {
+    const html = walk(payload, 'text/html');
+    if (html) text = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/[ \t]+/g, ' ');
+  }
+  return text || '';
+}
+
+// Strip the quoted prior email from a reply so Claude only sees the new text.
+function stripQuoted(text) {
+  if (!text) return '';
+  const out = [];
+  for (const line of text.split(/\r?\n/)) {
+    const t = line.trim();
+    if (/^>/.test(t)) break;
+    if (/^On .+wrote:$/i.test(t)) break;
+    if (/^-{3,}\s*Original Message\s*-{3,}/i.test(t)) break;
+    if (/^From:\s/i.test(t) && out.length) break;
+    out.push(line);
+  }
+  return out.join('\n').trim();
+}
+
+// ── System prompt for Claude (Najah, Brand Consultant) ────────────────────────
+
+const NAJAH_SYSTEM_PROMPT = `You are Najah, Brand Consultant at Najah Chemist — a professional skincare contract manufacturer in Kingston, Jamaica. You help entrepreneurs start their own skincare, hair care, feminine care, body care, and men's grooming brands using wholesale private label products.
+
+ABOUT NAJAH CHEMIST:
+- B2B wholesale only — finished products clients apply their own labels to
+- 500+ clients island-wide
+- Ships Jamaica-wide via Knutsford Express and Zipmail (no collection, courier only)
+- All products at najahchemistja.com
+- Contact: start@najahchemistja.com | WhatsApp +18768851099
+
+PRODUCTS & PRICING (all prices JMD):
+YONI CARE:
+- Yoni Foaming Wash: J$3,550/litre, J$12,500/gallon, J$56,250/5 gallon
+- Yoni Oil (without petals): J$5,500/litre, J$19,500/gallon
+- Yoni Oil (with petals): J$6,300/litre, J$24,200/gallon
+- VagiMist: J$4,600/litre, J$14,500/gallon
+- Boric Acid & Probiotics Gel Wash: J$4,200/litre, J$15,000/gallon
+- Yoni Brightening Scrub: J$5,500/2lbs, J$20,500/8lbs
+- Yoni Foaming Scrub: J$4,000/2lbs, J$14,500/8lbs
+- Inner Thigh Cream: J$16,650/2lbs, J$60,000/8lbs
+- Yoni Anti-Itch Cream: J$9,000/2lbs, J$32,800/8lbs
+- Yoni Bar Soap: J$6,500/10 bars, J$63,000/100 bars
+- Yoni Pops Capsules: J$8,000/100 caps, J$70,000/1000 caps
+- Boric Acid Capsules: J$3,750/100 caps, J$26,500/1000 caps
+- Yoni Steam Herbs: J$5,600/half lb, J$9,800/1lb
+
+SKINCARE:
+- Turmeric Facial Cleanser: J$4,200/litre
+- Soothing Rose Toner: J$6,000/litre
+- Glycolic Acid AHA Toner: J$7,000/litre
+- Lightening Serum: J$17,000/litre
+- Hyaluronic Acid Serum: J$13,000/litre
+- Rose Oil Serum: J$12,500/litre
+- Papaya Serum: J$17,000/litre
+- Papaya Oil: J$12,500/litre
+- Peeling Oil: J$24,500/litre
+- Hydrating Moisturiser: J$8,300/2lbs
+- Spot Remover: J$16,650/2lbs
+- Strong Lightening Cream: J$16,650/2lbs
+- Turmeric Facial Scrub: J$4,400/2lbs
+- Turmeric Facial Mask: J$4,300/2lbs
+- Body Scrub: J$4,000/2lbs
+- Brightening Body Scrub: J$5,500/2lbs
+- Body Butter: J$4,000/2lbs
+- Brightening Body Butter: J$6,500/2lbs
+
+MEN'S CARE:
+- Beard Oil: J$6,750/litre
+- Beard Shampoo: J$4,700/litre
+- Beard Balm: J$5,500/2lbs
+- Ryfle Wash: J$3,750/litre
+- Jock Lube: J$6,550/litre
+- Jock Mist: J$4,850/litre
+- Jock-Itch Cream: J$9,500/2lbs
+
+HAIR CARE:
+- Hair Mist: J$5,500/litre
+- Hair Growth Oil: J$7,500/litre
+- Hair Butter: J$4,600/2lbs
+
+BAR SOAPS (per 10 bars):
+- Garlic & Lavender: J$6,500
+- Kojic & Turmeric: J$6,500
+- Turmeric Only: J$6,500
+- Kojic Only: J$6,500
+- Kojic & Charcoal: J$7,500
+- Salicylic Acid: J$7,500
+- Glycolic Acid: J$7,500
+- Vitamin C: J$7,500
+- Papaya: J$7,500
+- Skin Lightening Bar: J$8,000
+
+CONTAINERS (per unit):
+- Small Pouch: J$65 | Large Pouch: J$85
+- 2oz Spray Bottle: J$170 | 2oz Dropper: J$270
+- 2oz Foam Bottle: J$222 | 2oz Double Wall Jar: J$250
+- 4oz Flip Top Bottle: J$250 | 4oz Double Wall Jar: J$300
+- 4oz Foam Bottle: J$300 | White Pill Bottle: J$120
+
+MOQ & TURNAROUND:
+- Existing private label products: 1 litre or 2 lbs minimum
+- New custom products (first bulk order): 5 gallons minimum
+- Existing products turnaround: 7-10 business days after payment
+- New custom products: 14-21 business days after R&D fee received
+
+PAYMENT:
+- Bank transfer (NCB), Lynk, or Fygaro (card) only
+- 100% upfront before production begins
+- No COD under any circumstances
+- All prices in JMD
+
+FILLING SERVICE:
+- 15% of product subtotal if client purchases containers too
+
+SHIPPING:
+- Jamaica only via Knutsford Express or Zipmail
+- No collection — courier only
+- Tracking receipt provided once shipped
+
+R&D / CUSTOM PRODUCTS:
+- To MODIFY an existing product (texture, actives, fragrance, color): najahchemistja.com/customise
+- Acid addition fee: J$1,000 per 2 lbs
+- To create a BRAND NEW formula from scratch: najahchemistja.com/custom-products
+- First new product R&D: J$120,000 | Each additional: J$90,000
+- NEVER quote R&D pricing in email — direct to najahchemistja.com/custom-products only
+
+REFUNDS & CANCELLATIONS:
+- Orders non-refundable once production commenced
+- Can cancel within 24 hours of placement
+- Returns only for damaged, defective, or materially incorrect products
+
+REGULATORY:
+- Client is solely responsible for regulatory compliance in their territory
+- Najah Chemist retains ownership of all base formulations
+- Clients receive a licence to sell under their own brand name
+
+RULES — NEVER:
+- Quote R&D pricing
+- Promise specific delivery dates
+- Say products are in or out of stock
+- Make health claims about products
+- Discuss complaints (direct to WhatsApp +18768851099)
+- Reveal you are an AI unless directly asked
+- Discuss shipping outside Jamaica (we ship Jamaica only)
+
+IF ASKED IF YOU ARE AI:
+Say: 'I am Najah's assistant handling initial enquiries on her behalf.'
+
+IF QUESTION IS OUTSIDE YOUR KNOWLEDGE:
+Say: 'A Najah Chemist admin will personally get back to you on that within 24 hours.' Then include [FLAG_ADMIN] at the end of your response.
+
+IF LEAD WANTS TO UNSUBSCRIBE (says stop, unsubscribe, remove me):
+Say a polite goodbye and include [UNSUBSCRIBE] at the end of your response.
+
+IF LEAD SHOWS BUYING INTENT (asks how to pay, asks for bank details, says ready to order, asks for invoice, asks about delivery address):
+Direct them to najahchemistja.com to place their order. Include [HOT_LEAD] at the end of your response.
+
+TONE: Professional, warm, helpful. Always English. Never use slang. Sign every email as:
+Najah
+Brand Consultant | Najah Chemist 🌿
+najahchemistja.com | start@najahchemistja.com
+WhatsApp: +1 876-885-1099`;
+
+// ── HTTP: handleEmailReply (Gmail Pub/Sub push endpoint) ──────────────────────
+
+exports.handleEmailReply = onRequest(
+  { secrets: ['RESEND_API_KEY', 'GMAIL_CLIENT_ID', 'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN', 'ANTHROPIC_API_KEY'] },
+  async (req, res) => {
+    // Always ACK quickly (204) so Pub/Sub doesn't redeliver in a retry storm.
+    try {
+      const message = req.body && req.body.message;        // (B) Pub/Sub envelope
+      if (!message || !message.data) { res.status(204).send(); return; }
+
+      const decoded = JSON.parse(decodeB64Url(message.data)); // { emailAddress, historyId }
+      await processGmailHistory(decoded.historyId);
+    } catch (err) {
+      console.error('[handleEmailReply] Error:', err.message);
+    }
+    res.status(204).send();
+  }
+);
+
+// Resolve which Gmail messages are new since our last seen historyId and process each.
+async function processGmailHistory(newHistoryId) {
+  const db    = getFirestore();
+  const gmail = gmailClient();
+  const watchRef  = db.collection('system').doc('gmailWatch');
+  const watchSnap = await watchRef.get();
+  const startHistoryId = watchSnap.exists ? watchSnap.data().historyId : null;
+
+  let messageIds = [];
+  if (startHistoryId) {
+    try {
+      let pageToken;
+      do {
+        const hist = await gmail.users.history.list({
+          userId: 'me', startHistoryId, historyTypes: ['messageAdded'], pageToken
+        });
+        (hist.data.history || []).forEach(h =>
+          (h.messagesAdded || []).forEach(m => messageIds.push(m.message.id)));
+        pageToken = hist.data.nextPageToken;
+      } while (pageToken);
+    } catch (e) {
+      console.warn('[gmail] history.list failed, falling back to recent inbox:', e.message);
+    }
+  }
+  // Fallback (first run, or expired history): scan recent unread inbox messages.
+  if (!startHistoryId || messageIds.length === 0) {
+    const list = await gmail.users.messages.list({
+      userId: 'me', q: 'in:inbox is:unread newer_than:2d', maxResults: 15
+    });
+    messageIds = (list.data.messages || []).map(m => m.id);
+  }
+
+  // Persist the new historyId for next time.
+  if (newHistoryId) {
+    await watchRef.set({ historyId: String(newHistoryId), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  }
+
+  for (const id of [...new Set(messageIds)]) {
+    try {
+      await processOneMessage(gmail, db, id);
+    } catch (e) {
+      console.error(`[gmail] processing message ${id} failed:`, e.message);
+    }
+  }
+}
+
+// (C–K) Read one Gmail message, map to a lead, generate + send the AI reply.
+async function processOneMessage(gmail, db, messageId) {
+  // Idempotency guard — never process (or reply to) the same message twice.
+  const procRef = db.collection('processedEmails').doc(messageId);
+  if ((await procRef.get()).exists) return;
+
+  const full    = await gmail.users.messages.get({ userId: 'me', id: messageId, format: 'full' });
+  const payload = full.data.payload || {};
+  const headers = {};
+  (payload.headers || []).forEach(h => { headers[h.name.toLowerCase()] = h.value; });
+
+  const senderEmail = extractEmailAddress(headers['from']);     // (D)
+  const inMsgId     = headers['message-id'] || '';
+  const refs        = headers['references'] || '';
+  const xLeadId     = headers['x-lead-id'] || '';
+
+  // Ignore our own outbound copies / system mail.
+  if (!senderEmail || senderEmail === ADMIN_EMAIL) {
+    await procRef.set({ skipped: 'self', at: FieldValue.serverTimestamp() });
+    return;
+  }
+
+  const replyText = stripQuoted(extractPlainText(payload));
+  if (!replyText) {
+    await procRef.set({ skipped: 'empty', sender: senderEmail, at: FieldValue.serverTimestamp() });
+    return;
+  }
+
+  // (E) Look up lead by X-Lead-ID header, then by sender email.
+  let leadRef = null, leadData = null;
+  if (xLeadId) {
+    const s = await db.collection('leads').doc(xLeadId).get();
+    if (s.exists) { leadRef = s.ref; leadData = s.data(); }
+  }
+  if (!leadRef) {
+    const q = await db.collection('leads').where('email', '==', senderEmail).limit(1).get();
+    if (!q.empty) { leadRef = q.docs[0].ref; leadData = q.docs[0].data(); }
+  }
+  if (!leadRef) {
+    console.log(`[gmail] No lead for ${senderEmail} — skipping`);
+    await procRef.set({ skipped: 'no_lead', sender: senderEmail, at: FieldValue.serverTimestamp() });
+    return;
+  }
+
+  // Mark processed now (before sending) to prevent duplicate replies on redelivery.
+  await procRef.set({ leadId: leadRef.id, sender: senderEmail, at: FieldValue.serverTimestamp() });
+
+  // Stop conditions.
+  if (leadData.unsubscribed === true || leadData.status === 'Cold') {
+    console.log(`[gmail] Lead ${leadRef.id} closed/unsubscribed — ignoring reply`);
+    return;
+  }
+  const currentCount = leadData.emailCount || 1;
+  if (currentCount >= 7) {
+    console.log(`[gmail] Lead ${leadRef.id} already at 7-email cap — ignoring`);
+    return;
+  }
+
+  // (F) Build conversation (append this inbound reply first).
+  const conversation = Array.isArray(leadData.emailConversation) ? leadData.emailConversation.slice() : [];
+  conversation.push({ role: 'user', text: replyText, at: new Date().toISOString() });
+
+  const first = (leadData.name || 'there').split(' ')[0];
+  const seg   = leadSegment(leadData.brandType);
+
+  // (G) Send conversation to Claude.
+  const messages = [{
+    role: 'user',
+    content: `I'm interested in starting a ${seg.word} brand. (Enquiry submitted via najahchemistja.com)`
+  }];
+  for (const turn of conversation) {
+    messages.push({ role: turn.role === 'user' ? 'user' : 'assistant', content: turn.text });
+  }
+
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  let claudeText = '';
+  try {
+    const resp = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1024,
+      system: NAJAH_SYSTEM_PROMPT,
+      messages
+    });
+    claudeText = (resp.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+  } catch (e) {
+    console.error('[gmail] Claude error:', e.message);
+    // Record the inbound message and flag a human so the reply isn't lost.
+    await leadRef.set({ emailConversation: conversation, lastReplyAt: FieldValue.serverTimestamp() }, { merge: true });
+    await sendAdminAlert(
+      `⚠️ Lead needs your attention — ${leadData.name || senderEmail}`,
+      `<p>The AI failed to generate a reply (${e.message}). Please respond manually.</p>` +
+      `<p><strong>Lead:</strong> ${leadData.name || ''} &lt;${senderEmail}&gt; — segment: ${seg.key}</p>` +
+      `<h3>Conversation</h3>${conversationToHtml(conversation)}`
+    );
+    return;
+  }
+  if (!claudeText) { console.warn(`[gmail] Empty Claude reply for ${leadRef.id}`); return; }
+
+  // (H) Parse special tags.
+  const hot   = /\[HOT_LEAD\]/i.test(claudeText);
+  const flag  = /\[FLAG_ADMIN\]/i.test(claudeText);
+  const unsub = /\[UNSUBSCRIBE\]/i.test(claudeText);
+  const cleanText = claudeText.replace(/\[(HOT_LEAD|FLAG_ADMIN|UNSUBSCRIBE)\]/gi, '').trim();
+
+  const willBeCount = currentCount + 1;
+  const isFinal     = (willBeCount >= 7) && !hot && !unsub;   // 7th non-hot email = goodbye
+
+  // Decide outgoing body + resulting status.
+  let outgoingText = cleanText;
+  let newStatus    = leadData.status || 'Contacted';
+  let markUnsub    = false;
+
+  if (unsub) {
+    newStatus = 'Cold';
+    markUnsub = true;
+  } else if (isFinal) {
+    outgoingText = leadGoodbyeBody(first);
+    newStatus    = 'Cold';
+  } else if (hot) {
+    newStatus = 'Interested';
+  }
+
+  // (I) Send the reply via Resend, keeping the same thread.
+  const threadSubject = leadData.emailSubject || headers['subject'] || 'Najah Chemist';
+  const newReferences = (refs ? refs + ' ' : '') + inMsgId;
+  try {
+    await sendLeadEmail({
+      to: senderEmail, subject: threadSubject, text: outgoingText,
+      leadId: leadRef.id, inReplyTo: inMsgId, references: newReferences.trim()
+    });
+  } catch (e) {
+    console.error('[gmail] reply send failed:', e.message);
+  }
+
+  // (J/K) Save the assistant turn, increment emailCount, update status.
+  conversation.push({ role: 'assistant', text: outgoingText, at: new Date().toISOString() });
+  const update = {
+    emailConversation: conversation,
+    emailCount:        willBeCount,
+    status:            newStatus,
+    lastReplyAt:       FieldValue.serverTimestamp()
+  };
+  if (markUnsub) { update.unsubscribed = true; update.unsubscribedAt = FieldValue.serverTimestamp(); }
+  await leadRef.set(update, { merge: true });
+
+  // Admin alerts.
+  const leadLabel = leadData.name || senderEmail;
+  if (hot) {
+    await sendAdminAlert(
+      `🔥 Hot Lead — ${leadLabel} is ready to order`,
+      `<p><strong>${leadLabel}</strong> &lt;${senderEmail}&gt; (segment: ${seg.key}) is showing buying intent.</p>` +
+      `<h3>Conversation</h3>${conversationToHtml(conversation)}`
+    );
+  }
+  if (flag) {
+    await sendAdminAlert(
+      `⚠️ Lead needs your attention — ${leadLabel}`,
+      `<p><strong>${leadLabel}</strong> &lt;${senderEmail}&gt; asked something outside the AI's knowledge.</p>` +
+      `<p><strong>Their message:</strong><br>${replyText.replace(/</g, '&lt;')}</p>` +
+      `<h3>Conversation</h3>${conversationToHtml(conversation)}`
+    );
+  }
+  if (isFinal) {
+    await sendAdminAlert(
+      `📋 Lead closed after 7 emails — ${leadLabel}`,
+      `<p><strong>Name:</strong> ${leadData.name || ''}<br>` +
+      `<strong>Email:</strong> ${senderEmail}<br>` +
+      `<strong>Segment:</strong> ${seg.key}<br>` +
+      `<strong>Date:</strong> ${new Date().toISOString().slice(0, 10)}</p>` +
+      `<h3>Conversation summary</h3>${conversationToHtml(conversation)}`
+    );
+  }
+
+  console.log(`[gmail] Replied to lead ${leadRef.id} (count ${willBeCount}, status ${newStatus}` +
+    `${hot ? ', HOT' : ''}${flag ? ', FLAG' : ''}${unsub ? ', UNSUB' : ''}${isFinal ? ', FINAL' : ''})`);
+}
+
+// ── Scheduled: checkLeadFollowUps (daily 9am Jamaica) ─────────────────────────
+// 3-day no-reply nudge for leads still at emailCount==1.
+
+exports.checkLeadFollowUps = onSchedule(
+  { schedule: '0 9 * * *', timeZone: 'America/Jamaica', secrets: ['RESEND_API_KEY'] },
+  async () => {
+    const db     = getFirestore();
+    const cutoff = Date.now() - 3 * 24 * 60 * 60 * 1000;
+    const snap   = await db.collection('leads').where('emailCount', '==', 1).get();
+
+    let sent = 0;
+    for (const doc of snap.docs) {
+      const d = doc.data();
+      if (d.unsubscribed || d.followUpSent || d.status === 'Cold') continue;
+
+      const created = toDate(d.createdAt);
+      if (!created || created.getTime() > cutoff) continue;       // not yet 3 days old
+
+      const conv = Array.isArray(d.emailConversation) ? d.emailConversation : [];
+      if (conv.some(t => t.role === 'user')) continue;            // lead already replied
+
+      const email = (d.email || '').trim();
+      if (!email) continue;
+
+      const first = (d.name || 'there').split(' ')[0];
+      const seg   = leadSegment(d.brandType);
+      const text  = leadFollowUpBody(first, seg.word);
+
+      try {
+        await sendLeadEmail({ to: email, subject: 'Still thinking about starting your brand? 🌿', text, leadId: doc.id });
+        const conv2 = conv.slice();
+        conv2.push({ role: 'assistant', text, at: new Date().toISOString() });
+        await doc.ref.set({
+          followUpSent:      true,
+          emailCount:        2,
+          emailConversation: conv2,
+          followUpAt:        FieldValue.serverTimestamp()
+        }, { merge: true });
+        sent++;
+      } catch (e) {
+        console.error(`[checkLeadFollowUps] failed ${email}:`, e.message);
+      }
+    }
+    console.log(`[checkLeadFollowUps] Sent ${sent} follow-up email(s)`);
+  }
+);
