@@ -3595,20 +3595,17 @@ async function bcLoadCounts() {
     subSnap.forEach(d => { if (d.data().email) subEmails.add(d.data().email); });
     _bcLeadCount = 0;
     leadSnap.forEach(d => { const data = d.data(); if (!data.unsubscribed && data.email && !subEmails.has(data.email)) _bcLeadCount++; });
-    // Collect lead emails to deduplicate clients
-    const leadEmails = new Set();
-    leadSnap.forEach(d => { if (d.data().email) leadEmails.add(d.data().email); });
-    // Clients = unique emails from paid orders (status not Cancelled/Refunded), deduped against subscribers + leads
+    // Clients = unique emails from paid orders (status not Cancelled/Refunded), deduped by email.
+    // Paying customers are counted in their own right — not excluded just because the same
+    // email also exists as a lead/subscriber, which had collapsed the count to a handful.
     _bcClientCount = 0;
     const clientEmails = new Set();
     orderSnap.forEach(d => {
       const data = d.data();
       const status = (data.status || '').toLowerCase();
       if (status === 'cancelled' || status === 'refunded') return;
-      const email = (data.email || data.customerEmail || '').trim();
+      const email = (data.email || '').trim();
       if (!email) return;
-      if (subEmails.has(email) || leadEmails.has(email)) return;
-      if (clientEmails.has(email)) return;
       clientEmails.add(email);
     });
     _bcClientCount = clientEmails.size;
