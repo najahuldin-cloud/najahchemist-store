@@ -85,6 +85,16 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
 .pricing-note strong{color:rgba(255,255,255,0.9);}
 .pricing-note::before{content:'•';color:var(--gold);flex-shrink:0;margin-top:0.05rem;}
 
+/* ── Stock Ingredients ── */
+#stock-ingredients{background:var(--warm);}
+.stock-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem;margin-top:2.5rem;}
+.stock-card{background:white;border:1.5px solid var(--border);border-radius:14px;padding:1.5rem;}
+.stock-cat{font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:0.9rem;}
+.stock-pills{display:flex;flex-wrap:wrap;gap:0.45rem;}
+.stock-pill{display:inline-block;font-size:0.78rem;font-weight:500;color:var(--text);background:var(--gold-bg);border:1px solid var(--gold-border);border-radius:999px;padding:0.35rem 0.7rem;line-height:1.3;}
+.stock-note{margin-top:2rem;background:white;border:1.5px solid var(--gold-border);border-left:3px solid var(--gold);border-radius:12px;padding:1.25rem 1.4rem;font-size:0.9rem;color:var(--text);line-height:1.7;}
+.stock-note strong{color:var(--gold);}
+
 /* ── What We Can Create ── */
 #what-we-create{background:var(--gold-bg);}
 .categories-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem;margin-top:2.5rem;}
@@ -139,6 +149,7 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
 @media(max-width:900px){
   .steps-grid{grid-template-columns:1fr 1fr;}
   .categories-grid{grid-template-columns:1fr 1fr;}
+  .stock-grid{grid-template-columns:1fr;}
 }
 @media(max-width:600px){
   .section{padding:3.5rem 0;}
@@ -215,6 +226,175 @@ body{font-family:'Outfit',sans-serif;background:var(--white);color:var(--text);l
         <p class="step-body">Once you approve the formula, place your bulk order. Minimum first order is 5 gallons. We manufacture, you brand and sell.</p>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- ═══ STOCK INGREDIENTS ═══ -->
+<section id="stock-ingredients" class="section">
+  <div class="container">
+    <div class="section-label">In Our Stock</div>
+    <h2 class="section-title">Available Stock Ingredients</h2>
+    <p class="section-sub">All ingredients below are in our current stock and available for use in your custom formula at no additional sourcing cost. Ingredients outside this list are special order and must be paid upfront.</p>
+    <div class="stock-grid">
+      <div class="stock-card">
+        <div class="stock-cat">Brightening / Even Tone</div>
+        <div class="stock-pills">
+          <span class="stock-pill">Kojic Dipalmitate</span>
+          <span class="stock-pill">Kojic Acid</span>
+          <span class="stock-pill">Niacinamide</span>
+          <span class="stock-pill">Sodium Ascorbyl Phosphate</span>
+          <span class="stock-pill">Ascorbic Acid (Vit C)</span>
+          <span class="stock-pill">Tranexamic Acid</span>
+          <span class="stock-pill">Lactic Acid</span>
+          <span class="stock-pill">Ferulic Acid</span>
+          <span class="stock-pill">Turmeric Extract</span>
+          <span class="stock-pill">Papaya Extract</span>
+          <span class="stock-pill">Green Tea Extract</span>
+          <span class="stock-pill">Cucumber Extract</span>
+          <span class="stock-pill">Hibiscus Extract</span>
+        </div>
+      </div>
+      <div class="stock-card">
+        <div class="stock-cat">Acne / Clarifying</div>
+        <div class="stock-pills">
+          <span class="stock-pill">Salicylic Acid</span>
+          <span class="stock-pill">Niacinamide</span>
+          <span class="stock-pill">Tea Tree Oil</span>
+          <span class="stock-pill">Aloe Vera</span>
+          <span class="stock-pill">Witch Hazel</span>
+          <span class="stock-pill">Panthenol</span>
+          <span class="stock-pill">DL-Panthenol</span>
+          <span class="stock-pill">Allantoin</span>
+          <span class="stock-pill">Calendula Extract</span>
+          <span class="stock-pill">Chamomile Extract</span>
+        </div>
+      </div>
+      <div class="stock-card">
+        <div class="stock-cat">Barrier Repair / Sensitive Skin</div>
+        <div class="stock-pills">
+          <span class="stock-pill">Niacinamide</span>
+          <span class="stock-pill">Panthenol</span>
+          <span class="stock-pill">Beta Glucan</span>
+          <span class="stock-pill">Hyaluronic Acid</span>
+          <span class="stock-pill">Allantoin</span>
+          <span class="stock-pill">Aloe Vera</span>
+          <span class="stock-pill">Chamomile Extract</span>
+          <span class="stock-pill">Calendula Extract</span>
+        </div>
+      </div>
+      <div class="stock-card">
+        <div class="stock-cat">Hydration / Humectants</div>
+        <div class="stock-pills">
+          <span class="stock-pill">Glycerin</span>
+          <span class="stock-pill">Hyaluronic Acid</span>
+          <span class="stock-pill">Propylene Glycol</span>
+          <span class="stock-pill">Aloe Vera</span>
+          <span class="stock-pill">Rose Water</span>
+        </div>
+      </div>
+      <div class="stock-card">
+        <div class="stock-cat">Emollients / Oils</div>
+        <div class="stock-pills">
+          <span class="stock-pill">Sunflower Oil</span>
+          <span class="stock-pill">Coconut Oil</span>
+          <span class="stock-pill">Castor Oil</span>
+          <span class="stock-pill">Sweet Almond Oil</span>
+          <span class="stock-pill">Argan Oil</span>
+          <span class="stock-pill">Papaya Oil</span>
+          <span class="stock-pill">Mineral Oil</span>
+          <span class="stock-pill">Vitamin E</span>
+          <span class="stock-pill">Peppermint EO</span>
+          <span class="stock-pill">Rosemary EO</span>
+          <span class="stock-pill">Essential Oils (various)</span>
+          <span class="stock-pill">Fragrance Oils</span>
+        </div>
+      </div>
+      <div class="stock-card">
+        <div class="stock-cat">Active Acids</div>
+        <div class="stock-pills">
+          <span class="stock-pill">Glycolic Acid</span>
+          <span class="stock-pill">Mandelic Acid</span>
+          <span class="stock-pill">Malic Acid</span>
+          <span class="stock-pill">Boric Acid</span>
+          <span class="stock-pill">Ascorbic Acid</span>
+          <span class="stock-pill">Kojic Acid</span>
+          <span class="stock-pill">Lactic Acid</span>
+          <span class="stock-pill">Salicylic Acid</span>
+          <span class="stock-pill">Ferulic Acid</span>
+          <span class="stock-pill">Tranexamic Acid</span>
+          <span class="stock-pill">Citric Acid</span>
+        </div>
+      </div>
+      <div class="stock-card">
+        <div class="stock-cat">Preservatives</div>
+        <div class="stock-pills">
+          <span class="stock-pill">DMDM Hydantoin</span>
+          <span class="stock-pill">Potassium Sorbate</span>
+          <span class="stock-pill">Sodium Benzoate</span>
+          <span class="stock-pill">EDTA</span>
+          <span class="stock-pill">Sodium Lactate</span>
+        </div>
+      </div>
+      <div class="stock-card">
+        <div class="stock-cat">Emulsifiers / Structure</div>
+        <div class="stock-pills">
+          <span class="stock-pill">Glyceryl Monostearate (GMS)</span>
+          <span class="stock-pill">Cetearyl Alcohol</span>
+          <span class="stock-pill">Cetyl Alcohol</span>
+          <span class="stock-pill">Stearic Acid</span>
+          <span class="stock-pill">Sodium Hydroxide</span>
+        </div>
+      </div>
+      <div class="stock-card">
+        <div class="stock-cat">Thickeners / Gel Systems</div>
+        <div class="stock-pills">
+          <span class="stock-pill">Hydroxyethylcellulose (HEC)</span>
+          <span class="stock-pill">Xanthan Gum</span>
+        </div>
+      </div>
+      <div class="stock-card">
+        <div class="stock-cat">Surfactants</div>
+        <div class="stock-pills">
+          <span class="stock-pill">Cocamidopropyl Betaine (CAPB)</span>
+          <span class="stock-pill">Alpha Olefin Sulfonate (AOS)</span>
+          <span class="stock-pill">SLES</span>
+          <span class="stock-pill">DEA</span>
+        </div>
+      </div>
+      <div class="stock-card">
+        <div class="stock-cat">Hair Care</div>
+        <div class="stock-pills">
+          <span class="stock-pill">Cetrimonium Chloride</span>
+          <span class="stock-pill">Polyquaternium-10</span>
+          <span class="stock-pill">Hydrolyzed Rice Protein</span>
+        </div>
+      </div>
+      <div class="stock-card">
+        <div class="stock-cat">Feminine Care</div>
+        <div class="stock-pills">
+          <span class="stock-pill">Boric Acid</span>
+          <span class="stock-pill">Probiotics</span>
+          <span class="stock-pill">Lactic Acid</span>
+        </div>
+      </div>
+      <div class="stock-card">
+        <div class="stock-cat">Skin Feel / Silicones</div>
+        <div class="stock-pills">
+          <span class="stock-pill">Dimethicone</span>
+          <span class="stock-pill">Cyclomethicone</span>
+        </div>
+      </div>
+      <div class="stock-card">
+        <div class="stock-cat">Colorants &amp; Fragrance</div>
+        <div class="stock-pills">
+          <span class="stock-pill">Cosmetic Grade Colorants</span>
+          <span class="stock-pill">Micas</span>
+          <span class="stock-pill">Fragrance Oils</span>
+          <span class="stock-pill">Essential Oils (various)</span>
+        </div>
+      </div>
+    </div>
+    <div class="stock-note"><strong>Special order ingredients:</strong> If you require an ingredient not listed above, it can be sourced at an additional cost paid upfront before procurement begins. This payment is non-refundable once sourcing has commenced.</div>
   </div>
 </section>
 
