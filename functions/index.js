@@ -1209,11 +1209,11 @@ exports.sendScheduledEmails = onSchedule(
 
 // ── HTTPS Callable: sendBroadcastEmail ───────────────────────────────────────
 // Called from the Admin Panel Broadcast Email tool.
-// Args: { subject, body, sendToSubscribers, sendToLeads }
+// Args: { subject, body, sendToSubscribers, sendToLeads, sendToClients }
 // Returns: { sent, failed }
 
 exports.sendBroadcastEmail = onCall({ cors: true, enforceAppCheck: false, timeoutSeconds: 540, secrets: ['RESEND_API_KEY'] }, async (request) => {
-  const { subject, body, sendToSubscribers, sendToLeads, segments } = request.data || {};
+  const { subject, body, sendToSubscribers, sendToLeads, sendToClients, segments } = request.data || {};
 
   const isSegmented = !!segments;
 
@@ -1229,7 +1229,7 @@ exports.sendBroadcastEmail = onCall({ cors: true, enforceAppCheck: false, timeou
       throw new HttpsError('invalid-argument', 'subject and body are required');
     }
   }
-  if (!sendToSubscribers && !sendToLeads) {
+  if (!sendToSubscribers && !sendToLeads && !sendToClients) {
     throw new HttpsError('invalid-argument', 'select at least one audience');
   }
 
@@ -1266,6 +1266,22 @@ exports.sendBroadcastEmail = onCall({ cors: true, enforceAppCheck: false, timeou
     });
   }
 
+  if (sendToClients) {
+    // Pull unique paying customers from the orders collection.
+    // Skip Cancelled/Refunded orders; deduplicate by email across all selected audiences.
+    const snap = await db.collection('orders').get();
+    snap.forEach(d => {
+      const data = d.data();
+      const status = (data.status || '').toLowerCase();
+      if (status === 'cancelled' || status === 'refunded') return;
+      const email = (data.email || data.customerEmail || '').trim();
+      if (!email) return;
+      if (!recipients.some(r => r.email === email)) {
+        recipients.push({ id: d.id, col: 'orders', name: data.client || data.customerName || data.clientName || '', email, brandType: data.brandType || '' });
+      }
+    });
+  }
+
   // Pick the right segment for a recipient based on their brandType
   function pickSegment(brandType) {
     const bt = (brandType || '').trim();
@@ -1294,6 +1310,7 @@ exports.sendBroadcastEmail = onCall({ cors: true, enforceAppCheck: false, timeou
       isSegmented:       isSegmented || false,
       sendToSubscribers: sendToSubscribers || false,
       sendToLeads:       sendToLeads || false,
+      sendToClients:     sendToClients || false,
       totalRecipients:   recipients.length,
       startedAt:         FieldValue.serverTimestamp(),
       status:            'running',

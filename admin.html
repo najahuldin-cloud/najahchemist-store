@@ -829,6 +829,10 @@ select.finp{cursor:pointer;}
               <input type="checkbox" id="bc-to-leads" onchange="bcUpdateCount()" style="width:15px;height:15px;cursor:pointer;">
               Leads
             </label>
+            <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.82rem;font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
+              <input type="checkbox" id="bc-to-clients" onchange="bcUpdateCount()" style="width:15px;height:15px;cursor:pointer;">
+              Clients (Paid Orders)
+            </label>
             <span id="bc-count-msg" style="font-size:0.78rem;color:var(--mid);"></span>
           </div>
         </div>
@@ -3573,14 +3577,16 @@ window.waitlistMarkNotified = async function(docId, btn) {
 
 let _bcSubCount = 0;
 let _bcLeadCount = 0;
+let _bcClientCount = 0;
 let _bcCountLoaded = false;
 
 async function bcLoadCounts() {
   if (_bcCountLoaded) return;
   try {
-    const [subSnap, leadSnap] = await Promise.all([
+    const [subSnap, leadSnap, orderSnap] = await Promise.all([
       getDocs(query(collection(db,'subscribers'))),
-      getDocs(query(collection(db,'leads')))
+      getDocs(query(collection(db,'leads'))),
+      getDocs(query(collection(db,'orders')))
     ]);
     _bcSubCount = 0;
     subSnap.forEach(d => { if (!d.data().unsubscribed && d.data().email) _bcSubCount++; });
@@ -3589,6 +3595,23 @@ async function bcLoadCounts() {
     subSnap.forEach(d => { if (d.data().email) subEmails.add(d.data().email); });
     _bcLeadCount = 0;
     leadSnap.forEach(d => { const data = d.data(); if (!data.unsubscribed && data.email && !subEmails.has(data.email)) _bcLeadCount++; });
+    // Collect lead emails to deduplicate clients
+    const leadEmails = new Set();
+    leadSnap.forEach(d => { if (d.data().email) leadEmails.add(d.data().email); });
+    // Clients = unique emails from paid orders (status not Cancelled/Refunded), deduped against subscribers + leads
+    _bcClientCount = 0;
+    const clientEmails = new Set();
+    orderSnap.forEach(d => {
+      const data = d.data();
+      const status = (data.status || '').toLowerCase();
+      if (status === 'cancelled' || status === 'refunded') return;
+      const email = (data.email || data.customerEmail || '').trim();
+      if (!email) return;
+      if (subEmails.has(email) || leadEmails.has(email)) return;
+      if (clientEmails.has(email)) return;
+      clientEmails.add(email);
+    });
+    _bcClientCount = clientEmails.size;
     _bcCountLoaded = true;
   } catch(e) {
     console.error('bcLoadCounts error:', e);
@@ -3597,11 +3620,12 @@ async function bcLoadCounts() {
 
 window.bcUpdateCount = async function() {
   await bcLoadCounts();
-  const toSub  = document.getElementById('bc-to-subscribers').checked;
-  const toLead = document.getElementById('bc-to-leads').checked;
-  const count  = (toSub ? _bcSubCount : 0) + (toLead ? _bcLeadCount : 0);
+  const toSub    = document.getElementById('bc-to-subscribers').checked;
+  const toLead   = document.getElementById('bc-to-leads').checked;
+  const toClient = document.getElementById('bc-to-clients').checked;
+  const count  = (toSub ? _bcSubCount : 0) + (toLead ? _bcLeadCount : 0) + (toClient ? _bcClientCount : 0);
   const msg    = document.getElementById('bc-count-msg');
-  if (!toSub && !toLead) { msg.textContent = ''; return; }
+  if (!toSub && !toLead && !toClient) { msg.textContent = ''; return; }
   msg.textContent = `→ ${count} recipient${count !== 1 ? 's' : ''}`;
 };
 
@@ -3612,12 +3636,13 @@ window.bcToggleSegments = function() {
 };
 
 window.bcSend = async function() {
-  const toSub  = document.getElementById('bc-to-subscribers').checked;
-  const toLead = document.getElementById('bc-to-leads').checked;
+  const toSub    = document.getElementById('bc-to-subscribers').checked;
+  const toLead   = document.getElementById('bc-to-leads').checked;
+  const toClient = document.getElementById('bc-to-clients').checked;
   const result = document.getElementById('bc-result');
   const isSegmented = document.getElementById('bc-segmented').checked;
 
-  if (!toSub && !toLead) { toast('Select at least one audience'); return; }
+  if (!toSub && !toLead && !toClient) { toast('Select at least one audience'); return; }
 
   let payload;
   if (isSegmented) {
@@ -3631,17 +3656,17 @@ window.bcSend = async function() {
       if (!body) { toast(`Enter an email body for ${labels[i]}`); return; }
       segs[keys[i]] = { subject: subj, body };
     }
-    payload = { segments: segs, sendToSubscribers: toSub, sendToLeads: toLead };
+    payload = { segments: segs, sendToSubscribers: toSub, sendToLeads: toLead, sendToClients: toClient };
   } else {
     const subject = (document.getElementById('bc-subject')?.value || '').trim();
     const body    = (document.getElementById('bc-body')?.value || '').trim();
     if (!subject) { toast('Enter a subject line'); return; }
     if (!body)    { toast('Enter an email body'); return; }
-    payload = { subject, body, sendToSubscribers: toSub, sendToLeads: toLead };
+    payload = { subject, body, sendToSubscribers: toSub, sendToLeads: toLead, sendToClients: toClient };
   }
 
   await bcLoadCounts();
-  const count = (toSub ? _bcSubCount : 0) + (toLead ? _bcLeadCount : 0);
+  const count = (toSub ? _bcSubCount : 0) + (toLead ? _bcLeadCount : 0) + (toClient ? _bcClientCount : 0);
   if (!confirm(`You are about to send to ${count} recipient${count !== 1 ? 's' : ''}${isSegmented ? ' (segmented by brand type)' : ''}. Continue?`)) return;
 
   const btn = document.getElementById('bc-send-btn');
