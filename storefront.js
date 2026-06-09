@@ -1655,14 +1655,17 @@ window.sfCheckoutFygaro = function() {
   const items = sfCart.map(i=>`  * ${i.name} (${i.size}) x${i.qty} = J$${(i.price*i.qty).toLocaleString()}`).join('\n');
   const discountNote = sfDiscountAmount > 0 ? '\nDISCOUNT (' + sfDiscountLabel + '): -J$' + sfDiscountAmount.toLocaleString() : '';
 
-  // 1. Open Fygaro IMMEDIATELY — synchronous to avoid browser popup block
+  // 1. Generate a Fygaro payment link for the exact card total (incl. 15% fee).
+  //    We no longer open Fygaro directly — the link is sent inside the WhatsApp
+  //    order message instead, so the client checks out by tapping the link.
   const FYGARO_URL = 'https://www.fygaro.com/en/pb/817f634a-4ee0-41c7-9ad2-6508ae2048c2/';
   const fygaroNote = orderId + (deliveryAddr.oneLine ? ' | Ship to: ' + deliveryAddr.oneLine : '');
-  window.open(FYGARO_URL + '?amount=' + cardTotal + '&clientnote=' + encodeURIComponent(fygaroNote), '_blank');
+  const fygaroLink = FYGARO_URL + '?amount=' + cardTotal + '&clientnote=' + encodeURIComponent(fygaroNote);
 
-  // 1b. Open WhatsApp notification — same user gesture, fires alongside Fygaro
+  // 1b. Open WhatsApp with the order (same as bank transfer flow) — synchronous
+  //     to avoid browser popup block — with the Fygaro payment link included.
   const WA = window.WA_NUMBER || '18768851099';
-  const waMsg = 'Hi Najah Chemist! I would like to place an order.\n\nORDER ID: ' + orderId + '\n\nCUSTOMER\nName: ' + name + (phone ? '\nPhone: ' + phone : '') + deliveryAddr.waBlock + '\n\nORDER\n' + items + '\n\nSUBTOTAL: J$' + rawSub.toLocaleString() + discountNote + '\nSHIPPING: ' + shipDetail + '\nTOTAL: J$' + cardTotal.toLocaleString() + ' (incl. 15% card fee)\n\nPAYMENT\nPaying by card via Fygaro.\n\nPlease confirm my order. Thank you!';
+  const waMsg = 'New Order — ' + orderId + '\n\nCUSTOMER\nName: ' + name + (phone ? '\nPhone: ' + phone : '') + deliveryAddr.waBlock + '\n\nORDER\n' + items + '\n\nSUBTOTAL: J$' + rawSub.toLocaleString() + discountNote + '\nSHIPPING: ' + shipDetail + '\nTOTAL: J$' + cardTotal.toLocaleString() + ' (includes 15% card processing fee)\n\nPAYMENT\nPaying by card via Fygaro.\n👉 Pay by card here: ' + fygaroLink + '\n\nPlease confirm my order. Thank you!';
   window.open('https://wa.me/' + WA + '?text=' + encodeURIComponent(waMsg), '_blank');
 
   // 2. Show confirmation modal
