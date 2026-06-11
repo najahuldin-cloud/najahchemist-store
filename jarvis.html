@@ -215,6 +215,48 @@
     .stat-grid{grid-template-columns:1fr;}
     .hero .who{font-size:1.25rem;}
   }
+
+  /* ── Marketing Commander ── */
+  .mc-scorecard{border:1px solid var(--gold);border-radius:13px;padding:1rem 1.2rem;background:linear-gradient(135deg,rgba(200,151,58,0.14),var(--card));}
+  .mc-sc-t{font-size:0.72rem;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold);}
+  .mc-sc-line{margin-top:0.4rem;font-size:0.95rem;}
+  .mc-sc-line b{color:var(--gold);font-variant-numeric:tabular-nums;}
+  .mc-flash{margin-top:1rem;border:1px solid var(--green);border-radius:10px;padding:0.7rem 0.95rem;color:#5fd08a;font-size:0.86rem;}
+  .mc-cooldown{margin-top:1rem;border:1px solid var(--amber);border-radius:13px;padding:1.1rem 1.2rem;background:rgba(230,126,34,0.08);}
+  .mc-cd-t{font-size:0.95rem;font-weight:700;color:#e8a05e;}
+  .mc-cd-b{margin-top:0.5rem;font-size:0.85rem;color:var(--mid);}
+  .mc-cd-acts{margin-top:0.8rem;}
+  .mc-rec{margin-top:1rem;border:1.5px solid var(--gold);border-radius:14px;padding:1.3rem 1.4rem;background:linear-gradient(135deg,rgba(200,151,58,0.12),var(--card));}
+  .mc-rec-h{font-size:0.72rem;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold);}
+  .mc-rec-id{margin-top:0.5rem;font-size:0.74rem;color:var(--dim);font-variant-numeric:tabular-nums;}
+  .mc-rec-name{margin-top:0.25rem;font-size:1.4rem;font-weight:700;}
+  .mc-rec-target{margin-top:0.4rem;font-size:0.9rem;color:var(--text);}
+  .mc-rec-target b{color:var(--gold);}
+  .mc-fresh{margin-top:0.3rem;font-size:0.8rem;color:var(--mid);}
+  .mc-rec-rev{margin-top:0.6rem;font-size:0.95rem;}
+  .mc-rec-rev b{color:var(--gold);}
+  .mc-block{margin-top:0.9rem;font-size:0.84rem;color:var(--text);}
+  .mc-block div{margin-top:0.15rem;}
+  .mc-block-t{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--mid);font-weight:700;margin-bottom:0.2rem;}
+  .mc-whynot .mc-wn-item{color:var(--mid);}
+  .mc-whynot .mc-wn-item b{color:var(--text);}
+  .mc-wn-item .money{color:var(--gold);}
+  .conf-high{color:var(--green);} .conf-medium{color:var(--amber);} .conf-low{color:var(--red);}
+  .mc-assets{margin-top:1.1rem;display:flex;flex-direction:column;gap:0.5rem;}
+  .mc-asset{border:1px solid var(--border);border-radius:10px;background:var(--card2);}
+  .mc-asset summary{cursor:pointer;padding:0.65rem 0.8rem;font-size:0.84rem;font-weight:600;list-style:none;}
+  .mc-asset summary::-webkit-details-marker{display:none;}
+  .mc-asset-body{padding:0 0.8rem 0.6rem;}
+  .mc-asset-ta{width:100%;min-height:90px;background:#0d0d0d;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.7rem;font-size:0.84rem;font-family:inherit;line-height:1.5;resize:vertical;margin-bottom:0.5rem;}
+  .mc-asset-ta:focus{outline:none;border-color:var(--gold);}
+  .mc-asset-na{padding:0 0.8rem 0.7rem;color:var(--dim);font-size:0.8rem;}
+  .mc-launch{margin-top:1.1rem;}
+  .mc-hist{margin-top:1.6rem;}
+  .mc-badge{font-size:0.72rem;font-weight:700;padding:0.16rem 0.5rem;border-radius:20px;white-space:nowrap;}
+  .mc-winner{background:rgba(39,174,96,0.15);color:#5fd08a;}
+  .mc-neutral{background:rgba(138,138,138,0.18);color:var(--mid);}
+  .mc-loser{background:rgba(192,57,43,0.18);color:#e8786b;}
+  .mc-pending{background:rgba(230,126,34,0.16);color:#e8a05e;}
 </style>
 </head>
 <body>
@@ -234,6 +276,9 @@
 
   <!-- SECTION 0 -->
   <section id="next-best" style="margin-top:1.6rem;"></section>
+
+  <!-- MARKETING COMMANDER -->
+  <section id="sec-marketing" style="margin-top:1.6rem;"></section>
 
   <!-- SECTION 1 -->
   <section id="sec-ceo">
@@ -359,6 +404,10 @@ const MEM0_CACHE = {}; // lowercased person name -> recalled Mem0 snippet
 let OUTCOMES = [];          // jarvis_outcomes docs: {id, opportunityType, name, whatsapp, expectedRevenue, actualRevenue, status, recommendedAt, resolvedAt}
 const ACTIONED = {};        // session map: opp.id -> outcome doc id (prevents duplicate outcome rows)
 let digitalActioned = false;// session guard for the First Sale System downsell button
+let CAMPAIGNS = [];         // campaigns collection docs: {_docId, campaignId, campaignType, ...}
+let MC_PRODUCTS = [];       // products collection docs (for the inventory low-stock check)
+let MC_CURRENT = null;      // the campaign currently recommended (read by Launch Campaign)
+let MC_FLASH = '';          // one-shot green banner shown after a launch
 const todayISO = () => NOW.toISOString().slice(0,10);
 const LB_TYPES = ['Unpaid Order','Reorder Due','Hot Lead','New Lead','First Sale System'];
 
@@ -577,7 +626,8 @@ window.jDone = async function(id){
       actualRevenue: null,
       status: 'pending',
       recommendedAt: todayISO(),
-      resolvedAt: null
+      resolvedAt: null,
+      campaignId: mcActiveCampaignId()   // link to an active campaign launched in last 7 days, else null
     };
     const ref = await addDoc(collection(db,'jarvis_outcomes'), outcome);
     outcome.id = ref.id;
@@ -631,7 +681,8 @@ window.jDoneDigital = async function(){
     const outcome = {
       opportunityType:'First Sale System', name: s?(s.name||''):'', whatsapp: s?(s.phone||''):'',
       expectedRevenue: FIRST_SALE.price, actualRevenue:null, status:'pending',
-      recommendedAt: todayISO(), resolvedAt:null
+      recommendedAt: todayISO(), resolvedAt:null,
+      campaignId: mcActiveCampaignId()
     };
     const ref = await addDoc(collection(db,'jarvis_outcomes'), outcome);
     outcome.id = ref.id; OUTCOMES.push(outcome);
@@ -1157,6 +1208,18 @@ function renderInsights(){
       q:`How should I use Jarvis day-to-day to convert the most opportunities?`});
   }
 
+  // 8 marketing commander
+  {
+    const mcs = mcScorecard();
+    const resolved = CAMPAIGNS.filter(c2=>c2.actualRevenue!=null);
+    let mcBest=null;
+    resolved.forEach(c2=>{ const exp=+c2.expectedRevenue||0; const roi=exp>0?(+c2.actualRevenue)/exp:0; if(!mcBest||roi>mcBest.roi) mcBest={name:c2.campaignName,roi}; });
+    const mcPending = CAMPAIGNS.filter(c2=>c2.actualRevenue==null).length;
+    cards.push({t:'📱 Marketing Commander',
+      body:`<b>${mcs.launched}</b> campaign${mcs.launched===1?'':'s'} launched · <b>${fmt(mcs.revenue)}</b> generated · Avg ROI <b>${mcs.avgROI?mcs.avgROI.toFixed(1)+'×':'0×'}</b>.${mcBest?` Best campaign: <b>${esc(mcBest.name||'—')}</b> at ${mcBest.roi.toFixed(1)}× ROI.`:''} <b>${mcPending}</b> campaign${mcPending===1?'':'s'} pending results.`,
+      q:`What marketing campaign should I launch next and why? Give me the expected revenue.`});
+  }
+
   INSIGHT_QS = cards.map(c2=>c2.q);
   document.getElementById('insight-grid').innerHTML = cards.map((c2,i)=>`
     <div class="insight">
@@ -1397,6 +1460,7 @@ Jarvis Revenue Leaderboard (actual outcomes this month):
 - Best performer: ${lb.best?`${lb.best.type} at ${roiText(lb.best.roi)} ROI`:'none yet'}
 - Worst performer: ${lb.worst?`${lb.worst.type} at ${roiText(lb.worst.roi)} ROI`:'none yet'}
 - Pending outcomes: ${lb.pendingCount}`; })()}
+${mcPromptBlock()}
 
 Answer the founder's question directly. If asked to write a message, write it. If asked for a recommendation, give one specific action. Always state the expected revenue impact.`;
 }
@@ -1437,12 +1501,460 @@ document.getElementById('ask-input').addEventListener('keydown', e=>{
 });
 
 // ════════════════════════════════════════
+// MARKETING COMMANDER (campaigns)
+// ════════════════════════════════════════
+// Campaign type -> display name. Order here is the canonical order shown in "Why Not The Others".
+const MC_TYPE_NAME = {
+  payment_reminder:'Payment Reminder Blast',
+  reorder:'Reorder Reminder',
+  lead_conversion:'Lead Conversion Push',
+  reactivation:'Win-Back Reactivation',
+  first_sale_system:'First Sale System Promo'
+};
+// Map a jarvis_outcomes opportunityType back to a campaign type for historical ROI.
+const OUTCOME_TO_CAMPAIGN = {
+  'Unpaid Order':'payment_reminder',
+  'Reorder Due':'reorder',
+  'Hot Lead':'lead_conversion',
+  'New Lead':'lead_conversion',
+  'Overdue Follow-up':'reactivation',
+  'First Sale System':'first_sale_system'
+};
+
+function mcDate(v){
+  if(!v) return null;
+  if(v.toDate) return v.toDate();
+  if(v.seconds) return new Date(v.seconds*1000);
+  if(v instanceof Date) return v;
+  if(typeof v==='number') return new Date(v);
+  if(typeof v==='string'){ const d=new Date(v); if(!isNaN(d)) return d; }
+  return null;
+}
+// Explicit low-stock flag only — never guess, so we don't wrongly penalise a campaign.
+function mcIsLowStock(p){ return !!p && (p.lowStock===true || p.lowStock==='true' || p.inStock===false); }
+
+// Next campaign id for today: CMP-YYYYMMDD-NNN (auto-increment within the day).
+function mcNextCampaignId(){
+  const ymd = NOW.getFullYear().toString() + String(NOW.getMonth()+1).padStart(2,'0') + String(NOW.getDate()).padStart(2,'0');
+  const prefix = 'CMP-'+ymd+'-';
+  const n = CAMPAIGNS.filter(c=>(c.campaignId||'').startsWith(prefix)).length + 1;
+  return prefix + String(n).padStart(3,'0');
+}
+// The campaignId of the most-recent active campaign launched within 7 days (for outcome linking).
+function mcActiveCampaignId(){
+  const cutoff7 = new Date(NOW.getTime()-7*86400000);
+  const act = CAMPAIGNS.filter(c=>{ const d=mcDate(c.launchedAt); return c.status==='active' && d && d>=cutoff7; })
+    .sort((a,b)=>(mcDate(b.launchedAt)||0)-(mcDate(a.launchedAt)||0));
+  return act.length ? (act[0].campaignId||null) : null;
+}
+
+// Scorecard: lifetime campaigns + actual revenue + blended ROI (sum actual / sum expected of resolved).
+function mcScorecard(){
+  const launched = CAMPAIGNS.length;
+  const resolved = CAMPAIGNS.filter(c=>c.actualRevenue!=null);
+  const revenue = resolved.reduce((s,c)=>s+(+c.actualRevenue||0),0);
+  const expSum  = resolved.reduce((s,c)=>s+(+c.expectedRevenue||0),0);
+  return { launched, revenue, avgROI: expSum>0 ? revenue/expSum : 0, resolvedCount:resolved.length };
+}
+
+// RULE #0 — cooldown: a campaign launched in the last 72h with no result recorded yet.
+function mcCooldown(){
+  const cutoff72 = new Date(NOW.getTime()-72*3600000);
+  const recent = CAMPAIGNS
+    .filter(c=>{ const d=mcDate(c.launchedAt); return d && d>=cutoff72 && c.actualRevenue==null && c.status!=='completed' && c.status!=='cancelled'; })
+    .sort((a,b)=>(mcDate(b.launchedAt)||0)-(mcDate(a.launchedAt)||0));
+  if(!recent.length) return null;
+  const cmp = recent[0];
+  return { cmp, hrs: Math.max(0, Math.round((NOW - mcDate(cmp.launchedAt))/3600000)) };
+}
+
+// RULE #0.5 — historical ROI by campaign type over the last 30 days, from jarvis_outcomes
+// (mapped via OUTCOME_TO_CAMPAIGN) plus any resolved campaigns of that type.
+function mcHistoricalROI(){
+  const cutoff = new Date(NOW.getTime()-30*86400000);
+  const agg = {}; // type -> {exp, act}
+  const ensure = t => (agg[t] = agg[t] || {exp:0, act:0});
+  OUTCOMES.forEach(o=>{
+    if(o.status!=='converted' && o.status!=='lost') return;
+    const when = o.resolvedAt || o.recommendedAt;
+    if(!when || new Date(when+'T00:00:00') < cutoff) return;
+    const ct = OUTCOME_TO_CAMPAIGN[o.opportunityType]; if(!ct) return;
+    const r = ensure(ct); r.exp += (+o.expectedRevenue||0); r.act += (+o.actualRevenue||0);
+  });
+  CAMPAIGNS.forEach(cmp=>{
+    if(cmp.actualRevenue==null) return;
+    const d = mcDate(cmp.launchedAt); if(!d || d<cutoff) return;
+    const r = ensure(cmp.campaignType); r.exp += (+cmp.expectedRevenue||0); r.act += (+cmp.actualRevenue||0);
+  });
+  const roi = {};
+  Object.keys(agg).forEach(t=>{ roi[t] = agg[t].exp>0 ? agg[t].act/agg[t].exp : null; });
+  return roi;
+}
+
+// Core scoring — build every candidate, apply all rule multipliers, return them + the winner.
+function mcRecommend(){
+  const c = CONTEXT;
+  const roiByType = mcHistoricalROI();
+
+  const cutoff30 = new Date(NOW.getTime()-30*86400000);
+  const totalLeads = LEADS.length;
+  const contactedRecently = LEADS.filter(l=>{ const lc=l.lastContacted?new Date(l.lastContacted+'T00:00:00'):null; return lc && lc>=cutoff30; }).length;
+  const freshLeadAudience = Math.max(0, totalLeads - contactedRecently);
+  const bookSent = OUTCOMES.filter(o=>o.opportunityType==='First Sale System' && o.recommendedAt && new Date(o.recommendedAt+'T00:00:00')>=cutoff30).length;
+  const freshBookAudience = Math.max(0, c.digitalLeads - bookSent);
+
+  const segCount={}; LEADS.forEach(l=>{ const s=segOf(l); segCount[s]=(segCount[s]||0)+1; });
+  const topSegKey = (Object.entries(segCount).sort((a,b)=>b[1]-a[1])[0] || ['skincare'])[0];
+  const segLabel = SEG_LABEL[topSegKey] || 'skincare';
+  const topProduct = (c.topProducts && c.topProducts.length) ? c.topProducts[0][0] : null;
+
+  // RULE #1 — same campaign type launched 2+ times in last 14 days.
+  const cutoff14 = new Date(NOW.getTime()-14*86400000);
+  const freq14 = {};
+  CAMPAIGNS.forEach(cmp=>{ const d=mcDate(cmp.launchedAt); if(d && d>=cutoff14) freq14[cmp.campaignType]=(freq14[cmp.campaignType]||0)+1; });
+
+  // PRODUCT INVENTORY CHECK — only for reorder / lead_conversion. Skip silently if no products.
+  // TODO: connect to Manufacturing Commander inventory data
+  const lowStockExists = MC_PRODUCTS.length>0 && MC_PRODUCTS.some(mcIsLowStock);
+
+  const defs = [
+    { type:'payment_reminder', eligible:c.unpaidCount>3, conf:'High',
+      base:c.unpaidTotal*0.85, target:c.unpaidCount,
+      basedOn:[`${c.unpaidCount} unpaid orders worth ${fmt(c.unpaidTotal)}`, `${c.unpaidCount} customers to remind`, `85% of unpaid value typically recovers`],
+      whyAudience:`${c.unpaidCount} customers already owe money — the warmest possible audience`,
+      whyDemand:`Revenue is already committed; a reminder converts the highest %`,
+      inelig:`only ${c.unpaidCount} unpaid order${c.unpaidCount===1?'':'s'} (need 4+)` },
+    { type:'reorder', eligible:c.reorderCount>3, conf:'High', inventory:true,
+      base:c.reorderCount*AOV*0.80, target:c.reorderCount,
+      basedOn:[`${c.reorderCount} clients past their reorder window`, `AOV ${fmt(AOV)} × 80% repeat rate`].concat(topProduct?[`Top product this month: ${topProduct}`]:[]),
+      whyAudience:`${c.reorderCount} proven buyers are due to reorder`,
+      whyDemand:topProduct?`${topProduct} is your most-ordered product — anchor the push on it`:`Repeat buyers convert far above cold leads`,
+      inelig:`only ${c.reorderCount} client${c.reorderCount===1?'':'s'} due (need 4+)` },
+    { type:'lead_conversion', eligible:c.newCount>50, conf:'Low', inventory:true,
+      base:freshLeadAudience*AOV*CONVERSION_RATE, target:freshLeadAudience,
+      freshLine:`Fresh audience: ${freshLeadAudience} of ${totalLeads} leads (${contactedRecently} contacted recently)`,
+      basedOn:[`${c.newCount} new leads never contacted`, `Fresh audience ${freshLeadAudience} of ${totalLeads}`, `Top segment: ${segLabel}`],
+      whyAudience:`${freshLeadAudience} fresh ${segLabel} leads not contacted in 30 days`,
+      whyDemand:`${segLabel} is your largest lead segment`,
+      inelig:`only ${c.newCount} new lead${c.newCount===1?'':'s'} (need 50+)`,
+      nameExtra:` — ${segLabel}` },
+    { type:'reactivation', eligible:c.atRisk>10, conf:'Medium',
+      base:c.atRisk*AOV*0.25, target:c.atRisk,
+      basedOn:[`${c.atRisk} clients haven't ordered in 60+ days`, `AOV ${fmt(AOV)} × 25% win-back rate`],
+      whyAudience:`${c.atRisk} lapsed clients with prior purchase history`,
+      whyDemand:`Past buyers are cheaper to win back than new leads are to convert`,
+      inelig:`only ${c.atRisk} at-risk client${c.atRisk===1?'':'s'} (need 11+)` },
+    { type:'first_sale_system', eligible:c.digitalLeads>100, conf:'Medium',
+      base:freshBookAudience*FIRST_SALE.price*0.05, target:freshBookAudience,
+      freshLine:`Fresh audience: ${freshBookAudience} of ${c.digitalLeads} candidates`,
+      basedOn:[`${c.digitalLeads} downsell candidates not ready to manufacture`, `Fresh audience ${freshBookAudience} of ${c.digitalLeads}`, `${fmt(FIRST_SALE.price)} × 5% conversion`],
+      whyAudience:`${freshBookAudience} leads not ready to manufacture — perfect for the playbook`,
+      whyDemand:`Monetises leads who won't buy manufacturing today`,
+      inelig:`only ${c.digitalLeads} downsell candidate${c.digitalLeads===1?'':'s'} (need 100+)` }
+  ];
+
+  defs.forEach(d=>{
+    d.name = MC_TYPE_NAME[d.type] + (d.nameExtra||'');
+    d.mult = 1; d.adjNotes = []; d.boostNotes = [];
+    const roi = roiByType[d.type];
+    d.roi = (roi==null ? null : roi);
+    const tn = d.type.replace(/_/g,' ');
+    if(roi!=null && roi>1.5){ d.mult*=1.3; const n=`boosted 30% — ${tn} ROI ${roi.toFixed(1)}× over last 30 days`; d.adjNotes.push(n); d.boostNotes.push(n); }
+    else if(roi!=null && roi<0.5){ d.mult*=0.7; d.adjNotes.push(`penalised 30% — ${tn} ROI ${roi.toFixed(1)}× over last 30 days`); }
+    if((freq14[d.type]||0)>=2){ d.mult*=0.80; d.freqNote=`score reduced 20% — launched ${freq14[d.type]}× in last 14 days`; d.adjNotes.push(d.freqNote); }
+    if(d.inventory && lowStockExists){ d.mult*=0.7; d.invNote=`score reduced 30% — low stock on a featured product`; d.adjNotes.push(d.invNote); }
+    d.score = d.eligible ? d.base*d.mult : 0;
+  });
+
+  const winner = defs.filter(d=>d.eligible).sort((a,b)=>b.score-a.score)[0] || null;
+  return { defs, selected:winner, totalLeads, contactedRecently,
+           saturationPct: totalLeads ? Math.round(contactedRecently/totalLeads*100) : 0 };
+}
+
+// Editable asset copy per campaign type (placeholders filled from live data where possible).
+function mcAssets(type){
+  const c = CONTEXT;
+  const topProduct = (c.topProducts && c.topProducts.length) ? c.topProducts[0][0] : 'your best seller';
+  const segCount={}; LEADS.forEach(l=>{ const s=segOf(l); segCount[s]=(segCount[s]||0)+1; });
+  const topSegKey = (Object.entries(segCount).sort((a,b)=>b[1]-a[1])[0] || ['skincare'])[0];
+  const segLabel = SEG_LABEL[topSegKey] || 'skincare';
+  const hashSeg = topSegKey;
+  const E = (s,b)=>`Subject: ${s}\n\n${b}`;
+  switch(type){
+    case 'reorder': return {
+      whatsapp:`Hi 👋🏾 Just checking in from Najah Chemist — it looks like you may be running low on stock. ${topProduct} is one of our best sellers right now. Reorder in minutes at najahchemistja.com 🌿`,
+      email:E(`Your ${topProduct} restock is overdue 🌿`, `Hi [Name], It's been a while since your last order. Your customers are waiting — restock your ${topProduct} today. Order at najahchemistja.com. Turnaround is 2-3 business days after payment. — The Najah Chemist Team 🌿`),
+      instagram:`Still selling ${topProduct}? 🙌🏾 Your wholesale restock is just a few clicks away. Link in bio. #privatelabel #jamaicaskincare #wholesaleskincare`,
+      tiktok:`POV: Your skincare brand is selling out and you need to restock fast. Here's how Najah Chemist clients reorder in under 5 minutes. Visit najahchemistja.com 🌿` };
+    case 'payment_reminder': return {
+      whatsapp:`Hi 👋🏾 Just a friendly reminder — your order is ready and waiting for payment. Pay by bank transfer or card at najahchemistja.com to get it processed today 🌿`,
+      email:E(`Your order is waiting — complete payment today`, `Hi [Name], Your order is ready and waiting for payment confirmation. Pay by bank transfer to NCB 354-747-294 or by card at najahchemistja.com. — The Najah Chemist Team 🌿`),
+      instagram:'', tiktok:'' };
+    case 'lead_conversion': return {
+      whatsapp:(NEW_LEAD_MSGS[topSegKey]||NEW_LEAD_MSGS.skincare)('there'),
+      email:E(`Start your ${segLabel} brand this week 🌿`, `Hi [Name], You showed interest in starting a ${segLabel} brand. Prices from J$3,550/litre. MOQ is just 1 litre. Browse at najahchemistja.com — The Najah Chemist Team 🌿`),
+      instagram:`Did you know you can start your own ${segLabel} brand from as little as J$3,550? 🌿 We manufacture, you sell. Link in bio. #privatelabel #${hashSeg}business`,
+      tiktok:`How to start a ${segLabel} brand in Jamaica with under J$10,000. Step 1: Choose your products at najahchemistja.com. Step 2: We manufacture. Step 3: You brand and sell. 🌿` };
+    case 'first_sale_system': return {
+      whatsapp:`Hi 👋🏾 Not ready to invest in inventory yet? Our founder started with less than J$5,000 in her kitchen. The First Sale System shows you exactly how — J$3,999, instant download: ${FIRST_SALE.fygaro} 🌿`,
+      email:E(`How she got her first sale with less than J$5,000`, `Hi [Name], Before you invest in inventory — learn how to get your first customers. J$3,999, instant download. Get it here: ${FIRST_SALE.fygaro} — Najah 🌿`),
+      instagram:`Before you spend thousands on inventory — learn how to get your first customers. The First Sale System. J$3,999. Link in bio. #entrepreneurjamaica`,
+      tiktok:`I started Najah Chemist with less than J$5,000 in my kitchen. No brand. No logo. No plan. Here's the exact system I used to get my first sale. Link in bio 🌿` };
+    case 'reactivation': return {
+      whatsapp:`Hi [Name] 👋🏾 We miss you! It's been a while since your last order. Your favourites are in stock. Ready to restock? najahchemistja.com 🌿`,
+      email:E(`We miss you — come back and restock 🌿`, `Hi [Name], It's been a while and we wanted to check in. Your favourite products are still available. Browse and reorder at najahchemistja.com — The Najah Chemist Team 🌿`),
+      instagram:`To every brand owner who's been quiet lately — your restock is waiting. 🌿 najahchemistja.com`,
+      tiktok:`To the brand owners who started strong and got busy — we still have your products ready. Come back and restock. najahchemistja.com 🌿` };
+  }
+  return { whatsapp:'', email:'', instagram:'', tiktok:'' };
+}
+
+function mcWhyNotHTML(rec, selectedType){
+  const items = rec.defs.filter(d=>d.type!==selectedType).map(d=>{
+    let reason;
+    if(!d.eligible) reason = d.inelig;
+    else { reason = 'lower expected revenue'; if(d.freqNote) reason += ' · '+d.freqNote; if(d.invNote) reason += ' · '+d.invNote; }
+    return `<div class="mc-wn-item">• <b>${esc(d.name)}</b>: <span class="money">${fmt(d.score)}</span> — ${esc(reason)}</div>`;
+  }).join('');
+  return `<div class="mc-block mc-whynot"><div class="mc-block-t">Why Not The Others:</div>${items}</div>`;
+}
+
+function mcRecCardHTML(rec){
+  const s = rec.selected;
+  const id = mcNextCampaignId();
+  const whyPicked = [`Highest expected revenue today (${fmt(s.score)})`, s.whyAudience, s.whyDemand]
+    .concat(s.boostNotes||[]).filter(Boolean);
+  const based = (s.basedOn||[]).map(b=>`<div>✓ ${esc(b)}</div>`).join('');
+  return `<div class="mc-rec">
+    <div class="mc-rec-h">🎯 Today's Campaign</div>
+    <div class="mc-rec-id">Campaign ID: ${esc(id)}</div>
+    <div class="mc-rec-name">${esc(s.name)}</div>
+    <div class="mc-rec-target">Target: <b>${(s.target||0).toLocaleString()} ${s.target===1?'person':'people'}</b></div>
+    ${s.freshLine?`<div class="mc-fresh">${esc(s.freshLine)}</div>`:''}
+    <div class="mc-rec-rev">Expected Revenue: <b class="money">${fmt(s.score)}</b> &nbsp;·&nbsp; Confidence: <b class="conf-${s.conf.toLowerCase()}">${s.conf}</b></div>
+    <div class="mc-block"><div class="mc-block-t">Based on:</div>${based}</div>
+    <div class="mc-block"><div class="mc-block-t">Why Jarvis Picked This:</div>${whyPicked.map(w=>`<div>✓ ${esc(w)}</div>`).join('')}</div>
+    ${mcWhyNotHTML(rec, s.type)}
+  </div>`;
+}
+
+function mcAssetsHTML(s){
+  const a = mcAssets(s.type);
+  const sec = (which,label,val)=>{
+    const blank = !val;
+    return `<details class="mc-asset"${blank?'':' open'}>
+      <summary>${label}</summary>
+      ${blank
+        ? `<div class="mc-asset-na">Not used for this campaign type.</div>`
+        : `<div class="mc-asset-body"><textarea class="mc-asset-ta" id="mc-asset-${which}">${esc(val)}</textarea>
+             <button class="btn btn-ghost btn-sm" onclick="jMcCopy('${which}')">📋 Copy</button></div>`}
+    </details>`;
+  };
+  return `<div class="mc-assets">
+    <div class="mc-block-t">Campaign Assets — editable</div>
+    ${sec('whatsapp','📱 WhatsApp Broadcast',a.whatsapp)}
+    ${sec('email','📧 Email Campaign',a.email)}
+    ${sec('instagram','📸 Instagram Caption',a.instagram)}
+    ${sec('tiktok','🎬 TikTok Script',a.tiktok)}
+  </div>`;
+}
+
+function mcBadge(c){
+  if(c.actualRevenue==null) return '<span class="mc-badge mc-pending">⏳ Pending</span>';
+  const exp=+c.expectedRevenue||0, roi = exp>0 ? (+c.actualRevenue)/exp : 0;
+  if(roi>1.5) return '<span class="mc-badge mc-winner">🏆 Winner</span>';
+  if(roi>=0.75) return '<span class="mc-badge mc-neutral">⚪ Neutral</span>';
+  return '<span class="mc-badge mc-loser">🔴 Loser</span>';
+}
+
+function mcHistoryHTML(){
+  const hist = CAMPAIGNS.slice().sort((a,b)=>(mcDate(b.launchedAt)||0)-(mcDate(a.launchedAt)||0)).slice(0,3);
+  if(!hist.length) return `<div class="mc-hist"><div class="mc-block-t">Campaign History</div><div class="empty">No campaigns launched yet.</div></div>`;
+  const rows = hist.map(c=>{
+    const d = mcDate(c.launchedAt);
+    const launched = d ? d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—';
+    const exp = Math.round(c.expectedRevenue||0);
+    const act = (c.actualRevenue==null) ? null : Math.round(c.actualRevenue);
+    const roi = (act!=null && exp>0) ? act/exp : null;
+    const actCell = act==null
+      ? `<button class="btn btn-done btn-sm" onclick="jMcResult('${esc(c._docId||'')}','${esc(c.campaignId||'')}',${exp})">Record</button>`
+      : `<span class="money">${fmt(act)}</span>`;
+    return `<tr>
+      <td>${esc(c.campaignId||'—')}</td>
+      <td>${esc(c.campaignName||'—')}</td>
+      <td>${launched}</td>
+      <td class="num money">${fmt(exp)}</td>
+      <td class="num">${actCell}</td>
+      <td class="num ${roi==null?'':(roi>1.5?'roi-good':(roi>=0.75?'roi-mid':'roi-bad'))}">${roi==null?'—':roi.toFixed(1)+'×'}</td>
+      <td>${mcBadge(c)}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="mc-hist"><div class="mc-block-t">Campaign History <span class="sub">last 3</span></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Campaign ID</th><th>Name</th><th>Launched</th><th class="num">Expected</th><th class="num">Actual</th><th class="num">ROI</th><th>Status</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div></div>`;
+}
+
+function renderMarketing(){
+  const host = document.getElementById('sec-marketing');
+  if(!host) return;
+  const sc = mcScorecard();
+  const scHTML = `<div class="mc-scorecard">
+    <div class="mc-sc-t">📱 Marketing Commander</div>
+    <div class="mc-sc-line">Campaigns Launched: <b>${sc.launched}</b> · Revenue Generated: <b class="money">${fmt(sc.revenue)}</b> · Average ROI: <b>${sc.avgROI?sc.avgROI.toFixed(1)+'×':'0×'}</b></div>
+  </div>`;
+  const flash = MC_FLASH ? `<div class="mc-flash">${esc(MC_FLASH)}</div>` : '';
+  MC_FLASH = '';
+
+  let bodyHTML;
+  const cd = mcCooldown();
+  if(cd){
+    MC_CURRENT = null;
+    bodyHTML = `<div class="mc-cooldown">
+      <div class="mc-cd-t">⏳ Campaign in progress — wait for results before launching another.</div>
+      <div class="mc-cd-b">${esc(cd.cmp.campaignName||cd.cmp.campaignId||'A campaign')} launched ${cd.hrs} hour${cd.hrs===1?'':'s'} ago. Check outcomes before switching direction.</div>
+      <div class="mc-cd-acts"><button class="btn btn-done btn-sm" onclick="jMcResult('${esc(cd.cmp._docId||'')}','${esc(cd.cmp.campaignId||'')}',${Math.round(cd.cmp.expectedRevenue||0)})">✅ Record Result</button></div>
+    </div>`;
+  } else {
+    const rec = mcRecommend();
+    if(!rec.selected){
+      MC_CURRENT = null;
+      bodyHTML = `<div class="empty" style="padding:1rem 0;">No campaign meets the threshold to recommend today. Keep working your pipeline — Jarvis will surface one as soon as a segment is big enough.</div>`
+        + mcWhyNotHTML(rec, null);
+    } else {
+      MC_CURRENT = rec.selected;
+      bodyHTML = mcRecCardHTML(rec)
+        + mcAssetsHTML(rec.selected)
+        + `<div class="mc-launch"><button class="btn btn-brand" id="mc-launch-btn" onclick="jMcLaunch()">🚀 Launch Campaign</button></div>`;
+    }
+  }
+
+  host.innerHTML = `
+    <div class="sec-head"><h2>📱 What Should I Market Today?</h2><span class="sub"><button class="btn btn-ghost btn-sm" id="mc-refresh-btn" onclick="jMcRefresh()">🔄 Refresh Recommendation</button></span></div>
+    ${scHTML}
+    ${flash}
+    ${bodyHTML}
+    ${mcHistoryHTML()}`;
+}
+
+// Marketing Commander context block for the Ask Jarvis system prompt.
+function mcPromptBlock(){
+  const sc = mcScorecard();
+  const rec = mcRecommend();
+  const cd = mcCooldown();
+  const active = mcActiveCampaignId();
+  const hist = CAMPAIGNS.slice().sort((a,b)=>(mcDate(b.launchedAt)||0)-(mcDate(a.launchedAt)||0));
+  const last = hist[0];
+  let lastTxt = 'none';
+  if(last){
+    const d = mcDate(last.launchedAt);
+    const days = d ? daysAgo(d) : null;
+    const exp = +last.expectedRevenue||0;
+    const roi = (last.actualRevenue!=null && exp>0) ? (+last.actualRevenue)/exp : null;
+    const stat = last.actualRevenue==null ? 'pending' : (roi>1.5?'winner':(roi>=0.75?'neutral':'loser'));
+    lastTxt = `${last.campaignName||last.campaignId}, ${days==null?'?':days} day${days===1?'':'s'} ago, ROI ${roi==null?'pending':roi.toFixed(1)+'×'}, status ${stat}`;
+  }
+  const roiByType = mcHistoricalROI();
+  let bestType=null, bestRoi=null;
+  Object.entries(roiByType).forEach(([t,r])=>{ if(r!=null && (bestRoi==null || r>bestRoi)){ bestType=t; bestRoi=r; } });
+  const todayRec = cd
+    ? `none — cooldown active (${cd.cmp.campaignName||cd.cmp.campaignId} launched ${cd.hrs}h ago)`
+    : (rec.selected ? `${rec.selected.name}, targeting ${rec.selected.target} fresh audience, expected ${fmt(rec.selected.score)}` : 'none — no campaign meets threshold');
+  return `
+Marketing Commander:
+- Scorecard: ${sc.launched} campaigns, ${fmt(sc.revenue)} generated, ${sc.avgROI?sc.avgROI.toFixed(1)+'×':'0×'} avg ROI
+- Active campaign: ${active||'none'}
+- Last campaign: ${lastTxt}
+- Best performing type: ${bestType?`${bestType} at ${bestRoi.toFixed(1)}×`:'none yet'}
+- Today's recommendation: ${todayRec}
+- Audience saturation: ${rec.saturationPct}% of leads contacted in last 30 days`;
+}
+
+// ── Launch / record / refresh / copy handlers ──
+window.jMcCopy = function(which){
+  const el = document.getElementById('mc-asset-'+which);
+  if(!el) return;
+  const done = ()=>toast('📋 Copied');
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(el.value).then(done, ()=>{ el.select(); try{document.execCommand('copy');}catch(e){} done(); });
+  } else { el.select(); try{document.execCommand('copy');}catch(e){} done(); }
+};
+
+window.jMcLaunch = async function(){
+  if(!MC_CURRENT) return;
+  const btn = document.getElementById('mc-launch-btn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Launching…'; }
+  const assets = {
+    whatsapp:(document.getElementById('mc-asset-whatsapp')||{}).value || '',
+    email:(document.getElementById('mc-asset-email')||{}).value || '',
+    instagram:(document.getElementById('mc-asset-instagram')||{}).value || '',
+    tiktok:(document.getElementById('mc-asset-tiktok')||{}).value || ''
+  };
+  const id = mcNextCampaignId();
+  const record = {
+    campaignId:id,
+    campaignType:MC_CURRENT.type,
+    campaignName:MC_CURRENT.name,
+    targetAudience:MC_CURRENT.target||0,
+    expectedRevenue:Math.round(MC_CURRENT.score||0),
+    confidence:MC_CURRENT.conf,
+    historicalROI:(MC_CURRENT.roi!=null ? +MC_CURRENT.roi.toFixed(2) : null),
+    assets,
+    launchedAt:new Date().toISOString(),
+    actualRevenue:null,
+    status:'active'
+  };
+  try{
+    const ref = await addDoc(collection(db,'campaigns'), record);
+    record._docId = ref.id;
+    CAMPAIGNS.push(record);
+    MC_FLASH = `✅ Campaign ${id} launched and logged. Check back in 72 hours to record results.`;
+    toast(`✅ Campaign ${id} launched`);
+    renderMarketing(); renderInsights();
+  }catch(e){
+    console.error('[Jarvis] campaign launch failed', e);
+    toast('⚠ Launch failed — try again');
+    if(btn){ btn.disabled = false; btn.textContent = '🚀 Launch Campaign'; }
+  }
+};
+
+window.jMcResult = async function(docId, cmpId, expected){
+  const input = prompt(`Actual revenue generated by ${cmpId}? (J$)`, expected);
+  if(input===null) return;
+  const actual = Math.round(parseFloat(String(input).replace(/[^0-9.]/g,''))||0);
+  try{
+    await updateDoc(doc(db,'campaigns',docId), { actualRevenue:actual, status:'completed', resolvedAt:todayISO() });
+    const c = CAMPAIGNS.find(x=>x._docId===docId);
+    if(c){ c.actualRevenue=actual; c.status='completed'; c.resolvedAt=todayISO(); }
+    toast(`🎉 ${fmt(actual)} recorded for ${cmpId}`);
+    renderMarketing(); renderInsights();
+  }catch(e){ console.error('[Jarvis] campaign result failed', e); toast('⚠ Could not save'); }
+};
+
+window.jMcRefresh = async function(){
+  const btn = document.getElementById('mc-refresh-btn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Refreshing…'; }
+  try{
+    const [cSnap, oSnap] = await Promise.all([
+      getDocs(collection(db,'campaigns')),
+      getDocs(collection(db,'jarvis_outcomes'))
+    ]);
+    CAMPAIGNS = cSnap.docs.map(d=>({ ...d.data(), _docId:d.id }));
+    OUTCOMES  = oSnap.docs.map(d=>({ ...d.data(), id:d.id }));
+  }catch(e){ console.warn('[Jarvis] marketing refresh failed', e); }
+  renderMarketing(); renderInsights(); renderLeaderboard(); renderPending();
+  toast('🔄 Recommendation refreshed');
+};
+
+// ════════════════════════════════════════
 // BUILD / BOOT
 // ════════════════════════════════════════
 function rebuild(){
   OPPS = buildOpportunities();
   CONTEXT = computeContext();
   renderNextBest();
+  renderMarketing();
   renderCeo();
   renderBuckets();
   renderThirty();
@@ -1488,6 +2000,23 @@ async function loadData(){
   }catch(e){
     OUTCOMES = [];
     console.warn('[Jarvis] jarvis_outcomes read failed (check Firestore rules):', e?.code||e);
+  }
+  // Campaigns + products loads are non-blocking too — Marketing Commander still
+  // renders its empty/zero state if the collection or rules aren't ready yet.
+  try{
+    const cSnap = await getDocs(collection(db,'campaigns'));
+    CAMPAIGNS = cSnap.docs.map(d=>({ ...d.data(), _docId:d.id }));
+    console.log(`[Jarvis] campaigns loaded: ${CAMPAIGNS.length}`);
+  }catch(e){
+    CAMPAIGNS = [];
+    console.warn('[Jarvis] campaigns read failed (check Firestore rules):', e?.code||e);
+  }
+  // TODO: connect to Manufacturing Commander inventory data
+  try{
+    const pSnap = await getDocs(collection(db,'products'));
+    MC_PRODUCTS = pSnap.docs.map(d=>({ ...d.data(), _docId:d.id }));
+  }catch(e){
+    MC_PRODUCTS = [];
   }
   const allOrders = oSnap.docs.map(d=>({...d.data(), dbId:d.id}));
   // Log the product field shape of the first 3 orders to understand the data structure.
