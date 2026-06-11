@@ -332,3 +332,52 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
 - Google Apps Script deployed with: checkLowStock (8am daily), checkForNewReceipts (every 30 mins), setup()
 - Anthropic API key stored in Script Properties as ANTHROPIC_API_KEY
 - Receipt folder: 16fTJEP2kp6Zixb1gRPJfrhphGs3dif-4
+
+---
+
+## JARVIS AI OPERATING SYSTEM
+
+Jarvis is the standalone AI operating system for Najah Chemist.
+Location: `/jarvis` (`jarvis.html`) — **NOT part of the admin panel.** It is a separate operating system page.
+URL: https://najahchemistja.com/jarvis
+
+It loads all data from the Firebase **production** project (`najah-chemist`) — `orders` and `leads` collections — on page load, behind the same Firebase admin login as admin.html (redirects to `/admin.html` if not signed in as `start@najahchemist.com`).
+
+### Core Metrics
+- AOV = J$22,535
+- Conversion rate = 8%
+
+### Probability rules
+- Unpaid order: 85%
+- Client due reorder: 80%
+- Hot lead (Contacted/Interested): 45%
+- Overdue follow-up: 35%
+- New lead never contacted: 25%
+
+`Score = Value × Probability` (all opportunities sorted by score, descending)
+
+### Jarvis Sections
+1. **What Should I Do Next** — single highest-scored opportunity, gold-bordered card, top of page
+2. **CEO Briefing** — 6 stat cards including the 3-scenario month-end forecast (conservative / expected / optimistic)
+3. **Money Left On Table** — 5 buckets (hot leads, clients due reorder, unpaid orders, new leads never contacted, overdue follow-ups) with 7-day and 30-day recovery horizons
+4. **If Najah Had 30 Minutes** — top 3 actions by score, with WhatsApp / Done / Snooze
+5. **Ask Jarvis** — Claude API (`claude-sonnet-4-6`) via `netlify/functions/jarvis.js`, full business context injected into the system prompt; keeps conversation history
+6. **Revenue Score Table** — all opportunities ranked by score (top 20 + Show All toggle)
+7. **Jarvis Insights** — 5 automated revenue observations, each with a Take Action button that pre-fills Ask Jarvis
+
+### Technical notes
+- Route: `/jarvis → /jarvis.html` redirect in netlify.toml
+- AI backend: `netlify/functions/jarvis.js` — model `claude-sonnet-4-6`, uses `ANTHROPIC_API_KEY` env var
+- Firebase web API key is hardcoded (public by design); jarvis.html is intentionally **NOT** in the inject-env.js FILES array, so the build does not touch it
+- Done/Snooze state persists in browser `localStorage`
+
+### Design
+- Dark theme: background #0A0A0A, cards #141414, borders #222222
+- Gold accent #C8973A (money, scores, highlights), brand #5C1A3A (primary buttons)
+- Success green #27AE60, warning amber #E67E22, danger red #C0392B
+- System font stack, mobile responsive, no storefront nav bar, "← Admin" link top-left
+
+### GitHub integrations planned (see research notes)
+- **Mem0** (`mem0ai/mem0`) — persistent AI memory; integrate first, once the Jarvis Opportunity Engine is proven in daily use
+- **CrewAI** (`crewAIInc/crewAI`) — multi-agent system; integrate after Jarvis is proven
+- **Browser Use** (`browser-use/browser-use`) — AI browser automation for competitor/opportunity radar; integrate last
