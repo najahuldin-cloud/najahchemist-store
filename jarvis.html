@@ -176,6 +176,33 @@
   .push-rec{margin-top:1rem;background:linear-gradient(135deg,rgba(200,151,58,0.14),var(--card));border:1px solid var(--gold);border-radius:12px;padding:1rem 1.1rem;font-size:0.92rem;line-height:1.55;}
   .push-rec b{color:var(--gold);}
 
+  /* outcome controls (inline on opportunity cards) */
+  .oc{display:inline-flex;gap:0.3rem;align-items:center;flex-wrap:wrap;}
+  .btn-lost{background:transparent;border:1px solid var(--red);color:var(--red);}
+  .oc-msg{font-size:0.74rem;font-weight:600;padding:0.16rem 0.3rem;}
+  .oc-msg.oc-ok{color:var(--green);}
+  .oc-msg.oc-bad{color:#e8786b;}
+
+  /* revenue leaderboard */
+  .lb-score{border:1.5px solid var(--gold);border-radius:14px;padding:1.2rem 1.4rem;background:linear-gradient(135deg,rgba(200,151,58,0.16) 0%,rgba(200,151,58,0.04) 50%,var(--card) 100%);}
+  .lb-score .lbs-t{font-size:0.72rem;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold);}
+  .lb-score .lbs-v{margin-top:0.45rem;font-size:2rem;font-weight:800;}
+  .lb-score .lbs-sub{font-size:0.9rem;font-weight:600;color:var(--mid);}
+  .lb-score .lbs-meta{margin-top:0.55rem;font-size:0.84rem;color:var(--text);}
+  .lb-score .lbs-meta b{color:var(--gold);}
+  .lb-total td{border-top:2px solid var(--border);background:var(--card2);}
+  .roi-good{color:var(--green);font-weight:700;}
+  .roi-mid{color:var(--amber);font-weight:700;}
+  .roi-bad{color:var(--red);font-weight:700;}
+
+  /* pending outcomes */
+  .pend-card{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--amber);border-radius:11px;padding:0.95rem 1.05rem;display:flex;flex-direction:column;gap:0.5rem;}
+  .pend-card .pend-h{display:flex;align-items:center;justify-content:space-between;gap:0.5rem;}
+  .pend-card .pend-n{font-size:0.92rem;font-weight:700;}
+  .pend-card .pend-ty{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.6px;color:var(--gold);}
+  .pend-card .pend-meta{font-size:0.76rem;color:var(--mid);}
+  .pend-card .pend-acts{display:flex;gap:0.4rem;flex-wrap:wrap;}
+
   .strike{opacity:0.45;}
   .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--gold);color:var(--text);padding:0.7rem 1.2rem;border-radius:10px;font-size:0.84rem;opacity:0;pointer-events:none;transition:opacity .25s;z-index:100;}
   .toast.show{opacity:1;}
@@ -224,6 +251,19 @@
   <section id="sec-thirty">
     <div class="sec-head"><h2>If Najah Had 30 Minutes</h2><span class="sub">top 3 by score</span></div>
     <div class="three" id="thirty-grid"></div>
+  </section>
+
+  <!-- REVENUE LEADERBOARD -->
+  <section id="sec-leaderboard">
+    <div class="sec-head"><h2>🏆 Revenue Leaderboard</h2><span class="sub">actual outcomes this month</span></div>
+    <div id="lb-scorecard"></div>
+    <div id="lb-table" style="margin-top:1rem;"></div>
+  </section>
+
+  <!-- PENDING OUTCOMES -->
+  <section id="sec-pending">
+    <div class="sec-head"><h2>Pending Outcomes</h2><span class="sub">need a follow-up decision</span></div>
+    <div id="pending-list"></div>
   </section>
 
   <!-- SECTION 4 -->
@@ -277,7 +317,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, query, orderBy, addDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 // ── Firebase (najah-chemist production; API key is public by design) ──
@@ -316,6 +356,11 @@ let CONTEXT = {};
 let askHistory = []; // {role, content}
 let showAllRows = false;
 const MEM0_CACHE = {}; // lowercased person name -> recalled Mem0 snippet
+let OUTCOMES = [];          // jarvis_outcomes docs: {id, opportunityType, name, whatsapp, expectedRevenue, actualRevenue, status, recommendedAt, resolvedAt}
+const ACTIONED = {};        // session map: opp.id -> outcome doc id (prevents duplicate outcome rows)
+let digitalActioned = false;// session guard for the First Sale System downsell button
+const todayISO = () => NOW.toISOString().slice(0,10);
+const LB_TYPES = ['Unpaid Order','Reorder Due','Hot Lead','New Lead','First Sale System'];
 
 // ── Live clock ──
 function tickClock(){
@@ -502,7 +547,98 @@ function isHidden(id){
   return false;
 }
 
-window.jDone = function(id){ markDone(id); rebuild(); toast('✅ Marked done'); };
+// ── Outcome tracking (jarvis_outcomes) ──
+// Set the action-control HTML for every rendered instance of an opportunity.
+function setOcHTML(oppId, html){
+  if(!oppId) return;
+  document.querySelectorAll(`[data-oc="${oppId}"]`).forEach(el=>{ el.innerHTML = html; });
+}
+function outcomeButtonsHTML(oppId, outcomeId, expected){
+  const e = Math.round(expected||0);
+  return `<span class="oc-msg oc-ok">✓ pending</span>`
+    + `<button class="btn btn-done btn-sm" onclick="jConverted('${outcomeId}','${oppId}',${e})">✅ Converted</button>`
+    + `<button class="btn btn-snooze btn-sm" onclick="jNotYet('${outcomeId}')">⏳ Not Yet</button>`
+    + `<button class="btn btn-lost btn-sm" onclick="jLost('${outcomeId}','${oppId}')">❌ Lost</button>`;
+}
+
+// ✅ Done — record a PENDING outcome and swap the control to the 3 outcome buttons.
+window.jDone = async function(id){
+  const o = OPPS.find(x=>x.id===id);
+  markDone(id);
+  if(ACTIONED[id]){ setOcHTML(id, outcomeButtonsHTML(id, ACTIONED[id], o?o.value:0)); return; }
+  setOcHTML(id, `<span class="oc-msg oc-ok">✓ Actioned — outcome pending</span>`);
+  toast('✓ Actioned — outcome pending');
+  try{
+    const outcome = {
+      opportunityType: o ? o.type : 'Unknown',
+      name: o ? (o.name||'') : '',
+      whatsapp: o ? (o.phone||'') : '',
+      expectedRevenue: o ? Math.round(o.value||0) : 0,
+      actualRevenue: null,
+      status: 'pending',
+      recommendedAt: todayISO(),
+      resolvedAt: null
+    };
+    const ref = await addDoc(collection(db,'jarvis_outcomes'), outcome);
+    outcome.id = ref.id;
+    OUTCOMES.push(outcome);
+    ACTIONED[id] = ref.id;
+    setOcHTML(id, outcomeButtonsHTML(id, ref.id, outcome.expectedRevenue));
+    renderLeaderboard(); renderPending(); renderInsights();
+  }catch(e){
+    console.error('[Jarvis] outcome save failed', e);
+    setOcHTML(id, `<span class="oc-msg oc-bad">⚠ Save failed — retry</span>`);
+  }
+};
+
+// ✅ Converted — prompt for actual revenue (prefilled with expected), then save.
+window.jConverted = async function(outcomeId, oppId, expected){
+  const input = prompt('Revenue generated? (J$)', expected);
+  if(input===null) return; // cancelled — keep buttons
+  const actual = Math.round(parseFloat(String(input).replace(/[^0-9.]/g,''))||0);
+  try{
+    await updateDoc(doc(db,'jarvis_outcomes',outcomeId), { status:'converted', actualRevenue:actual, resolvedAt:todayISO() });
+    const oc = OUTCOMES.find(x=>x.id===outcomeId);
+    if(oc){ oc.status='converted'; oc.actualRevenue=actual; oc.resolvedAt=todayISO(); }
+    setOcHTML(oppId, `<span class="oc-msg oc-ok">🎉 ${fmt(actual)} recorded</span>`);
+    toast(`🎉 ${fmt(actual)} recorded`);
+    renderLeaderboard(); renderPending(); renderInsights();
+  }catch(e){ console.error('[Jarvis] convert failed', e); toast('⚠ Could not save'); }
+};
+
+// ⏳ Not Yet — stays pending, keeps the outcome buttons visible.
+window.jNotYet = function(outcomeId){ toast('⏳ Following up'); };
+
+// ❌ Lost — mark lost with zero revenue.
+window.jLost = async function(outcomeId, oppId){
+  try{
+    await updateDoc(doc(db,'jarvis_outcomes',outcomeId), { status:'lost', actualRevenue:0, resolvedAt:todayISO() });
+    const oc = OUTCOMES.find(x=>x.id===outcomeId);
+    if(oc){ oc.status='lost'; oc.actualRevenue=0; oc.resolvedAt=todayISO(); }
+    setOcHTML(oppId, `<span class="oc-msg oc-bad">❌ Marked as lost</span>`);
+    toast('❌ Marked as lost');
+    renderLeaderboard(); renderPending(); renderInsights();
+  }catch(e){ console.error('[Jarvis] lost failed', e); toast('⚠ Could not save'); }
+};
+
+// First Sale System downsell — record a pending First Sale System outcome.
+window.jDoneDigital = async function(){
+  if(digitalActioned) return;
+  digitalActioned = true;
+  const s = CONTEXT.digitalSample;
+  toast('✓ Actioned — outcome pending');
+  try{
+    const outcome = {
+      opportunityType:'First Sale System', name: s?(s.name||''):'', whatsapp: s?(s.phone||''):'',
+      expectedRevenue: FIRST_SALE.price, actualRevenue:null, status:'pending',
+      recommendedAt: todayISO(), resolvedAt:null
+    };
+    const ref = await addDoc(collection(db,'jarvis_outcomes'), outcome);
+    outcome.id = ref.id; OUTCOMES.push(outcome);
+    renderLeaderboard(); renderPending(); renderInsights();
+  }catch(e){ console.error('[Jarvis] digital outcome failed', e); digitalActioned=false; }
+};
+
 window.jSnooze = function(id){ snooze(id,3); rebuild(); toast('⏰ Snoozed 3 days'); };
 let INSIGHT_QS = [], GROWTH_QS = [];
 function _prefill(q){
@@ -827,7 +963,9 @@ function actionBtns(o, mode){
     : `<button class="btn btn-ghost ${mode==='sm'?'btn-sm':''}" disabled>no #</button>`;
   const done = `<button class="btn btn-done ${mode==='sm'?'btn-sm':''}" onclick="jDone('${esc(o.id)}')">✅</button>`;
   const snz  = `<button class="btn btn-snooze ${mode==='sm'?'btn-sm':''}" onclick="jSnooze('${esc(o.id)}')">⏰</button>`;
-  return {wa,done,snz};
+  // swappable control: ✅+⏰ now, replaced by outcome buttons once actioned
+  const oc = `<span class="oc" data-oc="${esc(o.id)}">${done}${snz}</span>`;
+  return {wa,done,snz,oc};
 }
 
 function renderNextBest(){
@@ -845,7 +983,7 @@ function renderNextBest(){
       <div class="stats">Estimated Value: <b>${fmt(o.value)}</b> &nbsp;|&nbsp; Probability: <b>${Math.round(o.prob*100)}%</b> &nbsp;|&nbsp; Expected Value: <b>${fmt(o.score)}</b></div>
       <div class="why">Why: ${esc(o.why)}</div>
       ${oppExtras(o)}
-      <div class="actions">${waBtn}</div>
+      <div class="actions">${waBtn} ${actionBtns(o,'').oc}</div>
     </div>`;
 }
 
@@ -932,7 +1070,7 @@ function renderThirty(){
   const top3 = OPPS.slice(0,3);
   if(!top3.length){ grid.innerHTML = `<div class="rank-card"><div class="wy">Nothing to action right now.</div></div>`; return; }
   grid.innerHTML = top3.map((o,i)=>{
-    const {wa,done,snz} = actionBtns(o,'');
+    const {wa,oc} = actionBtns(o,'');
     return `<div class="rank-card">
       <div class="rk">${i+1}</div>
       <div class="ty">${esc(o.type)}</div>
@@ -945,7 +1083,7 @@ function renderThirty(){
       <div class="wy">${esc(o.why)}</div>
       ${oppExtras(o)}
       <div class="rec">Recoverable in: ${horizonPill(o.horizon)}</div>
-      <div class="acts">${wa}${done}${snz}</div>
+      <div class="acts">${wa}${oc}</div>
     </div>`;
   }).join('');
 }
@@ -955,7 +1093,7 @@ function renderTable(){
   document.getElementById('table-count').textContent = `${OPPS.length} opportunit${OPPS.length===1?'y':'ies'}`;
   const rows = showAllRows ? OPPS : OPPS.slice(0,20);
   tbody.innerHTML = rows.map((o,i)=>{
-    const {wa,done,snz} = actionBtns(o,'sm');
+    const {wa,oc} = actionBtns(o,'sm');
     return `<tr>
       <td>${i+1}</td>
       <td><strong>${esc(o.name)}</strong></td>
@@ -965,7 +1103,7 @@ function renderTable(){
       <td class="num">${Math.round(o.prob*100)}%</td>
       <td class="num money">${fmt(o.score)}</td>
       <td>${horizonPill(o.horizon)}</td>
-      <td><div class="acts">${wa}${done}${snz}</div></td>
+      <td><div class="acts">${wa}${oc}</div></td>
     </tr>`;
   }).join('') || `<tr><td colspan="9" style="text-align:center;padding:1.5rem;color:var(--dim);">No open opportunities. 🎉</td></tr>`;
   const btn = document.getElementById('show-all-btn');
@@ -1006,6 +1144,18 @@ function renderInsights(){
   cards.push({t:'📘 Digital Revenue Opportunity',
     body:`<b>${c.digitalLeads}</b> leads exploring but not ordering. Promoting The First Sale System at 5% conversion = <b>${fmt(c.digitalRevenue)}</b>. This is money from leads who won't buy manufacturing today.`,
     q:`Write a broadcast to promote The First Sale System to cold leads`});
+  // 7 jarvis performance (from recorded outcomes)
+  const lb = computeLeaderboard();
+  if(lb.actionedCount){
+    const bestTxt = lb.best ? `${lb.best.type} at ${roiText(lb.best.roi)}` : 'none yet';
+    cards.push({t:'🏆 Jarvis Performance',
+      body:`<b>${lb.actionedCount}</b> recommendation${lb.actionedCount===1?'':'s'} actioned. <b>${Math.round(lb.hitRate*100)}%</b> converted. <b>${fmt(lb.generated)}</b> generated. Best ROI action: <b>${esc(bestTxt)}</b>. <b>${lb.pendingCount}</b> outcome${lb.pendingCount===1?'':'s'} still pending resolution.`,
+      q:`How is Jarvis performing on the recommendations I've actioned, and what should I do to lift my hit rate and ROI?`});
+  } else {
+    cards.push({t:'🏆 Jarvis Performance',
+      body:`No recommendations actioned yet. Click <b>✅ Done</b> on an opportunity, then mark the result, to start tracking the revenue Jarvis generates.`,
+      q:`How should I use Jarvis day-to-day to convert the most opportunities?`});
+  }
 
   INSIGHT_QS = cards.map(c2=>c2.q);
   document.getElementById('insight-grid').innerHTML = cards.map((c2,i)=>`
@@ -1063,7 +1213,7 @@ function digitalPushCard(){
   const waMsg = msgFirstSale(c.digitalSample ? safeName(c.digitalSample.name) : 'there');
   const link = c.digitalSample ? waLink(c.digitalSample.phone, waMsg) : null;
   const waBtn = link
-    ? `<a class="btn btn-wa btn-sm" href="${esc(link)}" target="_blank" rel="noopener">📱 WhatsApp Message</a>`
+    ? `<a class="btn btn-wa btn-sm" href="${esc(link)}" target="_blank" rel="noopener" onclick="jDoneDigital()">📱 WhatsApp Message</a>`
     : `<button class="btn btn-ghost btn-sm" disabled>no #</button>`;
   return `<div class="push-card" style="border-left-color:var(--brand);">
     <div class="pn">📘 Downsell Opportunity — The First Sale System</div>
@@ -1106,6 +1256,112 @@ function renderPush(){
 }
 
 // ════════════════════════════════════════
+// REVENUE LEADERBOARD (jarvis_outcomes)
+// ════════════════════════════════════════
+function roiClass(roi){ return roi==null ? '' : (roi>1.0?'roi-good':(roi>=0.7?'roi-mid':'roi-bad')); }
+function roiText(roi){ return roi==null ? '—' : roi.toFixed(1)+'×'; }
+
+// Aggregate outcomes for the current month (by recommendedAt). Pending count is lifetime.
+function computeLeaderboard(){
+  const ym = todayISO().slice(0,7);
+  const month = OUTCOMES.filter(o=>(o.recommendedAt||'').slice(0,7)===ym);
+  const byType = {};
+  const ensure = t => (byType[t] = byType[t] || {type:t, actioned:0, converted:0, revenue:0, expResolved:0, actResolved:0});
+  month.forEach(o=>{
+    const r = ensure(o.opportunityType||'Unknown');
+    r.actioned++;
+    if(o.status==='converted'){ r.converted++; r.revenue += (+o.actualRevenue||0); }
+    if(o.status==='converted' || o.status==='lost'){ r.expResolved += (+o.expectedRevenue||0); r.actResolved += (+o.actualRevenue||0); }
+  });
+  // canonical rows always shown; plus any other types that have data (e.g. Overdue Follow-up)
+  const types = [...LB_TYPES, ...Object.keys(byType).filter(t=>!LB_TYPES.includes(t))];
+  const rows = types.map(t=>{
+    const r = byType[t] || {type:t, actioned:0, converted:0, revenue:0, expResolved:0, actResolved:0};
+    const hitRate = r.actioned ? r.converted/r.actioned : 0;
+    const roi = r.expResolved>0 ? r.actResolved/r.expResolved : null;
+    return {type:t, actioned:r.actioned, converted:r.converted, revenue:r.revenue, hitRate, roi};
+  });
+  const total = rows.reduce((a,r)=>({
+    actioned:a.actioned+r.actioned, converted:a.converted+r.converted, revenue:a.revenue+r.revenue,
+    expResolved:a.expResolved+(byType[r.type]?byType[r.type].expResolved:0),
+    actResolved:a.actResolved+(byType[r.type]?byType[r.type].actResolved:0)
+  }), {actioned:0,converted:0,revenue:0,expResolved:0,actResolved:0});
+  total.hitRate = total.actioned ? total.converted/total.actioned : 0;
+  total.roi = total.expResolved>0 ? total.actResolved/total.expResolved : null;
+  // best / worst performers among rows with a resolved ROI
+  const scored = rows.filter(r=>r.roi!=null);
+  let best=null, worst=null;
+  scored.forEach(r=>{ if(!best||r.roi>best.roi) best=r; if(!worst||r.roi<worst.roi) worst=r; });
+  const pendingCount = OUTCOMES.filter(o=>o.status==='pending').length;
+  return {
+    rows, total, monthCount:month.length,
+    generated: total.revenue, convertedCount: total.converted, actionedCount: total.actioned,
+    hitRate: total.hitRate, best, worst, pendingCount
+  };
+}
+
+function renderLeaderboard(){
+  const lb = computeLeaderboard();
+  const score = document.getElementById('lb-scorecard');
+  const tableEl = document.getElementById('lb-table');
+  if(!lb.monthCount){
+    score.innerHTML = '';
+    tableEl.innerHTML = `<div class="empty" style="padding:1rem 0;">No outcomes recorded yet. Action opportunities and mark results to build your leaderboard.</div>`;
+    return;
+  }
+  const hitPct = Math.round(lb.hitRate*100);
+  score.innerHTML = `<div class="lb-score">
+    <div class="lbs-t">🏆 JARVIS GENERATED</div>
+    <div class="lbs-v money">${fmt(lb.generated)} <span class="lbs-sub">this month</span></div>
+    <div class="lbs-meta">${lb.convertedCount} recommendation${lb.convertedCount===1?'':'s'} converted &nbsp;·&nbsp; <b>${hitPct}%</b> hit rate (${lb.convertedCount}/${lb.actionedCount} actioned)</div>
+  </div>`;
+  const rowHTML = lb.rows.map(r=>`<tr>
+    <td>${esc(r.type)}</td>
+    <td class="num">${r.actioned}</td>
+    <td class="num">${r.converted}</td>
+    <td class="num money">${fmt(r.revenue)}</td>
+    <td class="num">${r.actioned?Math.round(r.hitRate*100)+'%':'—'}</td>
+    <td class="num ${roiClass(r.roi)}">${roiText(r.roi)}</td>
+  </tr>`).join('');
+  const t = lb.total;
+  tableEl.innerHTML = `<div class="tbl-wrap"><table>
+    <thead><tr><th>Type</th><th class="num">Actioned</th><th class="num">Converted</th><th class="num">Revenue</th><th class="num">Hit Rate</th><th class="num">ROI</th></tr></thead>
+    <tbody>${rowHTML}
+      <tr class="lb-total">
+        <td><strong>TOTAL</strong></td>
+        <td class="num"><strong>${t.actioned}</strong></td>
+        <td class="num"><strong>${t.converted}</strong></td>
+        <td class="num money"><strong>${fmt(t.revenue)}</strong></td>
+        <td class="num"><strong>${t.actioned?Math.round(t.hitRate*100)+'%':'—'}</strong></td>
+        <td class="num ${roiClass(t.roi)}"><strong>${roiText(t.roi)}</strong></td>
+      </tr>
+    </tbody></table></div>`;
+}
+
+function renderPending(){
+  const el = document.getElementById('pending-list');
+  const pend = OUTCOMES.filter(o=>o.status==='pending')
+    .sort((a,b)=>(a.recommendedAt||'').localeCompare(b.recommendedAt||''));
+  if(!pend.length){
+    el.innerHTML = `<div class="empty" style="padding:0.6rem 0;">No pending outcomes — every actioned opportunity has been resolved. 🎉</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="bucket-grid">` + pend.map(o=>{
+    const exp = Math.round(o.expectedRevenue||0);
+    const since = o.recommendedAt ? daysAgo(new Date(o.recommendedAt+'T00:00:00')) : null;
+    const sinceTxt = since==null ? '' : (since===0 ? 'today' : `${since} day${since===1?'':'s'} ago`);
+    return `<div class="pend-card">
+      <div class="pend-h"><span class="pend-n">${esc(o.name||'—')}</span><span class="pend-ty">${esc(o.opportunityType||'')}</span></div>
+      <div class="pend-meta">Expected <b class="money">${fmt(exp)}</b> · actioned ${esc(o.recommendedAt||'—')}${sinceTxt?` · ${sinceTxt}`:''}</div>
+      <div class="pend-acts">
+        <button class="btn btn-done btn-sm" onclick="jConverted('${o.id}','',${exp})">✅ Converted ${fmt(exp)}</button>
+        <button class="btn btn-lost btn-sm" onclick="jLost('${o.id}','')">❌ Lost</button>
+      </div>
+    </div>`;
+  }).join('') + `</div>`;
+}
+
+// ════════════════════════════════════════
 // ASK JARVIS
 // ════════════════════════════════════════
 function buildSystemPrompt(){
@@ -1134,6 +1390,13 @@ ${top5 || 'none'}
 - Projected month end (expected): ${fmt(c.expected)}
 - Pipeline — gross: ${fmt(c.grossPipeline)}, unique (${c.uniquePeople} people): ${fmt(c.uniquePipeline)}, expected: ${fmt(c.expectedPipeline)}
 - Lead-to-order conversion (email-matched): ${c.convPct}% (${c.convertedLeads} of ${c.leadsWithEmail})
+${(()=>{ const lb=computeLeaderboard(); return `
+Jarvis Revenue Leaderboard (actual outcomes this month):
+- Total generated: ${fmt(lb.generated)}
+- Hit rate: ${Math.round(lb.hitRate*100)}% (${lb.convertedCount} of ${lb.actionedCount} actioned)
+- Best performer: ${lb.best?`${lb.best.type} at ${roiText(lb.best.roi)} ROI`:'none yet'}
+- Worst performer: ${lb.worst?`${lb.worst.type} at ${roiText(lb.worst.roi)} ROI`:'none yet'}
+- Pending outcomes: ${lb.pendingCount}`; })()}
 
 Answer the founder's question directly. If asked to write a message, write it. If asked for a recommendation, give one specific action. Always state the expected revenue impact.`;
 }
@@ -1183,6 +1446,8 @@ function rebuild(){
   renderCeo();
   renderBuckets();
   renderThirty();
+  renderLeaderboard();
+  renderPending();
   renderTable();
   renderInsights();
   renderPush();
@@ -1214,6 +1479,16 @@ async function loadData(){
     getDocs(collection(db,'orders')),
     getDocs(collection(db,'leads'))
   ]);
+  // Outcomes load is non-blocking — if the collection/rules aren't ready yet,
+  // the dashboard still renders (leaderboard just shows the empty state).
+  try{
+    const ocSnap = await getDocs(collection(db,'jarvis_outcomes'));
+    OUTCOMES = ocSnap.docs.map(d=>({ ...d.data(), id:d.id }));
+    console.log(`[Jarvis] outcomes loaded: ${OUTCOMES.length}`);
+  }catch(e){
+    OUTCOMES = [];
+    console.warn('[Jarvis] jarvis_outcomes read failed (check Firestore rules):', e?.code||e);
+  }
   const allOrders = oSnap.docs.map(d=>({...d.data(), dbId:d.id}));
   // Log the product field shape of the first 3 orders to understand the data structure.
   allOrders.slice(0,3).forEach((o,i)=>console.log(`[Jarvis] order ${i} product fields:`,
