@@ -276,6 +276,7 @@ let OPPS = [];
 let CONTEXT = {};
 let askHistory = []; // {role, content}
 let showAllRows = false;
+const MEM0_CACHE = {}; // lowercased person name -> recalled Mem0 snippet
 
 // ── Live clock ──
 function tickClock(){
@@ -538,8 +539,13 @@ function buildOpportunities(){
     });
   });
 
-  // sanitize ids so they're safe inside inline onclick="" handlers
-  opps.forEach(o=>{ o.id = (o.id||'').replace(/[^A-Za-z0-9:_.@-]/g,'_'); o.score = o.value * o.prob; });
+  // sanitize ids; score; and fold in any Mem0 memory recalled for this person
+  opps.forEach(o=>{
+    o.id = (o.id||'').replace(/[^A-Za-z0-9:_.@-]/g,'_');
+    o.score = o.value * o.prob;
+    const mem = MEM0_CACHE[(o.name||'').toLowerCase()];
+    if(mem) o.why = `${o.why} Mem0: ${mem}`;
+  });
   return opps.filter(o=>!isHidden(o.id)).sort((a,b)=>b.score-a.score);
 }
 
@@ -943,6 +949,26 @@ function rebuild(){
   renderGrowth();
 }
 
+// Ask the Mem0-backed function for any history on the top opportunities,
+// then fold the snippets into their Why fields. Fully optional — the
+// dashboard is already rendered before this runs, so failure changes nothing.
+async function enrichOpportunities(){
+  try{
+    const names = [...new Set(OPPS.slice(0,10).map(o=>o.name))].filter(Boolean);
+    if(!names.length) return;
+    const res = await fetch('/.netlify/functions/jarvis',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'enrich', names })
+    });
+    if(!res.ok) return;
+    const data = await res.json();
+    const mem = data.memories || {};
+    let any=false;
+    Object.keys(mem).forEach(n=>{ if(mem[n]){ MEM0_CACHE[n.toLowerCase()] = mem[n]; any=true; } });
+    if(any) rebuild(); // re-render Why fields with recalled memory
+  }catch(e){ /* dashboard already rendered; ignore */ }
+}
+
 async function loadData(){
   const [oSnap, lSnap] = await Promise.all([
     getDocs(collection(db,'orders')),
@@ -953,6 +979,7 @@ async function loadData(){
   rebuild();
   document.getElementById('loading').style.display='none';
   document.getElementById('app').style.display='block';
+  enrichOpportunities(); // fire-and-forget Mem0 enrichment
 }
 
 // ── Auth gate — same admin login as admin.html ──
