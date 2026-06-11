@@ -451,9 +451,8 @@ async function sendWhatsApp(phone, message, templateOpts) {
 
 // ── Morning digest: daily 8am Jamaica lead/order summary to the owner ──────────
 
-// TODO: Switch back to sendWhatsApp once +18763499729 is activated on WABA 505936159266553
 exports.morningDigest = onSchedule(
-  { schedule: '0 8 * * *', timeZone: 'America/Jamaica', secrets: ['RESEND_API_KEY'] },
+  { schedule: '0 8 * * *', timeZone: 'America/Jamaica', secrets: ['RESEND_API_KEY', 'WHATSAPP_TOKEN', 'WHATSAPP_PHONE_ID'] },
   async () => {
     const db = getFirestore();
 
@@ -494,6 +493,15 @@ exports.morningDigest = onSchedule(
     console.log(`[morningDigest] ${todayStr} — new:${newLeads} followups:${followUpsDue} pending:${ordersPending}`);
 
     const html = `<div style="font-family:Outfit,Arial,sans-serif;font-size:15px;color:#1a1a1a;line-height:1.6;white-space:pre-wrap;">${message}</div>`;
+
+    // WhatsApp to owner — same content as the email
+    try {
+      await sendWhatsApp('18768851099', message);
+      console.log('[morningDigest] WhatsApp sent to owner');
+    } catch (err) {
+      console.error('[morningDigest] WhatsApp failed:', err.message);
+    }
+
     await sendResendEmail('start@najahchemistja.com', `☀️ Morning Lead Digest — ${todayStr}`, html);
 
     console.log('[morningDigest] Sent.');
@@ -502,9 +510,8 @@ exports.morningDigest = onSchedule(
 
 // ── Evening digest: daily 6pm Jamaica lead/order summary to the owner ──────────
 
-// TODO: Switch back to sendWhatsApp once +18763499729 is activated on WABA 505936159266553
 exports.eveningDigest = onSchedule(
-  { schedule: '0 18 * * *', timeZone: 'America/Jamaica', secrets: ['RESEND_API_KEY'] },
+  { schedule: '0 18 * * *', timeZone: 'America/Jamaica', secrets: ['RESEND_API_KEY', 'WHATSAPP_TOKEN', 'WHATSAPP_PHONE_ID'] },
   async () => {
     const db = getFirestore();
 
@@ -550,6 +557,15 @@ exports.eveningDigest = onSchedule(
     console.log(`[eveningDigest] ${todayStr} — new:${newLeads} followups:${followUpsDue} pending:${ordersPending}`);
 
     const html = `<div style="font-family:Outfit,Arial,sans-serif;font-size:15px;color:#1a1a1a;line-height:1.6;white-space:pre-wrap;">${message}</div>`;
+
+    // WhatsApp to owner — same content as the email
+    try {
+      await sendWhatsApp('18768851099', message);
+      console.log('[eveningDigest] WhatsApp sent to owner');
+    } catch (err) {
+      console.error('[eveningDigest] WhatsApp failed:', err.message);
+    }
+
     await sendResendEmail('start@najahchemistja.com', `🌙 Evening Lead Digest — ${todayStr}`, html);
 
     console.log('[eveningDigest] Sent.');
