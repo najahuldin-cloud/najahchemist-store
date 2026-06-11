@@ -381,3 +381,34 @@ It loads all data from the Firebase **production** project (`najah-chemist`) —
 - **Mem0** (`mem0ai/mem0`) — persistent AI memory; integrate first, once the Jarvis Opportunity Engine is proven in daily use
 - **CrewAI** (`crewAIInc/crewAI`) — multi-agent system; integrate after Jarvis is proven
 - **Browser Use** (`browser-use/browser-use`) — AI browser automation for competitor/opportunity radar; integrate last
+
+---
+
+## INSTALLED SKILLS
+
+Claude Code skill packs copied from `github.com/alirezarezvani/claude-skills` into `claude-skills-najah/` at the repo root (grouped by category). Each folder is a self-contained skill with its own `SKILL.md`. Purpose is described for Najah Chemist specifically.
+
+> Path note: the source repo nests skills under `*/skills/`, so requested paths were resolved accordingly. **`business-operations/orchestrator` does not exist** in the repo (only an `orchestration/ORCHESTRATION.md` doc with no SKILL.md) — skipped. **`growth/` does not exist**; its analog **`business-growth`** (entire skills set, 5 skills) was installed in its place.
+
+### Marketing (`claude-skills-najah/marketing/`)
+- **email-sequence** — Build automated reorder/nurture/win-back email & WhatsApp drip flows for Najah's leads and wholesale clients (welcome, follow-up, reactivation).
+- **copywriting** — Write and sharpen storefront, product-page, and landing-page copy for Najah's wholesale lines (soaps, yoni care, hair, men's).
+- **content-strategy** — Plan blog/social topic clusters that attract aspiring Jamaican skincare-brand owners and rank for "start a skincare business" searches.
+
+### Commercial (`claude-skills-najah/commercial/`)
+- **pricing-strategist** — Design Najah's wholesale tiers, MOQ packaging, and Good/Better/Best bundles with willingness-to-pay analysis instead of guessing a single price.
+- **deal-desk** — Review large/custom bulk or filling-service deals: score margin after discount, flag risky contract terms, route approvals before close.
+- **commercial-forecaster** — Turn Najah's pipeline (leads, reorders due, unpaid orders) into a defensible monthly bookings/revenue forecast with commit/best-case/pipe tiers.
+
+### Business Operations (`claude-skills-najah/business-operations/`)
+- **capacity-planner** — Size production/fulfillment and support headcount as order volume grows, modeling utilization, ramp, and a quarterly hiring sequence.
+
+### Business Growth (`claude-skills-najah/business-growth/` — installed as the "growth" set)
+- **business-growth-skills** — Umbrella plugin bundling the four growth skills below for Claude Code/Codex/Gemini.
+- **contract-and-proposal-writer** — Draft private-label manufacturing proposals, SOWs, and NDAs for new custom-product clients (R&D + filling engagements).
+- **customer-success-manager** — Score wholesale-client health, flag churn/at-risk clients who haven't reordered, and surface upsell/expansion opportunities.
+- **revenue-operations** — Analyze pipeline coverage, reorder cohorts, and forecast accuracy to tighten Najah's lead-to-order revenue engine.
+- **sales-engineer** — Build competitor comparison matrices and structured responses for larger wholesale bids/RFPs and custom-formulation pitches.
+
+### Productivity (`claude-skills-najah/productivity/`)
+- **handoff** — Compact a working session into a redacted handoff doc so the next Claude Code session can resume Jarvis/site work cleanly.
