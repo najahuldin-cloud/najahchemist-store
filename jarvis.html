@@ -146,6 +146,12 @@
   .insight .ib{margin-top:0.5rem;font-size:0.92rem;line-height:1.5;flex:1;}
   .insight .ib b{color:var(--gold);}
   .insight .ia{margin-top:0.9rem;}
+  /* Growth Opportunities — green left border */
+  .growth{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:11px;padding:1.05rem 1.1rem;display:flex;flex-direction:column;}
+  .growth .it{font-size:0.66rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--green);}
+  .growth .iv{margin-top:0.45rem;font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--green);}
+  .growth .ib{margin-top:0.4rem;font-size:0.86rem;line-height:1.5;color:var(--text);flex:1;}
+  .growth .ia{margin-top:0.9rem;}
 
   .strike{opacity:0.45;}
   .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--gold);color:var(--text);padding:0.7rem 1.2rem;border-radius:10px;font-size:0.84rem;opacity:0;pointer-events:none;transition:opacity .25s;z-index:100;}
@@ -227,6 +233,12 @@
   <section id="sec-insights" style="margin-bottom:3rem;">
     <div class="sec-head"><h2>Jarvis Insights</h2></div>
     <div class="insight-grid" id="insight-grid"></div>
+  </section>
+
+  <!-- GROWTH OPPORTUNITIES -->
+  <section id="sec-growth" style="margin-bottom:3rem;">
+    <div class="sec-head"><h2>Growth Opportunities</h2><span class="sub">forward-looking revenue upside</span></div>
+    <div class="insight-grid" id="growth-grid"></div>
   </section>
 
 </main>
@@ -318,6 +330,21 @@ function safeName(raw){
   if(banned.includes(first.toLowerCase())) return 'there';
   return first;
 }
+// Data-quality filter — keep junk names out of every opportunity bucket.
+// Exclude: blank/null, numeric-only, <2 chars, or containing junk phrases.
+function validName(raw){
+  const name = (raw||'').trim();
+  if(name.length < 2) return false;          // blank/null or too short
+  if(/^\d+$/.test(name)) return false;        // numeric only (e.g. "15000")
+  const low = name.toLowerCase();
+  // exact-match bans for short tokens that appear inside real names
+  // ("na" -> Donna/Tanya, "n/a") so they don't nuke legitimate names
+  if(['na','n/a'].includes(low)) return false;
+  // substring bans for distinctive junk (no real name contains these)
+  const substrBan = ['good','test','none','unknown','my name is'];
+  if(substrBan.some(b => low.includes(b))) return false;
+  return true;
+}
 function segOf(l){
   const b = (l.brandType||'').toLowerCase();
   if(b.includes('hair')) return 'haircare';
@@ -376,13 +403,15 @@ function isHidden(id){
 
 window.jDone = function(id){ markDone(id); rebuild(); toast('✅ Marked done'); };
 window.jSnooze = function(id){ snooze(id,3); rebuild(); toast('⏰ Snoozed 3 days'); };
-let INSIGHT_QS = [];
-window.jPrefillIdx = function(i){
-  const q = INSIGHT_QS[i]; if(q==null) return;
+let INSIGHT_QS = [], GROWTH_QS = [];
+function _prefill(q){
+  if(q==null) return;
   const inp=document.getElementById('ask-input');
   inp.value=q; inp.focus();
   document.getElementById('sec-ask').scrollIntoView({behavior:'smooth',block:'center'});
-};
+}
+window.jPrefillIdx = function(i){ _prefill(INSIGHT_QS[i]); };
+window.jGrowthIdx  = function(i){ _prefill(GROWTH_QS[i]); };
 
 function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
 
@@ -402,13 +431,15 @@ function buildOpportunities(){
   LEADS.forEach(l=>{
     const st = l.status||'New';
     if(st!=='Contacted' && st!=='Interested') return;
+    if(!validName(l.name)) return;
     const em = (l.email||'').trim().toLowerCase();
     if(em && orderEmails.has(em)) return;
     const ref = l.lastContacted ? new Date(l.lastContacted+'T00:00:00') : leadDate(l);
     const days = daysAgo(ref) ?? 0;
     opps.push({
       bucket:'hot', id:'hot:'+(l._docId||l.id||l.whatsapp||l.name),
-      name:l.name||'Unknown lead', type:'Hot Lead',
+      key:(em||l.whatsapp||l.name||'').toLowerCase(),
+      name:l.name, type:'Hot Lead',
       why:`Reached out ${days} days ago. No order placed.`,
       value:AOV, prob:PROB.hot, horizon:'7 days',
       phone:l.whatsapp, msg:msgHotLead(safeName(l.name))
@@ -419,24 +450,28 @@ function buildOpportunities(){
   Object.values(byEmail).forEach(list=>{
     const dated = list.map(o=>({o,d:parseOrderDate(o)})).filter(x=>x.d).sort((a,b)=>a.d-b.d);
     if(!dated.length) return;
-    let interval = 30;
+    // Interval: need 2+ orders to compute an average; ignore implausibly short
+    // averages (<7 days) and fall back to a 30-day default.
+    let interval = 30; // default (single-order clients, or avg under the 7-day floor)
     if(dated.length>=2){
       let sum=0; for(let i=1;i<dated.length;i++){ sum += (dated[i].d - dated[i-1].d)/86400000; }
-      interval = sum/(dated.length-1);
+      const avg = sum/(dated.length-1);
+      interval = avg < 7 ? 30 : avg;
     }
-    interval = Math.max(1, interval);
     const last = dated[dated.length-1];
     const since = daysAgo(last.d) ?? 0;
     if(since <= interval) return;
     const value = orderTotal(last.o);
     if(value<=0) return;
-    const name = orderName(last.o);
+    const rawName = (last.o.client||last.o.customerName||last.o.clientName||'').trim();
+    if(!validName(rawName)) return;
     opps.push({
       bucket:'reorder', id:'reorder:'+orderEmail(last.o),
-      name, type:'Reorder Due',
+      key:orderEmail(last.o),
+      name:rawName, type:'Reorder Due',
       why:`Last ordered ${since} days ago. Average reorder interval is ${Math.round(interval)} days.`,
       value, prob:PROB.reorder, horizon:'7 days',
-      phone:orderPhone(last.o), msg:msgReorder(safeName(name)),
+      phone:orderPhone(last.o), msg:msgReorder(safeName(rawName)),
       _items:(last.o.items||[])
     });
   });
@@ -447,16 +482,18 @@ function buildOpportunities(){
     if(isPaid(o)) return;
     const value = orderTotal(o);
     if(value<=0) return;
+    const rawName = (o.client||o.customerName||o.clientName||'').trim();
+    if(!validName(rawName)) return;
     const d = parseOrderDate(o);
     const days = daysAgo(d) ?? 0;
-    const name = orderName(o);
     const idNum = orderId(o).replace(/^NC-?/i,'') || orderId(o);
     opps.push({
       bucket:'unpaid', id:'unpaid:'+(o.dbId||orderId(o)),
-      name, type:'Unpaid Order',
+      key:(orderEmail(o)||orderPhone(o)||o.dbId||orderId(o)||'').toString().toLowerCase(),
+      name:rawName, type:'Unpaid Order',
       why:`Order placed ${days} days ago. Payment not received.`,
       value, prob:PROB.unpaid, horizon:'Today',
-      phone:orderPhone(o), msg:msgUnpaid(safeName(name), idNum, Math.round(value).toLocaleString())
+      phone:orderPhone(o), msg:msgUnpaid(safeName(rawName), idNum, Math.round(value).toLocaleString())
     });
   });
 
@@ -464,14 +501,17 @@ function buildOpportunities(){
   LEADS.forEach(l=>{
     const st = l.status||'New';
     if(st!=='New') return;
+    if(!validName(l.name)) return;
     const d = leadDate(l);
     if(!d) return;
     if((NOW - d)/3600000 <= 24) return; // <24h old
     const days = daysAgo(d) ?? 0;
     const seg = segOf(l);
+    const em = (l.email||'').trim().toLowerCase();
     opps.push({
       bucket:'newlead', id:'newlead:'+(l._docId||l.id||l.whatsapp||l.name),
-      name:l.name||'Unknown lead', type:'New Lead',
+      key:(em||l.whatsapp||l.name||'').toLowerCase(),
+      name:l.name, type:'New Lead',
       why:`Submitted ${days} days ago. Never contacted.`,
       value:AOV, prob:PROB.newlead, horizon:'30 days',
       phone:l.whatsapp, msg:msgNewLead(safeName(l.name), seg)
@@ -484,11 +524,14 @@ function buildOpportunities(){
     if(!l.followUpDate) return;
     if(l.followUpDate > todayStr) return;
     if(st==='Ordered' || st==='Cold') return;
+    if(!validName(l.name)) return;
     const due = new Date(l.followUpDate+'T00:00:00');
     const days = daysAgo(due) ?? 0;
+    const em = (l.email||'').trim().toLowerCase();
     opps.push({
       bucket:'overdue', id:'overdue:'+(l._docId||l.id||l.whatsapp||l.name),
-      name:l.name||'Unknown lead', type:'Overdue Follow-up',
+      key:(em||l.whatsapp||l.name||'').toLowerCase(),
+      name:l.name, type:'Overdue Follow-up',
       why:`Follow-up was due ${days} days ago.`,
       value:AOV, prob:PROB.overdue, horizon:'Today',
       phone:l.whatsapp, msg:msgOverdue(safeName(l.name))
@@ -541,9 +584,16 @@ function computeContext(){
   const d7 = new Date(NOW.getTime()-7*86400000), d14 = new Date(NOW.getTime()-14*86400000);
   const thisWeekLeads = wk(d7,NOW), lastWeekLeads = wk(d14,d7);
 
-  // conversion (of contacted-stage leads, how many ordered)
-  const contactedish = statusCount.Contacted + statusCount.Interested + statusCount.Ordered;
-  const convPct = contactedish ? Math.round(statusCount.Ordered/contactedish*100) : 0;
+  // conversion — match lead emails against order emails (status tags are unreliable)
+  const orderEmailSet = new Set(ORDERS.map(orderEmail).filter(Boolean));
+  let leadsWithEmail = 0, convertedLeads = 0;
+  LEADS.forEach(l=>{
+    const e = (l.email||'').trim().toLowerCase();
+    if(!e) return;
+    leadsWithEmail++;
+    if(orderEmailSet.has(e)) convertedLeads++;
+  });
+  const convPct = leadsWithEmail ? Math.round(convertedLeads/leadsWithEmail*100) : 0;
 
   // at-risk clients (>60d since last order)
   const byEmail = {};
@@ -553,14 +603,30 @@ function computeContext(){
   // yoni reorder count
   const yoniReorder = reorder.filter(o=>(o._items||[]).some(i=>(i.name||'').toLowerCase().includes('yoni'))).length;
 
+  // ── Pipeline (de-duplicated) ──
+  // Gross    = sum of every opportunity's raw value (a person in 2 buckets counts twice)
+  // Unique   = each unique person counted once at their single highest-value opportunity
+  // Expected = probability-weighted (sum of scores)
+  const grossPipeline = OPPS.reduce((s,o)=>s+o.value,0);
+  const expectedPipeline = OPPS.reduce((s,o)=>s+o.score,0);
+  const bestByPerson = {};
+  OPPS.forEach(o=>{
+    const k = o.key || o.id;
+    if(!bestByPerson[k] || o.value > bestByPerson[k]) bestByPerson[k] = o.value;
+  });
+  const uniquePipeline = Object.values(bestByPerson).reduce((s,v)=>s+v,0);
+  const uniquePeople = Object.keys(bestByPerson).length;
+
   return {
     revenueThisMonth, unpaidTotal, unpaidCount:unpaidOrders.length,
     openPipeline, moneyLeft,
+    grossPipeline, uniquePipeline, expectedPipeline, uniquePeople,
     conservative:revenueThisMonth,
-    expected:revenueThisMonth + openPipeline*CONVERSION_RATE,
-    optimistic:revenueThisMonth + openPipeline*CONVERSION_RATE*1.5,
+    expected:revenueThisMonth + grossPipeline*CONVERSION_RATE,
+    optimistic:revenueThisMonth + grossPipeline*CONVERSION_RATE*1.5,
     topProducts, monthItemRev,
     statusCount, totalLeads:LEADS.length,
+    leadsWithEmail, convertedLeads,
     hotCount:hot.length, hotValue:hot.reduce((s,o)=>s+o.value,0),
     newCount:newl.length, newValue:newl.reduce((s,o)=>s+o.value,0),
     reorderCount:reorder.length, reorderValue:reorder.reduce((s,o)=>s+o.value,0),
@@ -617,7 +683,12 @@ function renderCeo(){
     <div class="stat"><div class="t">Money Left On Table</div><div class="v money">${fmt(c.moneyLeft)}</div><div class="extra">Total expected value of all opportunities</div></div>
     <div class="stat"><div class="t">Biggest Opportunity</div><div class="v money" style="font-size:1.15rem;">${big?esc(big.name):'—'}</div><div class="extra">${big?esc(big.type)+' · score '+fmt(big.score):'No open opportunities'}</div></div>
     <div class="stat"><div class="t">Unpaid Invoices</div><div class="v money">${fmt(c.unpaidTotal)}</div><div class="extra">${c.unpaidCount} order${c.unpaidCount===1?'':'s'} awaiting payment</div></div>
-    <div class="stat"><div class="t">Active Pipeline</div><div class="v money">${fmt(c.openPipeline)}</div><div class="extra">Raw value of all open opportunities</div></div>`;
+    <div class="stat"><div class="t">Pipeline</div><div class="v money">${fmt(c.uniquePipeline)}</div>
+      <div class="extra">
+        <div class="row"><span>Gross (all opps)</span><span>${fmt(c.grossPipeline)}</span></div>
+        <div class="row"><span>Unique (${c.uniquePeople} people)</span><span>${fmt(c.uniquePipeline)}</span></div>
+        <div class="row"><span>Expected (prob-weighted)</span><span>${fmt(c.expectedPipeline)}</span></div>
+      </div></div>`;
 }
 
 const BUCKET_META = {
@@ -733,8 +804,8 @@ function renderInsights(){
   const delta = c.lastWeekLeads ? Math.round((c.thisWeekLeads-c.lastWeekLeads)/c.lastWeekLeads*100) : (c.thisWeekLeads?100:0);
   const dir = delta>=0?'up':'down';
   cards.push({t:'Lead Velocity', body:`<b>${c.thisWeekLeads}</b> new leads this week vs <b>${c.lastWeekLeads}</b> last week — <b>${dir} ${Math.abs(delta)}%</b>.`, q:`My lead flow is ${dir} ${Math.abs(delta)}% this week. What should I do about it?`});
-  // 4 conversion
-  cards.push({t:'Conversion', body:`Follow-up conversion this month: <b>${c.convPct}%</b> of contacted leads became orders.`, q:`How do I improve my lead-to-order conversion rate?`});
+  // 4 conversion (email-matched)
+  cards.push({t:'Conversion', body:`<b>${c.convPct}%</b> of leads with an email have placed an order (${c.convertedLeads} of ${c.leadsWithEmail} matched).`, q:`My lead-to-order conversion is ${c.convPct}%. How do I improve it?`});
   // 5 risk
   cards.push({t:'At-Risk Clients', body:`<b>${c.atRisk}</b> client${c.atRisk===1?' hasn\'t':'s haven\'t'} ordered in 60+ days — at risk of being lost.`, q:`Write a win-back message for clients who haven't ordered in 60+ days.`});
 
@@ -744,6 +815,48 @@ function renderInsights(){
       <div class="it">${esc(c2.t)}</div>
       <div class="ib">${c2.body}</div>
       <div class="ia"><button class="btn btn-ghost btn-sm" onclick="jPrefillIdx(${i})">Take Action →</button></div>
+    </div>`).join('');
+}
+
+function renderGrowth(){
+  const c = CONTEXT;
+  const cards = [];
+  // 1 — untapped lead pipeline (hot + new leads), expected at 8%
+  const leadPipe = c.hotValue + c.newValue;
+  const leadCount = c.hotCount + c.newCount;
+  cards.push({
+    t:'Untapped Lead Pipeline', v:fmt(leadPipe*CONVERSION_RATE),
+    body:`<b>${leadCount}</b> hot + new leads worth <b>${fmt(leadPipe)}</b> in raw pipeline — about <b>${fmt(leadPipe*CONVERSION_RATE)}</b> expected at an 8% close rate.`,
+    q:`I have ${leadCount} hot and new leads worth ${fmt(leadPipe)}. Give me a plan to convert as many as possible this week.`
+  });
+  // 2 — reactivation upside (at-risk clients)
+  cards.push({
+    t:'Reactivation Upside', v:fmt(c.atRisk*AOV),
+    body:`<b>${c.atRisk}</b> client${c.atRisk===1?'':'s'} haven't ordered in 60+ days. Winning them back at AOV is worth roughly <b>${fmt(c.atRisk*AOV)}</b>.`,
+    q:`Write a win-back campaign for the ${c.atRisk} clients who haven't ordered in 60+ days.`
+  });
+  // 3 — reorder revenue ready now
+  cards.push({
+    t:'Reorder Revenue Ready', v:fmt(c.reorderValue),
+    body:`<b>${c.reorderCount}</b> client${c.reorderCount===1?' is':'s are'} past their reorder window — <b>${fmt(c.reorderValue)}</b> in repeat revenue sitting on the table.`,
+    q:`Draft reorder messages for my ${c.reorderCount} clients who are due, based on what they bought before.`
+  });
+  // 4 — conversion lift
+  if(c.leadsWithEmail){
+    cards.push({
+      t:'Conversion Lift', v:`${c.convPct}%`,
+      body:`You convert <b>${c.convPct}%</b> of emailed leads today. Every <b>+1 point</b> on your ${c.leadsWithEmail} emailed leads is about <b>${fmt(Math.round(c.leadsWithEmail*0.01)*AOV)}</b> more revenue.`,
+      q:`What are the 3 highest-impact changes to lift my lead-to-order conversion above ${c.convPct}%?`
+    });
+  }
+
+  GROWTH_QS = cards.map(c2=>c2.q);
+  document.getElementById('growth-grid').innerHTML = cards.map((c2,i)=>`
+    <div class="growth">
+      <div class="it">${esc(c2.t)}</div>
+      <div class="iv">${c2.v}</div>
+      <div class="ib">${c2.body}</div>
+      <div class="ia"><button class="btn btn-ghost btn-sm" onclick="jGrowthIdx(${i})">Take Action →</button></div>
     </div>`).join('');
 }
 
@@ -774,7 +887,8 @@ ${top5 || 'none'}
 - Top products this month by revenue: ${topProd}
 - Recent broadcasts: not tracked in Jarvis
 - Projected month end (expected): ${fmt(c.expected)}
-- Open pipeline: ${fmt(c.openPipeline)}
+- Pipeline — gross: ${fmt(c.grossPipeline)}, unique (${c.uniquePeople} people): ${fmt(c.uniquePipeline)}, expected: ${fmt(c.expectedPipeline)}
+- Lead-to-order conversion (email-matched): ${c.convPct}% (${c.convertedLeads} of ${c.leadsWithEmail})
 
 Answer the founder's question directly. If asked to write a message, write it. If asked for a recommendation, give one specific action. Always state the expected revenue impact.`;
 }
@@ -826,6 +940,7 @@ function rebuild(){
   renderThirty();
   renderTable();
   renderInsights();
+  renderGrowth();
 }
 
 async function loadData(){
