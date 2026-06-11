@@ -118,7 +118,7 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
 
 ### Corrected Business Info
 - Live URL is now: https://najahchemistja.com
-- Turnaround for existing products: 7-10 business days (not 2-3)
+- Turnaround for existing products: 2-3 business days after payment confirmation
 - Turnaround for new custom products: 14-21 business days
 - New custom product MOQ: 5 gallons minimum
 - R&D fee: J$120,000 first product, J$90,000 each additional
