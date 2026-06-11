@@ -327,8 +327,8 @@ function orderId(o){ return (o.id||o.orderId||o.dbId||'').toString(); }
 function isOwnerName(name){
   const n = (name||'').toLowerCase().replace(/\s+/g,' ').trim();
   if(!n) return false;
-  if(n.includes('najahuldin')) return true;
-  if(n.includes('najah') && n.includes('bennett')) return true;
+  if(n.includes('najah')) return true;                              // Najah / Najah Bennett / Najahuldin Martin
+  if(n.includes('martin') && n.includes('najahuldin')) return true; // explicit (subsumed, kept per spec)
   return false;
 }
 function isOwnerOrder(o){
@@ -342,7 +342,8 @@ function isOwnerLead(l){
 // products (array or delimited string), and product (admin "Name (size xqty) | ..." string).
 function orderProductNames(o){
   const names = [];
-  const clean = v => String(v||'').replace(/\(.*?\)\s*$/,'').replace(/\s+x\d+\s*$/i,'').trim();
+  // strip the trailing "(size xN)" only — [^()]* keeps internal parens like "Yoni Oil (Without Petals)"
+  const clean = v => String(v||'').replace(/\s*\([^()]*\)\s*$/,'').replace(/\s+x\d+\s*$/i,'').trim();
   const push = v => { const s = clean(v); if(s) names.push(s); };
   if(Array.isArray(o.items)) o.items.forEach(i => push(i && typeof i==='object' ? (i.name||i.product||i.title) : i));
   if(Array.isArray(o.products)) o.products.forEach(p => push(p && typeof p==='object' ? (p.name||p.product||p.title) : p));
@@ -592,9 +593,10 @@ function computeContext(){
   const openPipeline = OPPS.reduce((s,o)=>s+o.value,0);
   const moneyLeft = OPPS.reduce((s,o)=>s+o.score,0);
 
-  // top products this month by FREQUENCY — parse names from each order this month
-  // (all non-cancelled orders, not just paid, so a sparse paymentStatus can't zero it out)
-  const ordersThisMonth = ORDERS.filter(o=>!isCancelled(o) && inThisMonth(parseOrderDate(o)));
+  // top products this month by FREQUENCY — count across this month's orders that are
+  // paymentStatus "Paid" OR status "Complete" (the real fulfilled orders).
+  const ordersThisMonth = ORDERS.filter(o=> inThisMonth(parseOrderDate(o)) &&
+    ( String(o.paymentStatus||'').toLowerCase()==='paid' || String(o.status||'').toLowerCase()==='complete' ));
   const prodFreq = {};
   let monthOrdersWithProducts = 0;
   ordersThisMonth.forEach(o=>{
@@ -872,7 +874,7 @@ function renderGrowth(){
   const leadCount = c.hotCount + c.newCount;
   cards.push({
     t:'Untapped Lead Pipeline', v:fmt(leadPipe*CONVERSION_RATE),
-    body:`<b>${leadCount}</b> hot + new leads worth <b>${fmt(leadPipe)}</b> in raw pipeline — about <b>${fmt(leadPipe*CONVERSION_RATE)}</b> expected at a ${Math.round(CONVERSION_RATE*100)}% close rate.`,
+    body:`<b>${leadCount}</b> hot + new leads worth <b>${fmt(leadPipe)}</b> in raw pipeline — about <b>${fmt(leadPipe*CONVERSION_RATE)}</b> expected at a 3% close rate.`,
     q:`I have ${leadCount} hot and new leads worth ${fmt(leadPipe)}. Give me a plan to convert as many as possible this week.`
   });
   // 2 — reactivation upside (at-risk clients)
