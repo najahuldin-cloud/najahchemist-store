@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Jarvis | Najah Chemist</title>
+<style>
+  :root{
+    --bg:#0A0A0A; --card:#141414; --card2:#191919; --border:#222222;
+    --gold:#C8973A; --gold-soft:rgba(200,151,58,0.12);
+    --brand:#5C1A3A; --green:#27AE60; --amber:#E67E22; --red:#C0392B;
+    --text:#EDEDED; --mid:#8A8A8A; --dim:#5E5E5E;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.5; -webkit-font-smoothing:antialiased; padding-bottom:4rem;
+  }
+  a{color:inherit;}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 1.1rem;}
+  /* top bar */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.1rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(10,10,10,0.92);backdrop-filter:blur(8px);z-index:50;}
+  .topbar .brandmark{font-weight:700;letter-spacing:0.5px;font-size:0.95rem;}
+  .topbar .brandmark .j{color:var(--gold);}
+  .back-link{font-size:0.8rem;color:var(--mid);text-decoration:none;display:inline-flex;align-items:center;gap:0.35rem;}
+  .back-link:hover{color:var(--text);}
+  .clock{font-size:0.78rem;color:var(--dim);font-variant-numeric:tabular-nums;}
+
+  /* loading */
+  #loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:1rem;}
+  .spinner{width:38px;height:38px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  #loading p{color:var(--mid);font-size:0.85rem;}
+
+  section{margin-top:2.4rem;}
+  .sec-head{display:flex;align-items:baseline;gap:0.6rem;margin-bottom:1rem;}
+  .sec-head h2{font-size:0.78rem;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:var(--mid);}
+  .sec-head .sub{font-size:0.74rem;color:var(--dim);}
+
+  .money{color:var(--gold);font-variant-numeric:tabular-nums;}
+  .pct{color:var(--gold);}
+
+  /* hero card */
+  .hero{
+    border:1.5px solid var(--gold);border-radius:16px;padding:1.6rem 1.5rem;
+    background:linear-gradient(135deg,rgba(200,151,58,0.16) 0%,rgba(200,151,58,0.04) 45%,var(--card) 100%);
+    box-shadow:0 0 0 1px rgba(200,151,58,0.06),0 18px 50px -20px rgba(200,151,58,0.25);
+  }
+  .hero .label{font-size:1.05rem;font-weight:700;letter-spacing:0.3px;}
+  .hero .who{margin-top:0.7rem;font-size:1.5rem;font-weight:700;line-height:1.25;}
+  .hero .opp{color:var(--gold);}
+  .hero .stats{margin-top:0.7rem;font-size:0.92rem;color:var(--text);}
+  .hero .stats b{color:var(--gold);}
+  .hero .why{margin-top:0.6rem;font-size:0.86rem;color:var(--mid);}
+  .hero .actions{margin-top:1.1rem;}
+
+  .btn{display:inline-flex;align-items:center;gap:0.45rem;border:none;border-radius:9px;padding:0.6rem 1rem;font-size:0.82rem;font-weight:600;cursor:pointer;text-decoration:none;font-family:inherit;transition:transform .08s,filter .15s;}
+  .btn:active{transform:translateY(1px);}
+  .btn-wa{background:#1f7a4d;color:#fff;}
+  .btn-wa:hover{filter:brightness(1.1);}
+  .btn-brand{background:var(--brand);color:#fff;}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--mid);}
+  .btn-ghost:hover{color:var(--text);border-color:var(--mid);}
+  .btn-done{background:transparent;border:1px solid var(--green);color:var(--green);}
+  .btn-snooze{background:transparent;border:1px solid var(--amber);color:var(--amber);}
+  .btn-sm{padding:0.32rem 0.6rem;font-size:0.72rem;border-radius:7px;}
+  .btn[disabled]{opacity:0.4;cursor:default;}
+
+  /* stat grid */
+  .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0.9rem;}
+  .stat{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:1.1rem 1.1rem;}
+  .stat .t{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--mid);}
+  .stat .v{margin-top:0.5rem;font-size:1.55rem;font-weight:700;font-variant-numeric:tabular-nums;}
+  .stat .extra{margin-top:0.45rem;font-size:0.76rem;color:var(--dim);line-height:1.55;}
+  .stat .extra .row{display:flex;justify-content:space-between;gap:0.5rem;}
+  .stat .extra .row span:last-child{color:var(--text);font-variant-numeric:tabular-nums;}
+
+  /* buckets */
+  .bucket-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:1rem;}
+  .bucket{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:1.15rem;display:flex;flex-direction:column;}
+  .bucket .bh{display:flex;align-items:center;justify-content:space-between;gap:0.5rem;}
+  .bucket .bh .name{font-size:0.82rem;font-weight:700;letter-spacing:0.4px;}
+  .bucket .bh .cnt{background:var(--gold-soft);color:var(--gold);font-size:0.72rem;font-weight:700;padding:0.16rem 0.55rem;border-radius:20px;}
+  .bucket .nums{display:flex;gap:1rem;margin-top:0.85rem;}
+  .bucket .nums .n .k{font-size:0.66rem;text-transform:uppercase;letter-spacing:0.6px;color:var(--mid);}
+  .bucket .nums .n .val{font-size:1.05rem;font-weight:700;margin-top:0.15rem;font-variant-numeric:tabular-nums;}
+  .bucket .horizon{margin-top:0.85rem;border-top:1px solid var(--border);padding-top:0.7rem;font-size:0.76rem;color:var(--mid);}
+  .bucket .horizon .row{display:flex;justify-content:space-between;margin-bottom:0.25rem;}
+  .bucket .horizon .row b{color:var(--gold);font-variant-numeric:tabular-nums;}
+  .bucket .toplist{margin-top:0.7rem;display:flex;flex-direction:column;gap:0.55rem;}
+  .mini{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:0.55rem 0.65rem;}
+  .mini .mn{font-size:0.8rem;font-weight:600;display:flex;justify-content:space-between;gap:0.5rem;}
+  .mini .mn .sc{color:var(--gold);font-weight:700;font-variant-numeric:tabular-nums;}
+  .mini .mw{font-size:0.72rem;color:var(--mid);margin-top:0.2rem;}
+  .mini .ma{margin-top:0.45rem;}
+  .empty{color:var(--dim);font-size:0.78rem;padding:0.4rem 0;}
+
+  /* 30 min cards */
+  .three{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;}
+  .rank-card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:1.15rem;position:relative;display:flex;flex-direction:column;}
+  .rank-card .rk{position:absolute;top:0.8rem;right:1rem;font-size:1.7rem;font-weight:800;color:var(--border);}
+  .rank-card .ty{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--gold);}
+  .rank-card .nm{font-size:1.05rem;font-weight:700;margin-top:0.25rem;padding-right:1.5rem;}
+  .rank-card .vps{display:flex;gap:0.9rem;margin-top:0.7rem;font-size:0.74rem;color:var(--mid);}
+  .rank-card .vps b{display:block;color:var(--text);font-size:0.92rem;font-variant-numeric:tabular-nums;}
+  .rank-card .vps .sc b{color:var(--gold);}
+  .rank-card .wy{margin-top:0.7rem;font-size:0.78rem;color:var(--mid);flex:1;}
+  .rank-card .rec{margin-top:0.7rem;font-size:0.72rem;}
+  .pill{display:inline-block;padding:0.15rem 0.5rem;border-radius:20px;font-size:0.68rem;font-weight:700;}
+  .pill-today{background:rgba(192,57,43,0.18);color:#e8786b;}
+  .pill-7{background:rgba(230,126,34,0.16);color:#e8a05e;}
+  .pill-30{background:rgba(39,174,96,0.15);color:#5fd08a;}
+  .rank-card .acts{margin-top:0.9rem;display:flex;gap:0.4rem;flex-wrap:wrap;}
+
+  /* ask jarvis */
+  .ask-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.1rem;}
+  .ask-inrow{display:flex;gap:0.6rem;}
+  #ask-input{flex:1;background:#0d0d0d;border:1px solid var(--border);border-radius:10px;color:var(--text);padding:0.85rem 0.95rem;font-size:0.9rem;font-family:inherit;resize:none;min-height:52px;}
+  #ask-input:focus{outline:none;border-color:var(--gold);}
+  #ask-input::placeholder{color:var(--dim);}
+  .ask-send{align-self:stretch;}
+  .ask-log{margin-top:1rem;display:flex;flex-direction:column;gap:0.8rem;}
+  .msg{border-radius:11px;padding:0.8rem 0.95rem;font-size:0.88rem;white-space:pre-wrap;word-wrap:break-word;}
+  .msg.user{background:var(--brand);color:#fff;align-self:flex-end;max-width:85%;}
+  .msg.bot{background:var(--card2);border:1px solid var(--border);align-self:flex-start;max-width:95%;}
+  .msg.bot.thinking{color:var(--mid);font-style:italic;}
+
+  /* table */
+  .tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:13px;}
+  table{width:100%;border-collapse:collapse;font-size:0.8rem;}
+  thead th{text-align:left;padding:0.7rem 0.8rem;background:var(--card2);color:var(--mid);font-weight:600;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.6px;white-space:nowrap;border-bottom:1px solid var(--border);}
+  tbody td{padding:0.65rem 0.8rem;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:rgba(255,255,255,0.02);}
+  td .why-cell{color:var(--mid);font-size:0.74rem;max-width:260px;}
+  td.num{font-variant-numeric:tabular-nums;}
+  td .acts{display:flex;gap:0.3rem;}
+  .show-all{margin-top:0.9rem;text-align:center;}
+
+  /* insights */
+  .insight-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:1rem;}
+  .insight{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:11px;padding:1.05rem 1.1rem;display:flex;flex-direction:column;}
+  .insight .it{font-size:0.66rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--gold);}
+  .insight .ib{margin-top:0.5rem;font-size:0.92rem;line-height:1.5;flex:1;}
+  .insight .ib b{color:var(--gold);}
+  .insight .ia{margin-top:0.9rem;}
+
+  .strike{opacity:0.45;}
+  .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--gold);color:var(--text);padding:0.7rem 1.2rem;border-radius:10px;font-size:0.84rem;opacity:0;pointer-events:none;transition:opacity .25s;z-index:100;}
+  .toast.show{opacity:1;}
+
+  @media(max-width:860px){
+    .stat-grid{grid-template-columns:repeat(2,1fr);}
+    .three{grid-template-columns:1fr;}
+  }
+  @media(max-width:560px){
+    .stat-grid{grid-template-columns:1fr;}
+    .hero .who{font-size:1.25rem;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="back-link" href="/admin.html">← Admin</a>
+  <div class="brandmark">NAJAH <span class="j">JARVIS</span></div>
+  <div class="clock" id="clock"></div>
+</div>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Booting Jarvis — loading your business…</p>
+</div>
+
+<main class="wrap" id="app" style="display:none;">
+
+  <!-- SECTION 0 -->
+  <section id="next-best" style="margin-top:1.6rem;"></section>
+
+  <!-- SECTION 1 -->
+  <section id="sec-ceo">
+    <div class="sec-head"><h2 id="greeting">Good morning, Najah.</h2></div>
+    <div class="stat-grid" id="ceo-grid"></div>
+  </section>
+
+  <!-- SECTION 2 -->
+  <section id="sec-buckets">
+    <div class="sec-head"><h2>Money Left On The Table</h2><span class="sub">5 buckets · 7-day &amp; 30-day horizons</span></div>
+    <div class="bucket-grid" id="bucket-grid"></div>
+  </section>
+
+  <!-- SECTION 3 -->
+  <section id="sec-thirty">
+    <div class="sec-head"><h2>If Najah Had 30 Minutes</h2><span class="sub">top 3 by score</span></div>
+    <div class="three" id="thirty-grid"></div>
+  </section>
+
+  <!-- SECTION 4 -->
+  <section id="sec-ask">
+    <div class="sec-head"><h2>Ask Jarvis</h2><span class="sub">claude-sonnet-4-6</span></div>
+    <div class="ask-box">
+      <div class="ask-inrow">
+        <textarea id="ask-input" placeholder="Ask Jarvis anything... e.g. Who should I contact today? Which products sold most this month? Write a broadcast for overdue reorders."></textarea>
+        <button class="btn btn-brand ask-send" id="ask-send">Ask →</button>
+      </div>
+      <div class="ask-log" id="ask-log"></div>
+    </div>
+  </section>
+
+  <!-- SECTION 5 -->
+  <section id="sec-table">
+    <div class="sec-head"><h2>Revenue Score Table</h2><span class="sub" id="table-count"></span></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>#</th><th>Name</th><th>Type</th><th>Why</th><th class="num">Value</th><th class="num">Prob</th><th class="num">Score</th><th>Recoverable</th><th>Action</th>
+        </tr></thead>
+        <tbody id="score-tbody"></tbody>
+      </table>
+    </div>
+    <div class="show-all"><button class="btn btn-ghost" id="show-all-btn">Show All</button></div>
+  </section>
+
+  <!-- SECTION 6 -->
+  <section id="sec-insights" style="margin-bottom:3rem;">
+    <div class="sec-head"><h2>Jarvis Insights</h2></div>
+    <div class="insight-grid" id="insight-grid"></div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+// ── Firebase (najah-chemist production; API key is public by design) ──
+const firebaseConfig = {
+  apiKey: "AIzaSyDYdt_0wJNcfGl2WbIKPiESdVcmc-cqZgM",
+  authDomain: "najahchemistja.com",
+  projectId: "najah-chemist",
+  storageBucket: "najah-chemist.firebasestorage.app",
+  messagingSenderId: "89819999556",
+  appId: "1:89819999556:web:4e6eb5c0c881da5e763b11"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const ADMIN_EMAIL = "start@najahchemist.com";
+
+// ── Constants ──
+const AOV = 22535;
+const CONVERSION_RATE = 0.08;
+const PROB = { unpaid:0.85, reorder:0.80, hot:0.45, overdue:0.35, newlead:0.25 };
+const NOW = new Date();
+
+// ── State ──
+let ORDERS = [], LEADS = [];
+let OPPS = [];
+let CONTEXT = {};
+let askHistory = []; // {role, content}
+let showAllRows = false;
+
+// ── Live clock ──
+function tickClock(){
+  const d = new Date();
+  document.getElementById('clock').textContent =
+    d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' · ' +
+    d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
+tickClock(); setInterval(tickClock,30000);
+
+// ── Helpers ──
+const fmt = n => 'J$' + Math.round(n||0).toLocaleString();
+const esc = s => (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function daysAgo(d){ if(!d) return null; return Math.max(0, Math.floor((NOW - d)/86400000)); }
+
+function parseOrderDate(o){
+  const ca = o.createdAt;
+  if(ca){
+    if(ca.toDate) return ca.toDate();
+    if(ca.seconds) return new Date(ca.seconds*1000);
+    if(ca instanceof Date) return ca;
+    if(typeof ca==='number') return new Date(ca);
+    if(typeof ca==='string'){ const d=new Date(ca); if(!isNaN(d)) return d; }
+  }
+  const ds = o.date;
+  if(typeof ds==='string' && ds){
+    const m = ds.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(,?\s*.+)?$/);
+    if(m){ const d2=new Date(`${m[2]}/${m[1]}/${m[3]}${m[4]?m[4].replace(',',''):''}`); if(!isNaN(d2)) return d2; }
+    const d3=new Date(ds); if(!isNaN(d3)) return d3;
+  }
+  return null;
+}
+function leadDate(l){
+  if(l.createdAt?.toDate) return l.createdAt.toDate();
+  if(l.createdAt?.seconds) return new Date(l.createdAt.seconds*1000);
+  if(typeof l.createdAt==='string'){ const d=new Date(l.createdAt); if(!isNaN(d)) return d; }
+  return null;
+}
+function isPaid(o){ return (o.paymentStatus||o.payStatus||o.payment||'').toString().trim().toLowerCase()==='paid'; }
+function isCancelled(o){ return (o.status||'').toString().trim().toLowerCase()==='cancelled'; }
+function orderTotal(o){ return parseFloat(o.total)||0; }
+function orderName(o){ return (o.client||o.customerName||o.clientName||'').trim() || 'Customer'; }
+function orderPhone(o){ return o.customerWhatsApp||o.phone||o.whatsapp||o.wa||''; }
+function orderEmail(o){ return (o.email||o.customerEmail||'').trim().toLowerCase(); }
+function orderId(o){ return (o.id||o.orderId||o.dbId||'').toString(); }
+
+function safeName(raw){
+  const name = (raw||'').trim();
+  if(!/^[A-Za-z .'\-]{2,30}$/.test(name)) return 'there';
+  const first = name.split(/\s+/)[0];
+  const banned = ['you','me','sauce','test','hello','hi','hey','na','n/a','customer','there'];
+  if(banned.includes(first.toLowerCase())) return 'there';
+  return first;
+}
+function segOf(l){
+  const b = (l.brandType||'').toLowerCase();
+  if(b.includes('hair')) return 'haircare';
+  if(b.includes('feminine')||b.includes('yoni')) return 'feminine';
+  if(b.includes('men')) return 'mens';
+  if(b.includes('body')) return 'body';
+  if(b.includes('skin')||b.includes('face')) return 'skincare';
+  return 'skincare';
+}
+function waPhone(raw){
+  let p = (raw||'').replace(/\D/g,'');
+  if(!p) return '';
+  if(p.length===10) p = '1'+p;
+  return p;
+}
+function waLink(raw,msg){
+  const p = waPhone(raw);
+  if(!p) return null;
+  return 'https://wa.me/'+p+'?text='+encodeURIComponent(msg);
+}
+
+// ── WhatsApp message templates ──
+function msgReorder(name){
+  return `Hi ${name} 👋🏾 Just checking in from Najah Chemist — it looks like you may be running low on stock. Ready to reorder? Visit najahchemistja.com or reply here 🌿`;
+}
+function msgUnpaid(name,id,amount){
+  return `Hi ${name} 👋🏾 Friendly reminder that your order NC-${id} for J$${amount} is awaiting payment. Pay by bank transfer to NCB 354-747-294 or by card at najahchemistja.com 🌿`;
+}
+function msgHotLead(name){
+  return `Hi ${name} 👋🏾 Just following up on your interest in starting your brand with Najah Chemist. Still thinking about it? Reply here anytime — we'd love to help you get started 🌿`;
+}
+function msgOverdue(name){
+  return `Hi ${name} 👋🏾 Just checking in — are you still interested in starting your brand? We're here whenever you're ready 🌿`;
+}
+const NEW_LEAD_MSGS = {
+  skincare: n => `Hi ${n} 👋🏾 I saw you're interested in starting your skincare brand — great timing! I'd recommend starting with our Turmeric & Kojic Soap or Dark Spot Corrector Cream. Prices from J$3,550/litre. Visit najahchemistja.com or reply here 🌿`,
+  feminine: n => `Hi ${n} 👋🏾 I saw you're interested in starting a feminine care brand — one of the highest-demand niches in Jamaica right now. Our Yoni Foaming Wash starts at J$3,550/litre. Visit najahchemistja.com or reply here 🌿`,
+  haircare: n => `Hi ${n} 👋🏾 I saw you're interested in starting a hair care brand — strong market right now. Our Hair Growth Oil starts at J$7,500/litre. Visit najahchemistja.com or reply here 🌿`,
+  body:     n => `Hi ${n} 👋🏾 I saw you're interested in starting a body care brand. Our Body Butter starts at J$4,000/2lbs. Visit najahchemistja.com or reply here 🌿`,
+  mens:     n => `Hi ${n} 👋🏾 I saw you're interested in starting a men's grooming brand. Our Beard Oil starts at J$6,750/litre. Visit najahchemistja.com or reply here 🌿`
+};
+function msgNewLead(name,seg){ return (NEW_LEAD_MSGS[seg]||NEW_LEAD_MSGS.skincare)(name); }
+
+// ── Done / Snooze persistence ──
+const DONE_KEY='jarvis_done', SNOOZE_KEY='jarvis_snooze';
+function getDone(){ try{return JSON.parse(localStorage.getItem(DONE_KEY)||'[]');}catch(e){return [];} }
+function getSnooze(){ try{return JSON.parse(localStorage.getItem(SNOOZE_KEY)||'{}');}catch(e){return {};} }
+function markDone(id){ const d=getDone(); if(!d.includes(id)){d.push(id);localStorage.setItem(DONE_KEY,JSON.stringify(d));} }
+function snooze(id,days){ const s=getSnooze(); const until=new Date(NOW.getTime()+days*86400000); s[id]=until.toISOString().slice(0,10); localStorage.setItem(SNOOZE_KEY,JSON.stringify(s)); }
+function isHidden(id){
+  if(getDone().includes(id)) return true;
+  const s=getSnooze(); const todayStr=NOW.toISOString().slice(0,10);
+  if(s[id] && s[id]>todayStr) return true;
+  return false;
+}
+
+window.jDone = function(id){ markDone(id); rebuild(); toast('✅ Marked done'); };
+window.jSnooze = function(id){ snooze(id,3); rebuild(); toast('⏰ Snoozed 3 days'); };
+let INSIGHT_QS = [];
+window.jPrefillIdx = function(i){
+  const q = INSIGHT_QS[i]; if(q==null) return;
+  const inp=document.getElementById('ask-input');
+  inp.value=q; inp.focus();
+  document.getElementById('sec-ask').scrollIntoView({behavior:'smooth',block:'center'});
+};
+
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
+
+// ════════════════════════════════════════
+// OPPORTUNITY ENGINE
+// ════════════════════════════════════════
+function buildOpportunities(){
+  const opps = [];
+  const orderEmails = new Set(ORDERS.map(orderEmail).filter(Boolean));
+  const todayStr = NOW.toISOString().slice(0,10);
+
+  // group orders by email
+  const byEmail = {};
+  ORDERS.forEach(o=>{ const em=orderEmail(o); if(!em) return; (byEmail[em]=byEmail[em]||[]).push(o); });
+
+  // BUCKET 1 — HOT LEADS
+  LEADS.forEach(l=>{
+    const st = l.status||'New';
+    if(st!=='Contacted' && st!=='Interested') return;
+    const em = (l.email||'').trim().toLowerCase();
+    if(em && orderEmails.has(em)) return;
+    const ref = l.lastContacted ? new Date(l.lastContacted+'T00:00:00') : leadDate(l);
+    const days = daysAgo(ref) ?? 0;
+    opps.push({
+      bucket:'hot', id:'hot:'+(l._docId||l.id||l.whatsapp||l.name),
+      name:l.name||'Unknown lead', type:'Hot Lead',
+      why:`Reached out ${days} days ago. No order placed.`,
+      value:AOV, prob:PROB.hot, horizon:'7 days',
+      phone:l.whatsapp, msg:msgHotLead(safeName(l.name))
+    });
+  });
+
+  // BUCKET 2 — CLIENTS DUE FOR REORDER
+  Object.values(byEmail).forEach(list=>{
+    const dated = list.map(o=>({o,d:parseOrderDate(o)})).filter(x=>x.d).sort((a,b)=>a.d-b.d);
+    if(!dated.length) return;
+    let interval = 30;
+    if(dated.length>=2){
+      let sum=0; for(let i=1;i<dated.length;i++){ sum += (dated[i].d - dated[i-1].d)/86400000; }
+      interval = sum/(dated.length-1);
+    }
+    interval = Math.max(1, interval);
+    const last = dated[dated.length-1];
+    const since = daysAgo(last.d) ?? 0;
+    if(since <= interval) return;
+    const value = orderTotal(last.o);
+    if(value<=0) return;
+    const name = orderName(last.o);
+    opps.push({
+      bucket:'reorder', id:'reorder:'+orderEmail(last.o),
+      name, type:'Reorder Due',
+      why:`Last ordered ${since} days ago. Average reorder interval is ${Math.round(interval)} days.`,
+      value, prob:PROB.reorder, horizon:'7 days',
+      phone:orderPhone(last.o), msg:msgReorder(safeName(name)),
+      _items:(last.o.items||[])
+    });
+  });
+
+  // BUCKET 3 — UNPAID ORDERS
+  ORDERS.forEach(o=>{
+    if(isCancelled(o)) return;
+    if(isPaid(o)) return;
+    const value = orderTotal(o);
+    if(value<=0) return;
+    const d = parseOrderDate(o);
+    const days = daysAgo(d) ?? 0;
+    const name = orderName(o);
+    const idNum = orderId(o).replace(/^NC-?/i,'') || orderId(o);
+    opps.push({
+      bucket:'unpaid', id:'unpaid:'+(o.dbId||orderId(o)),
+      name, type:'Unpaid Order',
+      why:`Order placed ${days} days ago. Payment not received.`,
+      value, prob:PROB.unpaid, horizon:'Today',
+      phone:orderPhone(o), msg:msgUnpaid(safeName(name), idNum, Math.round(value).toLocaleString())
+    });
+  });
+
+  // BUCKET 4 — NEW LEADS NEVER CONTACTED
+  LEADS.forEach(l=>{
+    const st = l.status||'New';
+    if(st!=='New') return;
+    const d = leadDate(l);
+    if(!d) return;
+    if((NOW - d)/3600000 <= 24) return; // <24h old
+    const days = daysAgo(d) ?? 0;
+    const seg = segOf(l);
+    opps.push({
+      bucket:'newlead', id:'newlead:'+(l._docId||l.id||l.whatsapp||l.name),
+      name:l.name||'Unknown lead', type:'New Lead',
+      why:`Submitted ${days} days ago. Never contacted.`,
+      value:AOV, prob:PROB.newlead, horizon:'30 days',
+      phone:l.whatsapp, msg:msgNewLead(safeName(l.name), seg)
+    });
+  });
+
+  // BUCKET 5 — OVERDUE FOLLOW-UPS
+  LEADS.forEach(l=>{
+    const st = l.status||'New';
+    if(!l.followUpDate) return;
+    if(l.followUpDate > todayStr) return;
+    if(st==='Ordered' || st==='Cold') return;
+    const due = new Date(l.followUpDate+'T00:00:00');
+    const days = daysAgo(due) ?? 0;
+    opps.push({
+      bucket:'overdue', id:'overdue:'+(l._docId||l.id||l.whatsapp||l.name),
+      name:l.name||'Unknown lead', type:'Overdue Follow-up',
+      why:`Follow-up was due ${days} days ago.`,
+      value:AOV, prob:PROB.overdue, horizon:'Today',
+      phone:l.whatsapp, msg:msgOverdue(safeName(l.name))
+    });
+  });
+
+  // sanitize ids so they're safe inside inline onclick="" handlers
+  opps.forEach(o=>{ o.id = (o.id||'').replace(/[^A-Za-z0-9:_.@-]/g,'_'); o.score = o.value * o.prob; });
+  return opps.filter(o=>!isHidden(o.id)).sort((a,b)=>b.score-a.score);
+}
+
+// ════════════════════════════════════════
+// METRICS / CONTEXT
+// ════════════════════════════════════════
+function inThisMonth(d){ return d && d.getFullYear()===NOW.getFullYear() && d.getMonth()===NOW.getMonth(); }
+
+function computeContext(){
+  const paidThisMonth = ORDERS.filter(o=>isPaid(o) && inThisMonth(parseOrderDate(o)));
+  const revenueThisMonth = paidThisMonth.reduce((s,o)=>s+orderTotal(o),0);
+
+  const unpaidOrders = ORDERS.filter(o=>!isPaid(o) && !isCancelled(o));
+  const unpaidTotal = unpaidOrders.reduce((s,o)=>s+orderTotal(o),0);
+
+  const openPipeline = OPPS.reduce((s,o)=>s+o.value,0);
+  const moneyLeft = OPPS.reduce((s,o)=>s+o.score,0);
+
+  // top products this month by revenue
+  const prodRev = {};
+  paidThisMonth.forEach(o=>{
+    (o.items||[]).forEach(i=>{
+      const nm = (i.name||'Unknown').trim();
+      const amt = (parseFloat(i.price)||0)*(parseFloat(i.qty)||1);
+      prodRev[nm] = (prodRev[nm]||0) + amt;
+    });
+  });
+  const topProducts = Object.entries(prodRev).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const monthItemRev = Object.values(prodRev).reduce((s,v)=>s+v,0);
+
+  // lead status breakdown
+  const statusCount = {New:0,Contacted:0,Interested:0,Ordered:0,Cold:0};
+  LEADS.forEach(l=>{ const s=l.status||'New'; statusCount[s]=(statusCount[s]||0)+1; });
+
+  const hot = OPPS.filter(o=>o.bucket==='hot');
+  const reorder = OPPS.filter(o=>o.bucket==='reorder');
+  const newl = OPPS.filter(o=>o.bucket==='newlead');
+  const unpaidOpps = OPPS.filter(o=>o.bucket==='unpaid');
+
+  // lead velocity
+  const wk = (start,end)=>LEADS.filter(l=>{const d=leadDate(l);return d&&d>=start&&d<end;}).length;
+  const d7 = new Date(NOW.getTime()-7*86400000), d14 = new Date(NOW.getTime()-14*86400000);
+  const thisWeekLeads = wk(d7,NOW), lastWeekLeads = wk(d14,d7);
+
+  // conversion (of contacted-stage leads, how many ordered)
+  const contactedish = statusCount.Contacted + statusCount.Interested + statusCount.Ordered;
+  const convPct = contactedish ? Math.round(statusCount.Ordered/contactedish*100) : 0;
+
+  // at-risk clients (>60d since last order)
+  const byEmail = {};
+  ORDERS.forEach(o=>{ const em=orderEmail(o); if(!em) return; const d=parseOrderDate(o); if(!d) return; if(!byEmail[em]||d>byEmail[em]) byEmail[em]=d; });
+  const atRisk = Object.values(byEmail).filter(d=>daysAgo(d)>60).length;
+
+  // yoni reorder count
+  const yoniReorder = reorder.filter(o=>(o._items||[]).some(i=>(i.name||'').toLowerCase().includes('yoni'))).length;
+
+  return {
+    revenueThisMonth, unpaidTotal, unpaidCount:unpaidOrders.length,
+    openPipeline, moneyLeft,
+    conservative:revenueThisMonth,
+    expected:revenueThisMonth + openPipeline*CONVERSION_RATE,
+    optimistic:revenueThisMonth + openPipeline*CONVERSION_RATE*1.5,
+    topProducts, monthItemRev,
+    statusCount, totalLeads:LEADS.length,
+    hotCount:hot.length, hotValue:hot.reduce((s,o)=>s+o.value,0),
+    newCount:newl.length, newValue:newl.reduce((s,o)=>s+o.value,0),
+    reorderCount:reorder.length, reorderValue:reorder.reduce((s,o)=>s+o.value,0),
+    thisWeekLeads, lastWeekLeads, convPct, atRisk, yoniReorder
+  };
+}
+
+// ════════════════════════════════════════
+// RENDERERS
+// ════════════════════════════════════════
+function actionBtns(o, mode){
+  const link = waLink(o.phone, o.msg);
+  const wa = link
+    ? `<a class="btn btn-wa ${mode==='sm'?'btn-sm':''}" href="${esc(link)}" target="_blank" rel="noopener" onclick="jDone('${esc(o.id)}')">📱${mode==='sm'?'':' WhatsApp'}</a>`
+    : `<button class="btn btn-ghost ${mode==='sm'?'btn-sm':''}" disabled>no #</button>`;
+  const done = `<button class="btn btn-done ${mode==='sm'?'btn-sm':''}" onclick="jDone('${esc(o.id)}')">✅</button>`;
+  const snz  = `<button class="btn btn-snooze ${mode==='sm'?'btn-sm':''}" onclick="jSnooze('${esc(o.id)}')">⏰</button>`;
+  return {wa,done,snz};
+}
+
+function renderNextBest(){
+  const el = document.getElementById('next-best');
+  if(!OPPS.length){ el.innerHTML = `<div class="hero"><div class="label">💰 What Should I Do Next?</div><div class="who">All caught up. No open opportunities right now. 🎉</div></div>`; return; }
+  const o = OPPS[0];
+  const link = waLink(o.phone,o.msg);
+  const waBtn = link
+    ? `<a class="btn btn-wa" href="${esc(link)}" target="_blank" rel="noopener" onclick="jDone('${esc(o.id)}')">📱 One-click WhatsApp</a>`
+    : `<button class="btn btn-ghost" disabled>No WhatsApp number on file</button>`;
+  el.innerHTML = `
+    <div class="hero">
+      <div class="label">💰 What Should I Do Next?</div>
+      <div class="who"><span class="opp">${esc(o.name)}</span> — ${esc(o.type.toLowerCase())}</div>
+      <div class="stats">Estimated Value: <b>${fmt(o.value)}</b> &nbsp;|&nbsp; Probability: <b>${Math.round(o.prob*100)}%</b> &nbsp;|&nbsp; Expected Value: <b>${fmt(o.score)}</b></div>
+      <div class="why">Why: ${esc(o.why)}</div>
+      <div class="actions">${waBtn}</div>
+    </div>`;
+}
+
+function renderCeo(){
+  const c = CONTEXT;
+  const hour = NOW.getHours();
+  document.getElementById('greeting').textContent =
+    (hour<12?'Good morning':hour<18?'Good afternoon':'Good evening') + ', Najah.';
+  const big = OPPS[0];
+  const grid = document.getElementById('ceo-grid');
+  grid.innerHTML = `
+    <div class="stat"><div class="t">Revenue This Month</div><div class="v money">${fmt(c.revenueThisMonth)}</div><div class="extra">Paid orders, ${NOW.toLocaleDateString('en-US',{month:'long'})}</div></div>
+    <div class="stat"><div class="t">Projected Month End</div><div class="v money">${fmt(c.expected)}</div>
+      <div class="extra">
+        <div class="row"><span>Conservative</span><span>${fmt(c.conservative)}</span></div>
+        <div class="row"><span>Expected</span><span>${fmt(c.expected)}</span></div>
+        <div class="row"><span>Optimistic</span><span>${fmt(c.optimistic)}</span></div>
+      </div></div>
+    <div class="stat"><div class="t">Money Left On Table</div><div class="v money">${fmt(c.moneyLeft)}</div><div class="extra">Total expected value of all opportunities</div></div>
+    <div class="stat"><div class="t">Biggest Opportunity</div><div class="v money" style="font-size:1.15rem;">${big?esc(big.name):'—'}</div><div class="extra">${big?esc(big.type)+' · score '+fmt(big.score):'No open opportunities'}</div></div>
+    <div class="stat"><div class="t">Unpaid Invoices</div><div class="v money">${fmt(c.unpaidTotal)}</div><div class="extra">${c.unpaidCount} order${c.unpaidCount===1?'':'s'} awaiting payment</div></div>
+    <div class="stat"><div class="t">Active Pipeline</div><div class="v money">${fmt(c.openPipeline)}</div><div class="extra">Raw value of all open opportunities</div></div>`;
+}
+
+const BUCKET_META = {
+  hot:{name:'🔥 Hot Leads'},
+  reorder:{name:'🔁 Clients Due For Reorder'},
+  unpaid:{name:'💳 Unpaid Orders'},
+  newlead:{name:'🌱 New Leads Never Contacted'},
+  overdue:{name:'⏰ Overdue Follow-ups'}
+};
+function renderBuckets(){
+  const grid = document.getElementById('bucket-grid');
+  grid.innerHTML = Object.keys(BUCKET_META).map(key=>{
+    const items = OPPS.filter(o=>o.bucket===key).sort((a,b)=>b.score-a.score);
+    const cnt = items.length;
+    const raw = items.reduce((s,o)=>s+o.value,0);
+    const exp = items.reduce((s,o)=>s+o.score,0);
+    const top = items.slice(0,5);
+    const rec7 = top.reduce((s,o)=>s+o.score,0);
+    const miniList = items.slice(0,3).map(o=>{
+      const {wa} = actionBtns(o,'sm');
+      return `<div class="mini">
+        <div class="mn"><span>${esc(o.name)}</span><span class="sc">${fmt(o.score)}</span></div>
+        <div class="mw">${esc(o.why)}</div>
+        <div class="ma">${wa}</div>
+      </div>`;
+    }).join('') || `<div class="empty">Nothing here right now.</div>`;
+    return `<div class="bucket">
+      <div class="bh"><span class="name">${BUCKET_META[key].name}</span><span class="cnt">${cnt}</span></div>
+      <div class="nums">
+        <div class="n"><div class="k">Raw Value</div><div class="val money">${fmt(raw)}</div></div>
+        <div class="n"><div class="k">Expected</div><div class="val money">${fmt(exp)}</div></div>
+      </div>
+      <div class="horizon">
+        <div class="row"><span>Recoverable in 7 days (top ${top.length})</span><b>${fmt(rec7)}</b></div>
+        <div class="row"><span>Recoverable in 30 days (all ${cnt})</span><b>${fmt(exp)}</b></div>
+      </div>
+      <div class="toplist">${miniList}</div>
+    </div>`;
+  }).join('');
+}
+
+function horizonPill(h){
+  if(h==='Today') return '<span class="pill pill-today">Today</span>';
+  if(h==='7 days') return '<span class="pill pill-7">7 days</span>';
+  return '<span class="pill pill-30">30 days</span>';
+}
+function renderThirty(){
+  const grid = document.getElementById('thirty-grid');
+  const top3 = OPPS.slice(0,3);
+  if(!top3.length){ grid.innerHTML = `<div class="rank-card"><div class="wy">Nothing to action right now.</div></div>`; return; }
+  grid.innerHTML = top3.map((o,i)=>{
+    const {wa,done,snz} = actionBtns(o,'');
+    return `<div class="rank-card">
+      <div class="rk">${i+1}</div>
+      <div class="ty">${esc(o.type)}</div>
+      <div class="nm">${esc(o.name)}</div>
+      <div class="vps">
+        <div><span>Value</span><b>${fmt(o.value)}</b></div>
+        <div><span>Prob</span><b>${Math.round(o.prob*100)}%</b></div>
+        <div class="sc"><span>Score</span><b>${fmt(o.score)}</b></div>
+      </div>
+      <div class="wy">${esc(o.why)}</div>
+      <div class="rec">Recoverable in: ${horizonPill(o.horizon)}</div>
+      <div class="acts">${wa}${done}${snz}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderTable(){
+  const tbody = document.getElementById('score-tbody');
+  document.getElementById('table-count').textContent = `${OPPS.length} opportunit${OPPS.length===1?'y':'ies'}`;
+  const rows = showAllRows ? OPPS : OPPS.slice(0,20);
+  tbody.innerHTML = rows.map((o,i)=>{
+    const {wa,done,snz} = actionBtns(o,'sm');
+    return `<tr>
+      <td>${i+1}</td>
+      <td><strong>${esc(o.name)}</strong></td>
+      <td>${esc(o.type)}</td>
+      <td><div class="why-cell">${esc(o.why)}</div></td>
+      <td class="num money">${fmt(o.value)}</td>
+      <td class="num">${Math.round(o.prob*100)}%</td>
+      <td class="num money">${fmt(o.score)}</td>
+      <td>${horizonPill(o.horizon)}</td>
+      <td><div class="acts">${wa}${done}${snz}</div></td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="9" style="text-align:center;padding:1.5rem;color:var(--dim);">No open opportunities. 🎉</td></tr>`;
+  const btn = document.getElementById('show-all-btn');
+  btn.style.display = OPPS.length>20 ? '' : 'none';
+  btn.textContent = showAllRows ? 'Show Top 20' : `Show All (${OPPS.length})`;
+}
+document.getElementById('show-all-btn').addEventListener('click',()=>{ showAllRows=!showAllRows; renderTable(); });
+
+function renderInsights(){
+  const c = CONTEXT;
+  const cards = [];
+  // 1 top product
+  if(c.topProducts.length && c.monthItemRev>0){
+    const [nm,rev] = c.topProducts[0];
+    const pct = Math.round(rev/c.monthItemRev*100);
+    cards.push({t:'Top Product',
+      body:`<b>${esc(nm)}</b> generated <b>${pct}%</b> of product revenue this month (${fmt(rev)}).`,
+      q:`Which products sold most this month and how can I sell more of ${nm}?`});
+  } else {
+    cards.push({t:'Top Product', body:`No paid orders with line items yet this month.`, q:`Which products sold most this month?`});
+  }
+  // 2 reorder
+  if(c.yoniReorder>0){
+    cards.push({t:'Reorder Watch', body:`<b>${c.yoniReorder}</b> yoni care client${c.yoniReorder===1?' is':'s are'} due for reorder this week — worth ${fmt(c.reorderValue)} total across all due clients.`, q:`Write a reorder broadcast for my yoni care clients who are due.`});
+  } else {
+    cards.push({t:'Reorder Watch', body:`<b>${c.reorderCount}</b> client${c.reorderCount===1?' is':'s are'} due for reorder — worth <b>${fmt(c.reorderValue)}</b>.`, q:`Which clients are due for reorder and what should I say to them?`});
+  }
+  // 3 lead velocity
+  const delta = c.lastWeekLeads ? Math.round((c.thisWeekLeads-c.lastWeekLeads)/c.lastWeekLeads*100) : (c.thisWeekLeads?100:0);
+  const dir = delta>=0?'up':'down';
+  cards.push({t:'Lead Velocity', body:`<b>${c.thisWeekLeads}</b> new leads this week vs <b>${c.lastWeekLeads}</b> last week — <b>${dir} ${Math.abs(delta)}%</b>.`, q:`My lead flow is ${dir} ${Math.abs(delta)}% this week. What should I do about it?`});
+  // 4 conversion
+  cards.push({t:'Conversion', body:`Follow-up conversion this month: <b>${c.convPct}%</b> of contacted leads became orders.`, q:`How do I improve my lead-to-order conversion rate?`});
+  // 5 risk
+  cards.push({t:'At-Risk Clients', body:`<b>${c.atRisk}</b> client${c.atRisk===1?' hasn\'t':'s haven\'t'} ordered in 60+ days — at risk of being lost.`, q:`Write a win-back message for clients who haven't ordered in 60+ days.`});
+
+  INSIGHT_QS = cards.map(c2=>c2.q);
+  document.getElementById('insight-grid').innerHTML = cards.map((c2,i)=>`
+    <div class="insight">
+      <div class="it">${esc(c2.t)}</div>
+      <div class="ib">${c2.body}</div>
+      <div class="ia"><button class="btn btn-ghost btn-sm" onclick="jPrefillIdx(${i})">Take Action →</button></div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════
+// ASK JARVIS
+// ════════════════════════════════════════
+function buildSystemPrompt(){
+  const c = CONTEXT;
+  const sb = Object.entries(c.statusCount).map(([k,v])=>`${k}: ${v}`).join(', ');
+  const top5 = OPPS.slice(0,5).map((o,i)=>`${i+1}. ${o.name} — ${o.type}, value ${fmt(o.value)}, ${Math.round(o.prob*100)}%, score ${fmt(o.score)} (${o.why})`).join('\n');
+  const topProd = c.topProducts.length ? c.topProducts.map(([n,r])=>`${n} (${fmt(r)})`).join(', ') : 'none recorded';
+  return `You are Jarvis, the AI operating system for Najah Chemist — a wholesale private label skincare manufacturer in Kingston, Jamaica.
+
+You are direct, revenue-focused, and specific. Every answer must be tied to money. No fluff. No generic advice.
+
+Current business context:
+- Date: ${NOW.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}
+- Revenue this month: ${fmt(c.revenueThisMonth)}
+- AOV: J$22,535
+- Conversion rate: 8%
+- Total leads: ${c.totalLeads} (${sb})
+- Hot leads: ${c.hotCount} worth ${fmt(c.hotValue)}
+- New leads never contacted: ${c.newCount} worth ${fmt(c.newValue)}
+- Clients due for reorder: ${c.reorderCount} worth ${fmt(c.reorderValue)}
+- Unpaid orders: ${c.unpaidCount} worth ${fmt(c.unpaidTotal)}
+- Top 5 opportunities by score:
+${top5 || 'none'}
+- Top products this month by revenue: ${topProd}
+- Recent broadcasts: not tracked in Jarvis
+- Projected month end (expected): ${fmt(c.expected)}
+- Open pipeline: ${fmt(c.openPipeline)}
+
+Answer the founder's question directly. If asked to write a message, write it. If asked for a recommendation, give one specific action. Always state the expected revenue impact.`;
+}
+
+function renderAskLog(){
+  const log = document.getElementById('ask-log');
+  log.innerHTML = askHistory.map(m=>`<div class="msg ${m.role==='user'?'user':'bot'}">${esc(m.content)}</div>`).join('');
+  if(window._jThinking) log.insertAdjacentHTML('beforeend', `<div class="msg bot thinking">Jarvis is thinking…</div>`);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function askJarvis(){
+  const inp = document.getElementById('ask-input');
+  const q = inp.value.trim();
+  if(!q || window._jThinking) return;
+  inp.value='';
+  askHistory.push({role:'user', content:q});
+  window._jThinking = true;
+  renderAskLog();
+  try{
+    const res = await fetch('/.netlify/functions/jarvis',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ system:buildSystemPrompt(), messages:askHistory })
+    });
+    const data = await res.json();
+    window._jThinking = false;
+    askHistory.push({role:'assistant', content:data.reply || 'No response.'});
+  }catch(e){
+    window._jThinking = false;
+    askHistory.push({role:'assistant', content:'Connection error — could not reach Jarvis. Try again.'});
+  }
+  renderAskLog();
+}
+document.getElementById('ask-send').addEventListener('click', askJarvis);
+document.getElementById('ask-input').addEventListener('keydown', e=>{
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); askJarvis(); }
+});
+
+// ════════════════════════════════════════
+// BUILD / BOOT
+// ════════════════════════════════════════
+function rebuild(){
+  OPPS = buildOpportunities();
+  CONTEXT = computeContext();
+  renderNextBest();
+  renderCeo();
+  renderBuckets();
+  renderThirty();
+  renderTable();
+  renderInsights();
+}
+
+async function loadData(){
+  const [oSnap, lSnap] = await Promise.all([
+    getDocs(collection(db,'orders')),
+    getDocs(collection(db,'leads'))
+  ]);
+  ORDERS = oSnap.docs.map(d=>({...d.data(), dbId:d.id}));
+  LEADS  = lSnap.docs.map(d=>({...d.data(), _docId:d.id}));
+  rebuild();
+  document.getElementById('loading').style.display='none';
+  document.getElementById('app').style.display='block';
+}
+
+// ── Auth gate — same admin login as admin.html ──
+onAuthStateChanged(auth, async (user)=>{
+  if(!user || user.email !== ADMIN_EMAIL){
+    window.location.replace('/admin.html');
+    return;
+  }
+  try{
+    await loadData();
+  }catch(e){
+    document.getElementById('loading').innerHTML =
+      `<p style="color:var(--red);">Failed to load data: ${esc(e.message)}</p>`;
+    console.error('[Jarvis] load error:', e);
+  }
+});
+</script>
+</body>
+</html>

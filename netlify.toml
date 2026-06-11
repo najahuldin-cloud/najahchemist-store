@@ -26,6 +26,11 @@
   status = 200
 
 [[redirects]]
+  from = "/jarvis"
+  to = "/jarvis.html"
+  status = 200
+
+[[redirects]]
   from = "/start"
   to = "/start.html"
   status = 200
