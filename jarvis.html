@@ -266,7 +266,7 @@ const ADMIN_EMAIL = "start@najahchemist.com";
 
 // ── Constants ──
 const AOV = 22535;
-const CONVERSION_RATE = 0.08;
+const CONVERSION_RATE = 0.03; // pipeline close rate (3%) — month-end forecast + Growth Opportunities
 const PROB = { unpaid:0.85, reorder:0.80, hot:0.45, overdue:0.35, newlead:0.25 };
 const NOW = new Date();
 
@@ -322,6 +322,34 @@ function orderName(o){ return (o.client||o.customerName||o.clientName||'').trim(
 function orderPhone(o){ return o.customerWhatsApp||o.phone||o.whatsapp||o.wa||''; }
 function orderEmail(o){ return (o.email||o.customerEmail||'').trim().toLowerCase(); }
 function orderId(o){ return (o.id||o.orderId||o.dbId||'').toString(); }
+
+// Test-order filter: orders/leads belonging to the business owner (test data).
+function isOwnerName(name){
+  const n = (name||'').toLowerCase().replace(/\s+/g,' ').trim();
+  if(!n) return false;
+  if(n.includes('najahuldin')) return true;
+  if(n.includes('najah') && n.includes('bennett')) return true;
+  return false;
+}
+function isOwnerOrder(o){
+  return isOwnerName(o.client||o.customerName||o.clientName) || /najahuldin/.test(orderEmail(o));
+}
+function isOwnerLead(l){
+  return isOwnerName(l && l.name) || /najahuldin/.test(((l&&l.email)||'').toLowerCase());
+}
+
+// Extract product names from an order. Handles: items[] (objects or strings),
+// products (array or delimited string), and product (admin "Name (size xqty) | ..." string).
+function orderProductNames(o){
+  const names = [];
+  const clean = v => String(v||'').replace(/\(.*?\)\s*$/,'').replace(/\s+x\d+\s*$/i,'').trim();
+  const push = v => { const s = clean(v); if(s) names.push(s); };
+  if(Array.isArray(o.items)) o.items.forEach(i => push(i && typeof i==='object' ? (i.name||i.product||i.title) : i));
+  if(Array.isArray(o.products)) o.products.forEach(p => push(p && typeof p==='object' ? (p.name||p.product||p.title) : p));
+  else if(typeof o.products==='string') o.products.split(/[|,;\n]+/).forEach(push);
+  if(typeof o.product==='string') o.product.split(/\s*\|\s*/).forEach(push);
+  return [...new Set(names.filter(Boolean))];
+}
 
 function safeName(raw){
   const name = (raw||'').trim();
@@ -564,17 +592,18 @@ function computeContext(){
   const openPipeline = OPPS.reduce((s,o)=>s+o.value,0);
   const moneyLeft = OPPS.reduce((s,o)=>s+o.score,0);
 
-  // top products this month by revenue
-  const prodRev = {};
-  paidThisMonth.forEach(o=>{
-    (o.items||[]).forEach(i=>{
-      const nm = (i.name||'Unknown').trim();
-      const amt = (parseFloat(i.price)||0)*(parseFloat(i.qty)||1);
-      prodRev[nm] = (prodRev[nm]||0) + amt;
-    });
+  // top products this month by FREQUENCY — parse names from each order this month
+  // (all non-cancelled orders, not just paid, so a sparse paymentStatus can't zero it out)
+  const ordersThisMonth = ORDERS.filter(o=>!isCancelled(o) && inThisMonth(parseOrderDate(o)));
+  const prodFreq = {};
+  let monthOrdersWithProducts = 0;
+  ordersThisMonth.forEach(o=>{
+    const names = orderProductNames(o);
+    if(names.length) monthOrdersWithProducts++;
+    names.forEach(nm=>{ prodFreq[nm] = (prodFreq[nm]||0) + 1; });
   });
-  const topProducts = Object.entries(prodRev).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  const monthItemRev = Object.values(prodRev).reduce((s,v)=>s+v,0);
+  const topProducts = Object.entries(prodFreq).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const monthOrders = ordersThisMonth.length;
 
   // lead status breakdown
   const statusCount = {New:0,Contacted:0,Interested:0,Ordered:0,Cold:0};
@@ -601,10 +630,20 @@ function computeContext(){
   });
   const convPct = leadsWithEmail ? Math.round(convertedLeads/leadsWithEmail*100) : 0;
 
-  // at-risk clients (>60d since last order)
-  const byEmail = {};
-  ORDERS.forEach(o=>{ const em=orderEmail(o); if(!em) return; const d=parseOrderDate(o); if(!d) return; if(!byEmail[em]||d>byEmail[em]) byEmail[em]=d; });
-  const atRisk = Object.values(byEmail).filter(d=>daysAgo(d)>60).length;
+  // at-risk clients — unique clients whose MOST RECENT order is older than today-60d.
+  // Key by email when present, else by name (orders often lack an email), so the
+  // count isn't silently zeroed by a sparse email field.
+  const cutoff60 = new Date(NOW.getTime() - 60*86400000);
+  const lastOrderByClient = {};
+  ORDERS.forEach(o=>{
+    if(isCancelled(o)) return;
+    const key = orderEmail(o) || orderName(o).toLowerCase();
+    if(!key || key==='customer') return;
+    const d = parseOrderDate(o);
+    if(!d) return;
+    if(!lastOrderByClient[key] || d > lastOrderByClient[key]) lastOrderByClient[key] = d;
+  });
+  const atRisk = Object.values(lastOrderByClient).filter(d => d < cutoff60).length;
 
   // yoni reorder count
   const yoniReorder = reorder.filter(o=>(o._items||[]).some(i=>(i.name||'').toLowerCase().includes('yoni'))).length;
@@ -630,7 +669,7 @@ function computeContext(){
     conservative:revenueThisMonth,
     expected:revenueThisMonth + grossPipeline*CONVERSION_RATE,
     optimistic:revenueThisMonth + grossPipeline*CONVERSION_RATE*1.5,
-    topProducts, monthItemRev,
+    topProducts, monthOrders, monthOrdersWithProducts,
     statusCount, totalLeads:LEADS.length,
     leadsWithEmail, convertedLeads,
     hotCount:hot.length, hotValue:hot.reduce((s,o)=>s+o.value,0),
@@ -790,15 +829,16 @@ document.getElementById('show-all-btn').addEventListener('click',()=>{ showAllRo
 function renderInsights(){
   const c = CONTEXT;
   const cards = [];
-  // 1 top product
-  if(c.topProducts.length && c.monthItemRev>0){
-    const [nm,rev] = c.topProducts[0];
-    const pct = Math.round(rev/c.monthItemRev*100);
+  // 1 top product (by frequency this month)
+  if(c.topProducts.length){
+    const [nm,count] = c.topProducts[0];
+    const denom = c.monthOrdersWithProducts || c.monthOrders || 0;
+    const ofTxt = denom ? ` of ${denom} order${denom===1?'':'s'} this month` : ' this month';
     cards.push({t:'Top Product',
-      body:`<b>${esc(nm)}</b> generated <b>${pct}%</b> of product revenue this month (${fmt(rev)}).`,
+      body:`<b>${esc(nm)}</b> is your most-ordered product — appears in <b>${count}</b>${ofTxt}.`,
       q:`Which products sold most this month and how can I sell more of ${nm}?`});
   } else {
-    cards.push({t:'Top Product', body:`No paid orders with line items yet this month.`, q:`Which products sold most this month?`});
+    cards.push({t:'Top Product', body:`No product data found on this month's orders yet.`, q:`Which products sold most this month?`});
   }
   // 2 reorder
   if(c.yoniReorder>0){
@@ -827,12 +867,12 @@ function renderInsights(){
 function renderGrowth(){
   const c = CONTEXT;
   const cards = [];
-  // 1 — untapped lead pipeline (hot + new leads), expected at 8%
+  // 1 — untapped lead pipeline (hot + new leads), expected at the pipeline close rate (3%)
   const leadPipe = c.hotValue + c.newValue;
   const leadCount = c.hotCount + c.newCount;
   cards.push({
     t:'Untapped Lead Pipeline', v:fmt(leadPipe*CONVERSION_RATE),
-    body:`<b>${leadCount}</b> hot + new leads worth <b>${fmt(leadPipe)}</b> in raw pipeline — about <b>${fmt(leadPipe*CONVERSION_RATE)}</b> expected at an 8% close rate.`,
+    body:`<b>${leadCount}</b> hot + new leads worth <b>${fmt(leadPipe)}</b> in raw pipeline — about <b>${fmt(leadPipe*CONVERSION_RATE)}</b> expected at a ${Math.round(CONVERSION_RATE*100)}% close rate.`,
     q:`I have ${leadCount} hot and new leads worth ${fmt(leadPipe)}. Give me a plan to convert as many as possible this week.`
   });
   // 2 — reactivation upside (at-risk clients)
@@ -873,7 +913,7 @@ function buildSystemPrompt(){
   const c = CONTEXT;
   const sb = Object.entries(c.statusCount).map(([k,v])=>`${k}: ${v}`).join(', ');
   const top5 = OPPS.slice(0,5).map((o,i)=>`${i+1}. ${o.name} — ${o.type}, value ${fmt(o.value)}, ${Math.round(o.prob*100)}%, score ${fmt(o.score)} (${o.why})`).join('\n');
-  const topProd = c.topProducts.length ? c.topProducts.map(([n,r])=>`${n} (${fmt(r)})`).join(', ') : 'none recorded';
+  const topProd = c.topProducts.length ? c.topProducts.map(([n,cnt])=>`${n} (${cnt}×)`).join(', ') : 'none recorded';
   return `You are Jarvis, the AI operating system for Najah Chemist — a wholesale private label skincare manufacturer in Kingston, Jamaica.
 
 You are direct, revenue-focused, and specific. Every answer must be tied to money. No fluff. No generic advice.
@@ -882,7 +922,7 @@ Current business context:
 - Date: ${NOW.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}
 - Revenue this month: ${fmt(c.revenueThisMonth)}
 - AOV: J$22,535
-- Conversion rate: 8%
+- Conversion rate: 3%
 - Total leads: ${c.totalLeads} (${sb})
 - Hot leads: ${c.hotCount} worth ${fmt(c.hotValue)}
 - New leads never contacted: ${c.newCount} worth ${fmt(c.newValue)}
@@ -890,7 +930,7 @@ Current business context:
 - Unpaid orders: ${c.unpaidCount} worth ${fmt(c.unpaidTotal)}
 - Top 5 opportunities by score:
 ${top5 || 'none'}
-- Top products this month by revenue: ${topProd}
+- Top products this month by order frequency: ${topProd}
 - Recent broadcasts: not tracked in Jarvis
 - Projected month end (expected): ${fmt(c.expected)}
 - Pipeline — gross: ${fmt(c.grossPipeline)}, unique (${c.uniquePeople} people): ${fmt(c.uniquePipeline)}, expected: ${fmt(c.expectedPipeline)}
@@ -974,8 +1014,14 @@ async function loadData(){
     getDocs(collection(db,'orders')),
     getDocs(collection(db,'leads'))
   ]);
-  ORDERS = oSnap.docs.map(d=>({...d.data(), dbId:d.id}));
-  LEADS  = lSnap.docs.map(d=>({...d.data(), _docId:d.id}));
+  const allOrders = oSnap.docs.map(d=>({...d.data(), dbId:d.id}));
+  // Log the product field shape of the first 3 orders to understand the data structure.
+  allOrders.slice(0,3).forEach((o,i)=>console.log(`[Jarvis] order ${i} product fields:`,
+    { product:o.product, products:o.products, items:o.items, parsed:orderProductNames(o) }));
+  // Filter out the owner's test orders/leads from everything (fix #5).
+  ORDERS = allOrders.filter(o=>!isOwnerOrder(o));
+  LEADS  = lSnap.docs.map(d=>({...d.data(), _docId:d.id})).filter(l=>!isOwnerLead(l));
+  console.log(`[Jarvis] orders: ${allOrders.length} total, ${ORDERS.length} after owner/test filter; leads: ${LEADS.length}`);
   rebuild();
   document.getElementById('loading').style.display='none';
   document.getElementById('app').style.display='block';

@@ -76,8 +76,17 @@ exports.handler = async (event) => {
     await Promise.all(names.map(async (n) => {
       const name = String(n || "").trim();
       if (!name) return;
-      const mems = await mem0Search(name, USER_INTERACTIONS, 2);
-      if (mems.length) memories[n] = mems.join(" · ");
+      const mems = await mem0Search(name, USER_INTERACTIONS, 6);
+      // Only surface memories that actually mention THIS client (by name token).
+      // Mem0 semantic search returns top_k results regardless of relevance, so
+      // generic business facts (AOV, shipping) seeded/stored in the interactions
+      // store would otherwise leak into every client's Why field. Drop anything
+      // that does not name the client.
+      const tokens = name.toLowerCase().split(/\s+/).filter(t => t.length >= 3);
+      const clientMems = tokens.length
+        ? mems.filter(m => { const low = m.toLowerCase(); return tokens.some(t => low.includes(t)); })
+        : [];
+      if (clientMems.length) memories[n] = clientMems.slice(0, 2).join(" · ");
     }));
     return {
       statusCode: 200,
