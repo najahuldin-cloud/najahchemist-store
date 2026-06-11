@@ -2673,3 +2673,8 @@ exports.checkLeadFollowUps = onSchedule(
     console.log(`[checkLeadFollowUps] Sent ${sent} follow-up email(s)`);
   }
 );
+
+// ── Jarvis Operating System agents (additive — see functions/agents/) ─────────
+// Aggregates agent-owned Cloud Functions without modifying any existing export.
+// Phase 1: the agents barrel exports nothing, so this adds zero new functions.
+Object.assign(exports, require('./agents'));

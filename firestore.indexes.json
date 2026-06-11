@@ -1,0 +1,79 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "lead_intelligence",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStage", "order": "ASCENDING" },
+        { "fieldPath": "expectedValue", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "lead_intelligence",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "scoreLabel", "order": "ASCENDING" },
+        { "fieldPath": "expectedValue", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "lead_intelligence",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agentOwner", "order": "ASCENDING" },
+        { "fieldPath": "expectedValue", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "lead_recommendation_outcomes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agent", "order": "ASCENDING" },
+        { "fieldPath": "outcome", "order": "ASCENDING" },
+        { "fieldPath": "resolvedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "lead_recommendation_outcomes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "leadId", "order": "ASCENDING" },
+        { "fieldPath": "recommendationVersion", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "revenue_opportunities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "owner", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "expectedValue", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pending_approvals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "requestedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "jarvis_audit_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agent", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "revenue_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "leadId", "order": "ASCENDING" },
+        { "fieldPath": "occurredAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

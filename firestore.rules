@@ -73,5 +73,70 @@ service cloud.firestore {
       allow read, write: if request.auth != null
         && request.auth.token.email == "start@najahchemist.com";
     }
+
+    // ── Jarvis Operating System ───────────────────────────────────────────────
+    // isAdmin(): keeps the existing single-email gate working today, and also
+    // accepts a role custom-claim once role migration lands (Phase 6) — no flag-day.
+    function isAdmin() {
+      return request.auth != null
+        && (request.auth.token.email == "start@najahchemist.com"
+            || request.auth.token.role in ["Owner", "Admin"]);
+    }
+
+    // Lead intelligence — written ONLY by Cloud Functions (admin SDK bypasses rules).
+    // Clients read-only; no client can ever write/tamper. This isolation is what
+    // prevents contention with the auto-responder's writes to the `leads` doc.
+    match /lead_intelligence/{leadId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Learning layer — admin read/create/update; never deleted (audit integrity).
+    match /lead_recommendation_outcomes/{doc} {
+      allow read, create, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // Function-written intelligence — clients read-only.
+    match /revenue_opportunities/{doc} { allow read: if request.auth != null; allow write: if false; }
+    match /product_intelligence/{doc}  { allow read: if request.auth != null; allow write: if false; }
+    match /market_signals/{doc}        { allow read: if request.auth != null; allow write: if false; }
+    match /daily_briefings/{doc}       { allow read: if request.auth != null; allow write: if false; }
+    match /content_intelligence/{doc}  { allow read: if request.auth != null; allow write: if false; }
+    match /agentPerformance/{doc}      { allow read: if request.auth != null; allow write: if false; }
+    match /customerMemory/{doc}        { allow read: if request.auth != null; allow write: if false; }
+
+    // Agent controls / kill switch — human (admin) only.
+    match /agent_controls/{doc} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // Approval queue — agents request (any auth), only admin decides; never deleted.
+    match /pending_approvals/{doc} {
+      allow read: if isAdmin();
+      allow create: if request.auth != null;
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // Audit log — append-only / immutable.
+    match /jarvis_audit_logs/{doc} {
+      allow read: if isAdmin();
+      allow create: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // Revenue ledger — append-only / immutable money record.
+    match /revenue_events/{doc} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // Role bootstrap (custom-claims migration) — admin only.
+    match /user_roles/{uid} {
+      allow read, write: if isAdmin();
+    }
   }
 }
