@@ -301,6 +301,12 @@ const PROB = { unpaid:0.85, reorder:0.80, hot:0.45, overdue:0.35, newlead:0.25 }
 // Daily decay rate applied to an opportunity's raw value if it's not actioned.
 // 5% unpaid orders, 2% clients due for reorder, 1% for all lead buckets.
 const DECAY = { unpaid:0.05, reorder:0.02, hot:0.01, newlead:0.01, overdue:0.01 };
+// Digital downsell product — playbook sold via Fygaro for leads not ready to manufacture.
+const FIRST_SALE = {
+  name:'The First Sale System', price:3999, conv:0.05,
+  fygaro:'https://www.fygaro.com/en/pb/fbb9ab58-d40c-441f-ac8b-9f9aba576c30/'
+};
+const DOWNSELL_WHY = ' 💡 Downsell candidate — offer The First Sale System first';
 const NOW = new Date();
 
 // ── State ──
@@ -418,6 +424,12 @@ function segOf(l){
   return 'skincare';
 }
 const SEG_LABEL = { feminine:'feminine care', haircare:'hair care', mens:"men's", body:'body care', skincare:'skincare' };
+// Downsell test: lead just exploring or on the lowest budget → not ready to manufacture.
+function isDownsell(l){
+  const journey = (l.journey||l.journeyStage||'').toLowerCase();
+  const budget  = (l.budget||'').toLowerCase();
+  return journey.includes('just exploring') || budget.includes('under $200');
+}
 // Classify a PRODUCT name into a lead segment (fallback when buyers aren't matched to leads).
 function productSegment(name){
   const n = (name||'').toLowerCase();
@@ -473,6 +485,9 @@ const NEW_LEAD_MSGS = {
   mens:     n => `Hi ${n} 👋🏾 I saw you're interested in starting a men's grooming brand. Our Beard Oil starts at J$6,750/litre. Visit najahchemistja.com or reply here 🌿`
 };
 function msgNewLead(name,seg){ return (NEW_LEAD_MSGS[seg]||NEW_LEAD_MSGS.skincare)(name); }
+function msgFirstSale(name){
+  return `Hi ${name} 👋🏾 Not ready to start manufacturing yet? Our founder Najah started with less than J$5,000 in her kitchen. The First Sale System is her exact playbook for getting your first sale — J$3,999, instant download. Get it here: ${FIRST_SALE.fygaro} 🌿`;
+}
 
 // ── Done / Snooze persistence ──
 const DONE_KEY='jarvis_done', SNOOZE_KEY='jarvis_snooze';
@@ -526,7 +541,7 @@ function buildOpportunities(){
       bucket:'hot', id:'hot:'+(l._docId||l.id||l.whatsapp||l.name),
       key:(em||l.whatsapp||l.name||'').toLowerCase(),
       name:l.name, type:'Hot Lead',
-      why:`Reached out ${days} days ago. No order placed.`,
+      why:`Reached out ${days} days ago. No order placed.${isDownsell(l)?DOWNSELL_WHY:''}`,
       value:AOV, prob:PROB.hot, horizon:'7 days',
       phone:l.whatsapp, msg:msgHotLead(safeName(l.name))
     });
@@ -598,7 +613,7 @@ function buildOpportunities(){
       bucket:'newlead', id:'newlead:'+(l._docId||l.id||l.whatsapp||l.name),
       key:(em||l.whatsapp||l.name||'').toLowerCase(),
       name:l.name, type:'New Lead',
-      why:`Submitted ${days} days ago. Never contacted.`,
+      why:`Submitted ${days} days ago. Never contacted.${(isDownsell(l) && !(em && orderEmails.has(em)))?DOWNSELL_WHY:''}`,
       value:AOV, prob:PROB.newlead, horizon:'30 days',
       phone:l.whatsapp, msg:msgNewLead(safeName(l.name), seg)
     });
@@ -618,7 +633,7 @@ function buildOpportunities(){
       bucket:'overdue', id:'overdue:'+(l._docId||l.id||l.whatsapp||l.name),
       key:(em||l.whatsapp||l.name||'').toLowerCase(),
       name:l.name, type:'Overdue Follow-up',
-      why:`Follow-up was due ${days} days ago.`,
+      why:`Follow-up was due ${days} days ago.${(isDownsell(l) && !(em && orderEmails.has(em)))?DOWNSELL_WHY:''}`,
       value:AOV, prob:PROB.overdue, horizon:'Today',
       phone:l.whatsapp, msg:msgOverdue(safeName(l.name))
     });
@@ -750,6 +765,25 @@ function computeContext(){
   // yoni reorder count
   const yoniReorder = reorder.filter(o=>(o._items||[]).some(i=>(i.name||'').toLowerCase().includes('yoni'))).length;
 
+  // ── Digital downsell candidates (The First Sale System) ──
+  // Leads "Just exploring" OR low budget OR never contacted 30+ days, who haven't ordered.
+  const cutoff30 = new Date(NOW.getTime() - 30*86400000);
+  const digitalCands = LEADS.filter(l=>{
+    const e = (l.email||'').trim().toLowerCase();
+    if(e && orderEmailSet.has(e)) return false;            // already a buyer — not a downsell target
+    const st = l.status||'New';
+    const d = leadDate(l);
+    const never30 = (st==='New') && d && d < cutoff30;
+    return isDownsell(l) || never30;
+  });
+  const digitalLeads = digitalCands.length;
+  const digitalRevenue = Math.round(digitalLeads * FIRST_SALE.price * FIRST_SALE.conv);
+  const exploringCount = LEADS.filter(l=>(l.journey||l.journeyStage||'').toLowerCase().includes('just exploring')).length;
+  // representative lead for the downsell WhatsApp button
+  const ds = digitalCands.find(l=>validName(l.name) && waPhone(l.whatsapp))
+          || digitalCands.find(l=>validName(l.name)) || digitalCands[0] || null;
+  const digitalSample = ds ? { name:ds.name, phone:ds.whatsapp } : null;
+
   // ── Pipeline (de-duplicated) ──
   // Gross    = sum of every opportunity's raw value (a person in 2 buckets counts twice)
   // Unique   = each unique person counted once at their single highest-value opportunity
@@ -778,6 +812,7 @@ function computeContext(){
     newCount:newl.length, newValue:newl.reduce((s,o)=>s+o.value,0),
     reorderCount:reorder.length, reorderValue:reorder.reduce((s,o)=>s+o.value,0),
     thisWeekLeads, lastWeekLeads, convPct, atRisk, yoniReorder,
+    digitalLeads, digitalRevenue, exploringCount, digitalSample,
     productPush: computeProductPush()
   };
 }
@@ -837,6 +872,13 @@ function renderCeo(){
         <div class="row"><span>Gross (all opps)</span><span>${fmt(c.grossPipeline)}</span></div>
         <div class="row"><span>Unique (${c.uniquePeople} people)</span><span>${fmt(c.uniquePipeline)}</span></div>
         <div class="row"><span>Expected (prob-weighted)</span><span>${fmt(c.expectedPipeline)}</span></div>
+      </div></div>
+    <div class="stat"><div class="t">📘 Digital Product</div><div class="v money" style="font-size:1.1rem;">The First Sale System</div>
+      <div class="extra">
+        <div class="row"><span>Price</span><span>${fmt(FIRST_SALE.price)}</span></div>
+        <div class="row"><span>${c.digitalLeads} leads → potential</span><span>${fmt(c.digitalRevenue)}</span></div>
+        <div style="color:var(--dim);">at 5% conversion</div>
+        <div style="margin-top:0.65rem;"><a class="btn btn-brand btn-sm" href="${FIRST_SALE.fygaro}" target="_blank" rel="noopener">🔗 View on Fygaro</a></div>
       </div></div>`;
 }
 
@@ -960,6 +1002,10 @@ function renderInsights(){
   cards.push({t:'Conversion', body:`<b>${c.convPct}%</b> of leads with an email have placed an order (${c.convertedLeads} of ${c.leadsWithEmail} matched).`, q:`My lead-to-order conversion is ${c.convPct}%. How do I improve it?`});
   // 5 risk
   cards.push({t:'At-Risk Clients', body:`<b>${c.atRisk}</b> client${c.atRisk===1?' hasn\'t':'s haven\'t'} ordered in 60+ days — at risk of being lost.`, q:`Write a win-back message for clients who haven't ordered in 60+ days.`});
+  // 6 digital revenue opportunity
+  cards.push({t:'📘 Digital Revenue Opportunity',
+    body:`<b>${c.digitalLeads}</b> leads exploring but not ordering. Promoting The First Sale System at 5% conversion = <b>${fmt(c.digitalRevenue)}</b>. This is money from leads who won't buy manufacturing today.`,
+    q:`Write a broadcast to promote The First Sale System to cold leads`});
 
   INSIGHT_QS = cards.map(c2=>c2.q);
   document.getElementById('insight-grid').innerHTML = cards.map((c2,i)=>`
@@ -1012,16 +1058,33 @@ function renderGrowth(){
     </div>`).join('');
 }
 
+function digitalPushCard(){
+  const c = CONTEXT;
+  const waMsg = msgFirstSale(c.digitalSample ? safeName(c.digitalSample.name) : 'there');
+  const link = c.digitalSample ? waLink(c.digitalSample.phone, waMsg) : null;
+  const waBtn = link
+    ? `<a class="btn btn-wa btn-sm" href="${esc(link)}" target="_blank" rel="noopener">📱 WhatsApp Message</a>`
+    : `<button class="btn btn-ghost btn-sm" disabled>no #</button>`;
+  return `<div class="push-card" style="border-left-color:var(--brand);">
+    <div class="pn">📘 Downsell Opportunity — The First Sale System</div>
+    <div class="pmeta">
+      <b>${c.digitalLeads}</b> leads not ready to manufacture yet.<br>
+      At ${fmt(FIRST_SALE.price)} per sale, 5% conversion = <b>${fmt(c.digitalRevenue)}</b><br>
+      This turns lost leads into revenue.
+    </div>
+    <div class="pact" style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+      ${waBtn}
+      <a class="btn btn-brand btn-sm" href="${FIRST_SALE.fygaro}" target="_blank" rel="noopener">🔗 Fygaro Link</a>
+    </div>
+  </div>`;
+}
+
 function renderPush(){
   const grid = document.getElementById('push-grid');
   const recEl = document.getElementById('push-rec');
-  const p = (CONTEXT.productPush)||{top:[],recommendation:''};
-  if(!p.top.length){
-    grid.innerHTML = `<div class="empty">No paid/complete product orders recorded this month yet.</div>`;
-    recEl.innerHTML = '';
-    return;
-  }
-  grid.innerHTML = p.top.map((it,i)=>`
+  const c = CONTEXT;
+  const p = c.productPush||{top:[],recommendation:''};
+  let cards = p.top.map((it,i)=>`
     <div class="push-card">
       <div class="pn">#${i+1} &nbsp;${esc(it.name)}</div>
       <div class="pmeta">
@@ -1030,7 +1093,16 @@ function renderPush(){
       </div>
       <div class="pact"><b>Action:</b> ${esc(it.action)}</div>
     </div>`).join('');
-  recEl.innerHTML = `<div class="push-rec">🤖 <b>Jarvis recommends:</b> ${esc(p.recommendation)}</div>`;
+  // Conditional 4th slot — digital downsell.
+  const showDigital = (c.newCount>50) || (c.atRisk>10) || (c.exploringCount>20);
+  if(showDigital) cards += digitalPushCard();
+  if(!cards){
+    grid.innerHTML = `<div class="empty">No paid/complete product orders recorded this month yet.</div>`;
+    recEl.innerHTML = '';
+    return;
+  }
+  grid.innerHTML = cards;
+  recEl.innerHTML = p.recommendation ? `<div class="push-rec">🤖 <b>Jarvis recommends:</b> ${esc(p.recommendation)}</div>` : '';
 }
 
 // ════════════════════════════════════════
