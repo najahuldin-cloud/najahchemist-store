@@ -15,7 +15,7 @@ async function list(c){const d=[];let pt='';do{const r=await fetch(`${BASE}/${c}
   const NAME={};leads.forEach(l=>NAME[l.id]=(l.data.name||'').trim());
   // Trim intel to fields the Phase 4 renders actually read.
   const INTEL=intel.map(d=>{const i=d.data;return{leadId:d.id,score:i.score,scoreLabel:i.scoreLabel,closeProbability:i.closeProbability,recommendedOffer:i.recommendedOffer,expectedValue:i.expectedValue,potentialValue:{value:i.potentialValue&&i.potentialValue.value},isTest:i.isTest,isPrimaryRecord:i.isPrimaryRecord,suspiciousLead:i.suspiciousLead,duplicateCount:i.duplicateCount,opportunitySource:i.opportunitySource,preferredChannel:i.preferredChannel,intentSignals:(i.intentSignals||[]).slice(0,3),whyRecommended:(i.whyRecommended||[]).slice(0,3),lastMeaningfulActivity:i.lastMeaningfulActivity};});
-  const LEADSMINI=leads.map(l=>({_docId:l.id,name:NAME[l.id]}));
+  const LEADSMINI=leads.map(l=>({_docId:l.id,name:NAME[l.id],whatsapp:l.data.whatsapp||''}));
 
   let html=fs.readFileSync(path.join(__dirname,'..','jarvis.html'),'utf8');
   // 1) Replace the 4 firebase imports with stubs.

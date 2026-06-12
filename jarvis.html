@@ -537,6 +537,45 @@ function honestRanked(){
   });
 }
 
+// ── Phase 4 attribution: WhatsApp action → record outcome (existing jarvis_outcomes) ──
+const ACTIONED_INTEL = {};   // leadId -> true; session dedup guard (no duplicate pending rows)
+function msgIntel(r){
+  const first = String(r.name||'there').trim().split(/\s+/)[0] || 'there';
+  return `Hi ${first}! Reaching out from Najah Chemist — do you have a moment to chat about getting you started?`;
+}
+// Render the action as a 📱 WhatsApp link when the lead has a number; else plain text.
+function waActionLink(r){
+  const lead = LEAD_BY_ID[r.leadId] || {};
+  const link = waLink(lead.whatsapp, msgIntel(r));
+  if(!link) return `<span>${esc(r.action)}</span>`;
+  return `<a href="${esc(link)}" target="_blank" rel="noopener" onclick="jActIntel('${esc(r.leadId)}')" style="color:var(--gold);text-decoration:none;font-weight:inherit;">📱 ${esc(r.action)}</a>`;
+}
+// Records "recommendation actioned" in jarvis_outcomes. Fire-and-forget — never await
+// before the <a> opens WhatsApp (same synchronous pattern as the legacy jDone link).
+window.jActIntel = function(leadId){
+  if(!leadId || ACTIONED_INTEL[leadId]) return;   // dedup: already recorded this session
+  ACTIONED_INTEL[leadId] = true;
+  const i = INTEL_BY_ID[leadId] || {};
+  const lead = LEAD_BY_ID[leadId] || {};
+  const outcome = {
+    opportunityType: i.recommendedOffer ? ('Lead — ' + i.recommendedOffer) : 'Lead',
+    name: String(lead.name||'').trim(),
+    whatsapp: lead.whatsapp || '',
+    leadId: leadId,                                 // attribution
+    expectedRevenue: Math.round(Number(i.expectedValue)||0),
+    actualRevenue: null,
+    status: 'pending',
+    source: 'jarvis-dashboard',
+    recommendedAt: todayISO(),
+    actionedAt: new Date().toISOString(),           // exact action timestamp
+    resolvedAt: null,
+    campaignId: null
+  };
+  addDoc(collection(db,'jarvis_outcomes'), outcome)
+    .then(ref=>{ outcome.id = ref.id; OUTCOMES.push(outcome); try{ toast('✓ Actioned — '+(outcome.name||'lead')); }catch(_){} })
+    .catch(e=>{ console.error('[Jarvis] intel outcome save failed', e); ACTIONED_INTEL[leadId] = false; });
+};
+
 function parseOrderDate(o){
   const ca = o.createdAt;
   if(ca){
@@ -2134,7 +2173,7 @@ function renderTodayMoney(){
 }
 function p4actionRow(r,idx){
   return `<div style="${P4CARD}display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;">`
-    +`<div><div style="font-weight:800;">${idx!=null?`${idx}. `:''}${esc(r.action)}</div>`
+    +`<div><div style="font-weight:800;">${idx!=null?`${idx}. `:''}${waActionLink(r)}</div>`
     +`<div style="${P4SUB}margin-top:.25rem;">${(r.why||[]).slice(0,2).map(esc).join(' · ')}</div></div>`
     +`<div style="text-align:right;white-space:nowrap;"><div class="money" style="font-weight:800;">${fmt(r.ev)}</div><div style="${P4SUB}">${pctOf(r.conf)} · ${r.minutes} min</div><div style="${P4SUB}">${revInflPct(r.ev)} of goal</div></div></div>`;
 }
@@ -2152,7 +2191,7 @@ function renderNext15(){
   const infl=top3.reduce((s,r)=>s+r.ev,0), mins=top3.reduce((s,r)=>s+r.minutes,0), conf=top3.reduce((s,r)=>s+r.conf,0)/top3.length;
   el.innerHTML=`<div class="sec-head"><h2>⏱ Next 15 Minutes</h2><span class="sub">Highest-ROI actions you can do right now</span></div>`
     +`<div style="${P4CARD}border-color:var(--gold);">`
-    +top3.map((r,i)=>`<div style="display:flex;justify-content:space-between;gap:1rem;padding:.35rem 0;border-bottom:1px solid var(--border);"><span><b>${i+1}.</b> ${esc(r.action)}</span><span style="${P4SUB}">${pctOf(r.conf)} · ${r.minutes}m</span></div>`).join('')
+    +top3.map((r,i)=>`<div style="display:flex;justify-content:space-between;gap:1rem;padding:.35rem 0;border-bottom:1px solid var(--border);"><span><b>${i+1}.</b> ${waActionLink(r)}</span><span style="${P4SUB}">${pctOf(r.conf)} · ${r.minutes}m</span></div>`).join('')
     +`<div style="margin-top:.6rem;font-size:.95rem;">Expected revenue influence: <b class="money">${fmt(infl)}</b> · Confidence <b>${pctOf(conf)}</b> · ~${mins} min total</div></div>`;
 }
 function renderRevenueTarget(){
@@ -2194,7 +2233,8 @@ function renderTopOpps(){
   el.innerHTML=`<div class="sec-head"><h2>🎯 Top Opportunities</h2><span class="sub">Real & primary only — with why each ranks</span></div>`
     +`<div style="display:flex;flex-direction:column;gap:0.6rem;">`
     +top.map((r,i)=>`<div style="${P4CARD}"><div style="display:flex;justify-content:space-between;gap:1rem;"><div><b>${i+1}. ${esc(r.name)}</b> <span style="${P4SUB}">${esc(r.label)} · ${esc(r.offer)}</span></div><div style="text-align:right;white-space:nowrap;"><span class="money" style="font-weight:800;">${fmt(r.ev)}</span> <span style="${P4SUB}">${pctOf(r.conf)} · ${r.minutes}m · ${revInflPct(r.ev)} of goal</span></div></div>`
-      +`<div style="${P4SUB}margin-top:.35rem;">WHY: ${(r.why||[]).slice(0,3).map(esc).join(' · ')}</div></div>`).join('')+`</div>`;
+      +`<div style="${P4SUB}margin-top:.35rem;">WHY: ${(r.why||[]).slice(0,3).map(esc).join(' · ')}</div>`
+      +`<div style="margin-top:.45rem;">${waActionLink(r)}</div></div>`).join('')+`</div>`;
 }
 
 function renderFounderFocus(){
@@ -2204,7 +2244,7 @@ function renderFounderFocus(){
   const cell=`<div><div style="${P4SUB}">`;
   el.innerHTML=`<div class="sec-head"><h2>🔥 Founder Focus</h2><span class="sub">If Najah only does ONE thing today</span></div>`
     +`<div style="${P4CARD}border:1.5px solid var(--gold);background:linear-gradient(135deg,rgba(200,151,58,0.16),var(--card));">`
-    +`<div class="p4big" style="font-size:1.35rem;font-weight:800;color:var(--gold);">${esc(top.action)}</div>`
+    +`<div class="p4big" style="font-size:1.35rem;font-weight:800;color:var(--gold);">${waActionLink(top)}</div>`
     +`<div class="p4grid" style="margin-top:.55rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.6rem;font-size:.95rem;">`
     +`${cell}EXPECTED VALUE</div><b class="money">${fmt(top.ev)}</b></div>`
     +`${cell}CONFIDENCE</div><b>${pctOf(top.conf)}</b></div>`
@@ -2262,7 +2302,7 @@ function renderLeadCommand(){
     +`<table style="width:100%;border-collapse:collapse;"><thead><tr>`
     +['#','Lead','Score','Label','Offer','Close','Expected','Age','Next Action'].map(h=>`<th style="${th}">${h}</th>`).join('')
     +`</tr></thead><tbody>`
-    +show.map((r,i)=>`<tr><td style="${td}">${i+1}</td><td style="${td}">${esc(r.name)}</td><td style="${td}">${r.score}</td><td style="${td}">${esc(r.label)}</td><td style="${td}">${esc(r.offer)}</td><td style="${td}">${pctOf(r.conf)}</td><td style="${td}" class="money">${fmt(r.ev)}</td><td style="${td}">${r.ageDays!=null?r.ageDays+'d':'—'}</td><td style="${td}white-space:normal;">${esc(r.action)}</td></tr>`).join('')
+    +show.map((r,i)=>`<tr><td style="${td}">${i+1}</td><td style="${td}">${esc(r.name)}</td><td style="${td}">${r.score}</td><td style="${td}">${esc(r.label)}</td><td style="${td}">${esc(r.offer)}</td><td style="${td}">${pctOf(r.conf)}</td><td style="${td}" class="money">${fmt(r.ev)}</td><td style="${td}">${r.ageDays!=null?r.ageDays+'d':'—'}</td><td style="${td}white-space:normal;">${waActionLink(r)}</td></tr>`).join('')
     +`</tbody></table></div>`;
 }
 
