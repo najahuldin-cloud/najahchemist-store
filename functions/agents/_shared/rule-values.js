@@ -5,7 +5,7 @@
 // promote data-derived values (source: 'data', higher confidence) without code
 // changes. Close-probability seeds reuse the constants proven in jarvis.html.
 
-const SCORER_VERSION = 3; // v3: segment-first offer routing + FSS downsell flag
+const SCORER_VERSION = 4; // v4: Contacted/Interested base split, budget-tier fix, isTest/dataQuality
 
 function rule(value, confidence) {
   return { value, source: 'rule', confidence };
@@ -55,10 +55,13 @@ const DECAY_STEPS = [
 ];
 
 // Score label thresholds (0-100), checked high→low.
+// Cold 0–30, Warm 31–54, Hot 55–74, Ready 75+. Hot starts at 55 so plain
+// status=Interested (base 55) labels Hot on base alone. Labels are a PURE function
+// of score — isTest never affects labeling (test leads keep their natural label).
 const LABEL_THRESHOLDS = [
   { min: 75, label: 'Ready' },
-  { min: 50, label: 'Hot' },
-  { min: 25, label: 'Warm' },
+  { min: 55, label: 'Hot' },
+  { min: 31, label: 'Warm' },
   { min: 0,  label: 'Cold' },
 ];
 

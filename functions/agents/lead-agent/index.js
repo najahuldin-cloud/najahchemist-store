@@ -16,6 +16,8 @@ const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 
 const { buildIntelligence } = require('./score');
 const { cleanName } = require('../_shared/names');
+const { normEmail, normPhone } = require('../_shared/data-quality');
+const { buildDuplicateIndex } = require('../_shared/duplicates');
 const { assertPermission } = require('../_shared/permissions');
 const { isKilled } = require('../_shared/killswitch');
 const { logAction } = require('../_shared/audit');
@@ -42,6 +44,11 @@ async function scoreAll(db, { write, limit }) {
 
   const prev = await loadPrevIntel(db);
   const leadsSnap = await db.collection('leads').get();
+
+  // Duplicate index + shared-contact sets are computed across the FULL lead base.
+  const allLeads = leadsSnap.docs.map(d => ({ id: d.id, lead: d.data() }));
+  const dupIdx = buildDuplicateIndex(allLeads);
+
   let docs = leadsSnap.docs;
   if (limit && limit > 0) docs = docs.slice(0, limit);
 
@@ -51,7 +58,12 @@ async function scoreAll(db, { write, limit }) {
 
   for (const doc of docs) {
     const lead = doc.data();
-    const intel = buildIntelligence(lead, doc.id, prev.get(doc.id), now);
+    const ctx = {
+      dup: dupIdx.index.get(doc.id),
+      sharedEmail: dupIdx.sharedEmailKeys.has(normEmail(lead.email)),
+      sharedPhone: dupIdx.sharedPhoneKeys.has(normPhone(lead.whatsapp)),
+    };
+    const intel = buildIntelligence(lead, doc.id, prev.get(doc.id), now, ctx);
 
     if (sample.length < 25) {
       sample.push({

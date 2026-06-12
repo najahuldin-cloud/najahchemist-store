@@ -12,6 +12,7 @@ const RV = require('../_shared/rule-values');
 const S  = require('../_shared/scoring');
 const { recommendOffer, segmentKey } = require('../_shared/offers');
 const { firstName } = require('../_shared/names');
+const { assessDataQuality } = require('../_shared/data-quality');
 const LC = require('../_shared/lifecycle');
 const { buildAttribution } = require('../_shared/attribution');
 const { whyRecommended, executiveSummary } = require('../_shared/summary');
@@ -43,17 +44,47 @@ function closeProbability(opportunitySource, lead, decay) {
   return S.clamp(Math.round(p * 100) / 100, 0.01, 0.95);
 }
 
+// Base by status for engaged leads: Interested → 55 (Hot on base alone),
+// Contacted → 40 (tops out Warm on base; +reply engagement can lift it to Hot).
+// Other sources keyed as before. Exported for unit tests.
+const BASE_BY_STATUS = { Interested: 55, Contacted: 40 };
+const BASE_BY_SOURCE = { reorder: 70, newlead: 35, dormant: 20, lost: 5 };
+function baseScore(opportunitySource, status) {
+  if ((opportunitySource === 'hot' || opportunitySource === 'overdue') && BASE_BY_STATUS[status] != null) {
+    return BASE_BY_STATUS[status];
+  }
+  return BASE_BY_SOURCE[opportunitySource] != null ? BASE_BY_SOURCE[opportunitySource] : 35;
+}
+
+function journeyBonus(journey) {
+  const j = (journey || '').toLowerCase();
+  if (j.includes('ready')) return 25;   // "ready to start selling" — strongest first-party intent
+  if (j.includes('smallest')) return 5;
+  if (j.includes('exploring')) return -5;
+  return 0;
+}
+
+// Ordered explicit budget tiers, most specific first. "$1,000+" REQUIRES the plus;
+// "$500–$1,000" (en/em-dash or hyphen) is a mid tier (+8), NOT the top bonus.
+function budgetBonus(budget) {
+  const s = budget || '';
+  if (/\$\s?1,?000\s*\+/.test(s)) return 12;                      // $1,000+  (top — needs plus)
+  if (/\$\s?500\s*[–—-]\s*\$?\s?1,?000/.test(s)) return 10;       // $500–$1,000  (mid)
+  if (/\$\s?200\s*[–—-]\s*\$?\s?500/.test(s)) return 5;           // $200–$500
+  if (/under\s*\$?\s?200/i.test(s)) return 3;                     // Under $200
+  return 0;
+}
+
+function replyBonus(lead) {
+  return (Array.isArray(lead.emailConversation) && lead.emailConversation.some(t => t.role === 'user')) ? 10 : 0;
+}
+
 function rawScore(lead, opportunitySource, decay) {
-  const base = { reorder: 70, hot: 55, overdue: 50, newlead: 35, dormant: 20, lost: 5 }[opportunitySource];
-  let s = base == null ? 35 : base;
-  const j = (lead.journey || '').toLowerCase();
-  if (j.includes('ready')) s += 15;
-  else if (j.includes('smallest')) s += 5;
-  else if (j.includes('exploring')) s -= 5;
-  if ((lead.budget || '').includes('1,000')) s += 12;
-  else if ((lead.budget || '').includes('500')) s += 8;
-  else if ((lead.budget || '').includes('200')) s += 4;
-  if (Array.isArray(lead.emailConversation) && lead.emailConversation.some(t => t.role === 'user')) s += 10;
+  const status = lead.status || 'New';
+  let s = baseScore(opportunitySource, status);
+  s += journeyBonus(lead.journey);
+  s += budgetBonus(lead.budget);
+  s += replyBonus(lead);            // engagement is additive: Contacted(40)+reply(10)=50 → Hot
   s -= decay;
   return S.clamp(Math.round(s), 0, 100);
 }
@@ -92,9 +123,12 @@ function nextActionFor(opportunitySource, lead, scoreLabel, offer, suggestedProd
   }
 }
 
-function buildIntelligence(lead, leadId, prevIntel, now) {
+function buildIntelligence(lead, leadId, prevIntel, now, context) {
   now = now || Date.now();
+  context = context || {};
 
+  const dq = assessDataQuality(lead, { sharedEmail: context.sharedEmail, sharedPhone: context.sharedPhone });
+  const dup = context.dup || { duplicateClusterId: null, duplicateCount: 1, isPrimaryRecord: true };
   const stage     = LC.lifecycleStage(lead, now);
   const oppSource = LC.opportunitySource(lead, now, stage);
   const lastActivity = lead.lastReplyAt || lead.lastContacted || lead.createdAt;
@@ -176,8 +210,16 @@ function buildIntelligence(lead, leadId, prevIntel, now) {
     recommendationVersion: RV.SCORER_VERSION,
     lastMeaningfulActivity: lastMeaningful ? lastMeaningful.toISOString() : null,
     scoredBy: `lead-agent@v${RV.SCORER_VERSION}`,
+    isTest: dq.isTest,                 // stored, NOT skipped — excluded downstream
+    testReason: dq.testReason,
+    suspiciousLead: dq.suspiciousLead, // e.g. sentence_name — NOT auto-test
+    suspiciousReason: dq.suspiciousReason,
+    dataQuality: dq,                   // { isTest, testReason, suspicious*, hasName, missingContact, emailKey, nameKey, phoneKey }
+    duplicateClusterId: dup.duplicateClusterId, // null if unique
+    duplicateCount: dup.duplicateCount,
+    isPrimaryRecord: dup.isPrimaryRecord,        // Phase 4 keeps only primaries in rankings/pipeline
     // lastScoredAt is stamped by the writer (FieldValue.serverTimestamp()).
   };
 }
 
-module.exports = { buildIntelligence };
+module.exports = { buildIntelligence, baseScore, journeyBonus, budgetBonus, replyBonus };

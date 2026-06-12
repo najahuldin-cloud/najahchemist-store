@@ -16,3 +16,9 @@ node_modules/
 
 # Local Netlify folder
 .netlify
+
+# Jarvis lead-intelligence snapshots / backups — contain lead PII, never commit
+scripts/_snapshots/
+*lead-intelligence-snapshot-*.json
+# Generated render harness embeds live lead data — never commit
+scripts/.phase4-harness.html

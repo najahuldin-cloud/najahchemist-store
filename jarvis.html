@@ -214,7 +214,12 @@
   @media(max-width:560px){
     .stat-grid{grid-template-columns:1fr;}
     .hero .who{font-size:1.25rem;}
+    /* Phase 4 mobile pass: stack every decision-card grid to one column. */
+    .p4grid{grid-template-columns:1fr !important;}
+    .p4big{font-size:1.15rem !important;}
+    .wrap{padding-left:0.85rem;padding-right:0.85rem;}
   }
+  .p4big{font-size:1.5rem;font-weight:800;}
 
   /* ── Marketing Commander ── */
   .mc-scorecard{border:1px solid var(--gold);border-radius:13px;padding:1rem 1.2rem;background:linear-gradient(135deg,rgba(200,151,58,0.14),var(--card));}
@@ -264,7 +269,10 @@
 <div class="topbar">
   <a class="back-link" href="/admin.html">← Admin</a>
   <div class="brandmark">NAJAH <span class="j">JARVIS</span></div>
-  <div class="clock" id="clock"></div>
+  <div style="display:flex;align-items:center;gap:0.8rem;">
+    <button id="refresh-btn" type="button" onclick="jRefresh()" class="back-link" style="background:none;border:1px solid var(--border);border-radius:8px;padding:.3rem .6rem;cursor:pointer;font-family:inherit;">🔄 Refresh</button>
+    <div class="clock" id="clock"></div>
+  </div>
 </div>
 
 <div id="loading">
@@ -273,6 +281,20 @@
 </div>
 
 <main class="wrap" id="app" style="display:none;">
+
+  <!-- PHASE 4: decision-first dashboard (refined visual priority) -->
+  <div id="inflation-banner"></div>
+  <section id="sec-founder-focus" style="margin-top:1.2rem;"></section>
+  <section id="sec-today-money" style="margin-top:1.6rem;"></section>
+  <section id="sec-top-actions" style="margin-top:1.6rem;"></section>
+  <section id="sec-next15" style="margin-top:1.6rem;"></section>
+  <section id="sec-revenue-target" style="margin-top:1.6rem;"></section>
+  <section id="sec-revenue-risk" style="margin-top:1.6rem;"></section>
+  <section id="sec-money-missed" style="margin-top:1.6rem;"></section>
+  <section id="sec-honest" style="margin-top:1.6rem;"></section>
+  <section id="sec-top-opps" style="margin-top:1.6rem;"></section>
+  <section id="sec-lead-command" style="margin-top:1.6rem;"></section>
+  <section id="sec-revenue-offer" style="margin-top:1.6rem;"></section>
 
   <!-- SECTION 0 -->
   <section id="next-best" style="margin-top:1.6rem;"></section>
@@ -356,6 +378,16 @@
     <div class="insight-grid" id="growth-grid"></div>
   </section>
 
+  <!-- TEMP: Phase 2 dry-run trigger — remove/repurpose in Phase 4 (Command Center) -->
+  <section id="sec-dryrun" style="margin-bottom:3rem;border-top:1px dashed #333;padding-top:1.5rem;">
+    <div class="sec-head"><h2>🧪 Dry-Run Scoring</h2><span class="sub">temporary — Phase 2 verification, zero writes</span></div>
+    <button id="dryrun-btn" type="button"
+      style="background:var(--gold,#C8973A);color:#000;border:none;padding:.7rem 1.1rem;border-radius:8px;font-weight:700;cursor:pointer;">
+      🧪 Dry-Run Scoring (20)
+    </button>
+    <div id="dryrun-out" style="margin-top:1rem;overflow-x:auto;font-size:.85rem;"></div>
+  </section>
+
 </main>
 
 <div class="toast" id="toast"></div>
@@ -364,6 +396,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, getDocs, query, orderBy, addDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
 // ── Firebase (najah-chemist production; API key is public by design) ──
 const firebaseConfig = {
@@ -377,6 +410,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const functions = getFunctions(app); // us-central1 (matches deployed scoreLeadsBackfill)
 const ADMIN_EMAIL = "start@najahchemist.com";
 
 // ── Constants ──
@@ -396,6 +430,8 @@ const NOW = new Date();
 
 // ── State ──
 let ORDERS = [], LEADS = [];
+let INTEL = [];             // lead_intelligence/{leadId} docs (v4 scorer output)
+const INTEL_BY_ID = {};     // leadId -> intelligence doc (join key = lead doc id)
 let OPPS = [];
 let CONTEXT = {};
 let askHistory = []; // {role, content}
@@ -424,6 +460,82 @@ tickClock(); setInterval(tickClock,30000);
 const fmt = n => 'J$' + Math.round(n||0).toLocaleString();
 const esc = s => (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function daysAgo(d){ if(!d) return null; return Math.max(0, Math.floor((NOW - d)/86400000)); }
+
+// ── Phase 4: Lead Intelligence filters (PHASE4_CONTRACT rules 1–3) ──
+// Single source of truth so no surface re-implements exclusion/dedup. Missing
+// flags default to "real / primary / not-suspicious" so partial docs never vanish.
+const leadFilters = {
+  isReal:        i => !!i && i.isTest !== true,
+  isPrimary:     i => !!i && i.isPrimaryRecord !== false,
+  notSuspicious: i => !!i && i.suspiciousLead !== true,
+  // Honest = real + primary-only + not-suspicious (matches v4-final-audit.js Part D).
+  honest(list){ const a = list || INTEL; return a.filter(i => this.isReal(i) && this.isPrimary(i) && this.notSuspicious(i)); },
+  expected(list){ return (list || INTEL).reduce((s,i) => s + (Number(i.expectedValue) || 0), 0); },
+  potential(list){ return (list || INTEL).reduce((s,i) => s + ((i.potentialValue && Number(i.potentialValue.value)) || 0), 0); },
+};
+// Raw vs Honest pipeline + dynamically-measured inflation (never hardcoded).
+function pipelineStats(){
+  const raw = INTEL;
+  const honest = leadFilters.honest(raw);
+  const rawExp = leadFilters.expected(raw),  honestExp = leadFilters.expected(honest);
+  const rawPot = leadFilters.potential(raw), honestPot = leadFilters.potential(honest);
+  const dupExtras   = raw.filter(i => i.isPrimaryRecord === false);
+  const dupExtraExp = dupExtras.reduce((s,i) => s + (Number(i.expectedValue) || 0), 0);
+  const testCount = raw.filter(i => i.isTest === true).length;
+  const suspCount = raw.filter(i => i.suspiciousLead === true).length;
+  const inflationRemoved = rawExp - honestExp;
+  return {
+    count: raw.length, rawExp, honestExp, rawPot, honestPot,
+    testCount, dupExtraCount: dupExtras.length, suspCount,
+    inflationRemoved,
+    inflationPct:    rawExp > 0 ? inflationRemoved / rawExp : 0,  // banner trigger (>10%)
+    dupInflationPct: rawExp > 0 ? dupExtraExp / rawExp : 0,       // audit's "duplicate inflation"
+  };
+}
+
+// ── Phase 4 slice 2: presentation-layer config & helpers (NOT stored, NOT scoring) ──
+// Founder-accepted DERIVED action-time estimates — used only for (EV ÷ time) ranking.
+const ACTION_MIN = { whatsapp:5, moqQuote:10, call:10, email:7, campaignReview:15, campaignLaunch:30, research:15, checkin:5 };
+// Founder-set daily revenue goal (presentation only — drives gap / progress / influence).
+let DAILY_REVENUE_GOAL = 300000;
+const LEAD_BY_ID = {};   // leadId -> lead doc, for display names (built in loadData)
+
+const pctOf = p => Math.round((Number(p)||0)*100) + '%';
+const revInflPct = ev => (DAILY_REVENUE_GOAL>0 ? (100*(Number(ev)||0)/DAILY_REVENUE_GOAL) : 0).toFixed(1) + '%';
+function leadName(id){ const l = LEAD_BY_ID[id]; const n = l && (l.name||'').trim(); return n || ('Lead '+String(id).slice(0,6)); }
+function daysSinceISO(iso){ if(!iso) return null; const d = new Date(iso); if(isNaN(d)) return null; return Math.max(0, Math.floor((NOW - d)/86400000)); }
+function sameDay(a,b){ return !!a && !!b && a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+
+// Derived next action + time estimate for a lead intel doc (presentation only).
+function actionForLead(i, name){
+  if(i.recommendedOffer==='Manufacturing' && i.opportunitySource==='newlead') return { label:`Send MOQ quote to ${name}`, minutes:ACTION_MIN.moqQuote };
+  if(i.preferredChannel==='whatsapp') return { label:`WhatsApp ${name}`, minutes:ACTION_MIN.whatsapp };
+  return { label:`Email ${name}`, minutes:ACTION_MIN.email };
+}
+function whyFor(i){
+  const w = [];
+  if(i.recommendedOffer==='Manufacturing') w.push('Manufacturing lead');
+  if(i.opportunitySource==='hot') w.push('Hot / engaged');
+  if(Array.isArray(i.intentSignals) && i.intentSignals.length) w.push(String(i.intentSignals[0]));
+  if(i.duplicateCount>1) w.push(`Appears ${i.duplicateCount}× (primary record)`);
+  return w.length ? w : ['Scored opportunity'];
+}
+// Honest leads joined with name + derived action, ranked by ROI = expectedValue ÷ minutes.
+// NOTE: stored expectedValue already = potentialValue × closeProbability, so EV÷time IS the
+// "(Expected Value × Close Probability) ÷ Time" formula — closeProbability applied once.
+function honestRanked(){
+  return leadFilters.honest(INTEL).map(i=>{
+    const name = leadName(i.leadId);
+    const act  = actionForLead(i, name);
+    const ev   = Number(i.expectedValue)||0;
+    return { leadId:i.leadId, name, ev, conf:Number(i.closeProbability)||0, score:Number(i.score)||0,
+             minutes:act.minutes, action:act.label, roi: act.minutes>0 ? ev/act.minutes : ev,
+             label:i.scoreLabel, offer:i.recommendedOffer, src:i.opportunitySource,
+             replied:(Array.isArray(i.intentSignals)&&i.intentSignals.some(s=>/repl/i.test(String(s)))),
+             why:(Array.isArray(i.whyRecommended)&&i.whyRecommended.length)?i.whyRecommended:whyFor(i),
+             ageDays: daysSinceISO(i.lastMeaningfulActivity) };
+  });
+}
 
 function parseOrderDate(o){
   const ca = o.createdAt;
@@ -1950,9 +2062,225 @@ window.jMcRefresh = async function(){
 // ════════════════════════════════════════
 // BUILD / BOOT
 // ════════════════════════════════════════
+// ── Phase 4 slice 1: Honest Pipeline + mandatory inflation banner ──
+// PHASE4_CONTRACT rule 4: banner shows whenever (raw−honest)/raw > 10%.
+function renderInflationBanner(st){
+  const el = document.getElementById('inflation-banner');
+  if(!el) return;
+  if(!st || !st.count || st.inflationPct <= 0.10){ el.innerHTML=''; return; }
+  el.innerHTML =
+    `<div style="background:linear-gradient(135deg,rgba(192,57,43,0.18),var(--card));border:1px solid var(--danger,#C0392B);border-radius:12px;padding:0.9rem 1.1rem;margin-top:1rem;font-size:0.92rem;line-height:1.5;">`
+    + `<b style="color:var(--danger,#C0392B);">⚠ Data quality: ${(st.inflationPct*100).toFixed(1)}% inflation removed</b> — `
+    + `showing the <b style="color:var(--gold);">Honest Pipeline</b>. `
+    + `${fmt(st.inflationRemoved)} excluded: <b>${st.testCount}</b> test, <b>${st.dupExtraCount}</b> duplicate`
+    + `${st.suspCount?`, <b>${st.suspCount}</b> suspicious`:''} records.`
+    + `</div>`;
+}
+function renderHonestPipeline(){
+  const el = document.getElementById('sec-honest');
+  if(!el) return;
+  const st = pipelineStats();
+  renderInflationBanner(st);
+  if(!st.count){
+    el.innerHTML = '<div class="sec-head"><h2>🎯 Honest Pipeline</h2></div>'
+      + '<p class="sub" style="color:var(--mid,#888);">Lead intelligence not loaded — pipeline unavailable.</p>';
+    return;
+  }
+  const honestPct = st.rawExp>0 ? (100*st.honestExp/st.rawExp) : 0;
+  const card = 'background:var(--card);border:1px solid var(--border);border-radius:13px;padding:1.1rem 1.2rem;';
+  const sub  = 'font-size:0.74rem;color:var(--mid,#888);';
+  el.innerHTML =
+    `<div class="sec-head"><h2>🎯 Honest Pipeline</h2><span class="sub">Canonical metric — test, duplicate & suspicious excluded (Raw is diagnostic only)</span></div>`
+    + `<div class="p4grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:0.8rem;">`
+    + `<div style="${card}border-color:var(--gold);"><div style="${sub}">HONEST PIPELINE · expected</div><div class="money p4big" style="font-size:1.55rem;font-weight:800;">${fmt(st.honestExp)}</div><div style="${sub}">${honestPct.toFixed(1)}% of raw · potential ${fmt(st.honestPot)}</div></div>`
+    + `<div style="${card}"><div style="${sub}">RAW · unfiltered (diagnostic)</div><div style="font-size:1.25rem;font-weight:700;color:var(--mid,#888);">${fmt(st.rawExp)}</div><div style="${sub}">potential ${fmt(st.rawPot)}</div></div>`
+    + `<div style="${card}"><div style="${sub}">DUPLICATE INFLATION</div><div class="pct" style="font-size:1.25rem;font-weight:700;">${(st.dupInflationPct*100).toFixed(1)}%</div><div style="${sub}">${st.dupExtraCount} non-primary records</div></div>`
+    + `<div style="${card}"><div style="${sub}">EXCLUDED</div><div style="font-size:1.05rem;font-weight:700;">${st.testCount} test · ${st.dupExtraCount} dup · ${st.suspCount} susp</div><div style="${sub}">${fmt(st.inflationRemoved)} removed (${(st.inflationPct*100).toFixed(1)}%)</div></div>`
+    + `</div>`;
+}
+
+// ── Phase 4 slice 2: decision-first cards (presentation only; all read INTEL via leadFilters) ──
+const P4CARD = 'background:var(--card);border:1px solid var(--border);border-radius:13px;padding:1.05rem 1.15rem;';
+const P4SUB  = 'font-size:0.72rem;color:var(--mid,#888);letter-spacing:.4px;';
+function p4meta(ev,conf,mins){ return `<div style="${P4SUB}margin-top:.4rem;">EV <b class="money">${fmt(ev)}</b> · Confidence <b>${pctOf(conf)}</b> · ${mins} min</div><div style="${P4SUB}">Revenue influence: <b>${revInflPct(ev)}</b> of daily goal</div>`; }
+function p4tile(title,name,ev,conf,mins,extra){
+  return `<div style="${P4CARD}"><div style="${P4SUB}">${title}</div>`
+    + `<div style="font-size:1.05rem;font-weight:800;margin-top:.25rem;">${esc(name)}</div>`
+    + (extra?`<div style="${P4SUB}margin-top:.15rem;">${esc(extra)}</div>`:'')
+    + p4meta(ev,conf,mins) + `</div>`;
+}
+function renderTodayMoney(){
+  const el=document.getElementById('sec-today-money'); if(!el) return;
+  const ranked=honestRanked();
+  if(!ranked.length){ el.innerHTML=`<div class="sec-head"><h2>💰 Today's Money</h2></div><p class="sub" style="color:var(--mid,#888);">Lead intelligence not loaded — run the backfill / check Firestore rules.</p>`; return; }
+  const byEV=ranked.slice().sort((a,b)=>b.ev-a.ev);
+  const byROI=ranked.slice().sort((a,b)=>b.roi-a.roi);
+  const bestLead=byEV[0], fastest=byROI[0], next=byROI[0];
+  const reorderOpps=(OPPS||[]).filter(o=>o.bucket==='reorder').slice().sort((a,b)=>b.value-a.value);
+  const bc=reorderOpps[0];
+  const bcConf=bc?(bc.value?(bc.score/bc.value):0.8):0;
+  const camp=(CAMPAIGNS||[]).slice().sort((a,b)=>((b.expectedRevenue||b.projectedRevenue||0)-(a.expectedRevenue||a.projectedRevenue||0)))[0];
+  const todayRev=(ORDERS||[]).filter(o=>isPaid(o)&&sameDay(parseOrderDate(o),NOW)).reduce((s,o)=>s+orderTotal(o),0);
+  const gap=Math.max(0,DAILY_REVENUE_GOAL-todayRev);
+  const tiles=[];
+  tiles.push(p4tile('BEST LEAD',bestLead.name,bestLead.ev,bestLead.conf,bestLead.minutes,bestLead.offer));
+  tiles.push(bc?p4tile('BEST CUSTOMER',bc.name||'—',bc.value||0,bcConf,ACTION_MIN.checkin,'Reorder due'):`<div style="${P4CARD}"><div style="${P4SUB}">BEST CUSTOMER</div><div style="${P4SUB}margin-top:.4rem;">No reorder-due customer.</div></div>`);
+  tiles.push(camp?p4tile('BEST CAMPAIGN',camp.campaignType||camp.name||'Campaign',(camp.expectedRevenue||camp.projectedRevenue||0),(camp.confidence||0.6),ACTION_MIN.campaignLaunch):`<div style="${P4CARD}"><div style="${P4SUB}">BEST CAMPAIGN</div><div style="${P4SUB}margin-top:.4rem;">No active campaign yet.</div></div>`);
+  tiles.push(`<div style="${P4CARD}"><div style="${P4SUB}">REVENUE GAP (today)</div><div class="money" style="font-size:1.25rem;font-weight:800;margin-top:.25rem;">${fmt(gap)}</div><div style="${P4SUB}margin-top:.15rem;">goal ${fmt(DAILY_REVENUE_GOAL)} · earned ${fmt(todayRev)}</div></div>`);
+  tiles.push(p4tile('FASTEST REVENUE',fastest.name,fastest.ev,fastest.conf,fastest.minutes,'Best EV per minute'));
+  tiles.push(`<div style="${P4CARD}border-color:var(--gold);"><div style="${P4SUB}">➤ RECOMMENDED NEXT ACTION</div><div style="font-size:1.05rem;font-weight:800;margin-top:.25rem;color:var(--gold);">${esc(next.action)}</div>${p4meta(next.ev,next.conf,next.minutes)}</div>`);
+  el.innerHTML=`<div class="sec-head"><h2>💰 Today's Money</h2><span class="sub">Where today's money is — one glance, no drill-down</span></div>`
+    +`<div class="p4grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0.8rem;">${tiles.join('')}</div>`;
+}
+function p4actionRow(r,idx){
+  return `<div style="${P4CARD}display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;">`
+    +`<div><div style="font-weight:800;">${idx!=null?`${idx}. `:''}${esc(r.action)}</div>`
+    +`<div style="${P4SUB}margin-top:.25rem;">${(r.why||[]).slice(0,2).map(esc).join(' · ')}</div></div>`
+    +`<div style="text-align:right;white-space:nowrap;"><div class="money" style="font-weight:800;">${fmt(r.ev)}</div><div style="${P4SUB}">${pctOf(r.conf)} · ${r.minutes} min</div><div style="${P4SUB}">${revInflPct(r.ev)} of goal</div></div></div>`;
+}
+function renderTopActions(){
+  const el=document.getElementById('sec-top-actions'); if(!el) return;
+  const top=honestRanked().sort((a,b)=>b.roi-a.roi).slice(0,8);
+  if(!top.length){ el.innerHTML=`<div class="sec-head"><h2>⚡ Today's Top Actions</h2></div><p class="sub" style="color:var(--mid,#888);">No actions available.</p>`; return; }
+  el.innerHTML=`<div class="sec-head"><h2>⚡ Today's Top Actions</h2><span class="sub">Ranked by expected revenue ÷ time — highest leverage first</span></div>`
+    +`<div style="display:flex;flex-direction:column;gap:0.6rem;">${top.map((r,i)=>p4actionRow(r,i+1)).join('')}</div>`;
+}
+function renderNext15(){
+  const el=document.getElementById('sec-next15'); if(!el) return;
+  const top3=honestRanked().sort((a,b)=>b.roi-a.roi).slice(0,3);
+  if(!top3.length){ el.innerHTML=''; return; }
+  const infl=top3.reduce((s,r)=>s+r.ev,0), mins=top3.reduce((s,r)=>s+r.minutes,0), conf=top3.reduce((s,r)=>s+r.conf,0)/top3.length;
+  el.innerHTML=`<div class="sec-head"><h2>⏱ Next 15 Minutes</h2><span class="sub">Highest-ROI actions you can do right now</span></div>`
+    +`<div style="${P4CARD}border-color:var(--gold);">`
+    +top3.map((r,i)=>`<div style="display:flex;justify-content:space-between;gap:1rem;padding:.35rem 0;border-bottom:1px solid var(--border);"><span><b>${i+1}.</b> ${esc(r.action)}</span><span style="${P4SUB}">${pctOf(r.conf)} · ${r.minutes}m</span></div>`).join('')
+    +`<div style="margin-top:.6rem;font-size:.95rem;">Expected revenue influence: <b class="money">${fmt(infl)}</b> · Confidence <b>${pctOf(conf)}</b> · ~${mins} min total</div></div>`;
+}
+function renderRevenueTarget(){
+  const el=document.getElementById('sec-revenue-target'); if(!el) return;
+  const top3=honestRanked().sort((a,b)=>b.roi-a.roi).slice(0,3);
+  const todayRev=(ORDERS||[]).filter(o=>isPaid(o)&&sameDay(parseOrderDate(o),NOW)).reduce((s,o)=>s+orderTotal(o),0);
+  const forecast=todayRev+top3.reduce((s,r)=>s+r.ev,0);
+  const gap=Math.max(0,DAILY_REVENUE_GOAL-forecast);
+  const progress=DAILY_REVENUE_GOAL>0?(100*forecast/DAILY_REVENUE_GOAL):0;
+  const conf=top3.length?top3.reduce((s,r)=>s+r.conf,0)/top3.length:0;
+  el.innerHTML=`<div class="sec-head"><h2>🎯 Revenue Target</h2><span class="sub">The operational heartbeat — close the gap</span></div>`
+    +`<div class="p4grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.8rem;">`
+    +`<div style="${P4CARD}"><div style="${P4SUB}">DAILY GOAL</div><div style="font-weight:800;font-size:1.2rem;">${fmt(DAILY_REVENUE_GOAL)}</div></div>`
+    +`<div style="${P4CARD}"><div style="${P4SUB}">FORECAST</div><div class="money" style="font-weight:800;font-size:1.2rem;">${fmt(forecast)}</div><div style="${P4SUB}">earned ${fmt(todayRev)} + top actions</div></div>`
+    +`<div style="${P4CARD}border-color:var(--gold);"><div style="${P4SUB}">REVENUE GAP</div><div style="font-weight:800;font-size:1.2rem;color:var(--gold);">${fmt(gap)}</div></div>`
+    +`<div style="${P4CARD}"><div style="${P4SUB}">PROGRESS</div><div style="font-weight:800;font-size:1.2rem;">${progress.toFixed(1)}%</div><div style="height:6px;background:var(--border);border-radius:4px;margin-top:.35rem;overflow:hidden;"><div style="height:100%;width:${Math.min(100,progress).toFixed(1)}%;background:var(--gold);"></div></div></div>`
+    +`<div style="${P4CARD}"><div style="${P4SUB}">CONFIDENCE</div><div style="font-weight:800;font-size:1.2rem;">${pctOf(conf)}</div></div></div>`
+    +`<div style="${P4CARD}margin-top:.8rem;"><div style="${P4SUB}">RECOMMENDED PATH TO CLOSE GAP</div>`
+    +(top3.length?top3.map(r=>`<div style="padding:.25rem 0;">✓ ${esc(r.action)} <span style="${P4SUB}">(${fmt(r.ev)})</span></div>`).join(''):`<div style="${P4SUB}">No actions available.</div>`)+`</div>`;
+}
+function renderRevenueRisk(){
+  const el=document.getElementById('sec-revenue-risk'); if(!el) return;
+  const ranked=honestRanked();
+  if(!ranked.length){ el.innerHTML=''; return; }
+  const agingHot=ranked.filter(r=>(r.label==='Hot'||r.label==='Ready')&&r.ageDays!=null&&r.ageDays>14);
+  const agingAll=ranked.filter(r=>r.ageDays!=null&&r.ageDays>14);
+  const atRisk=agingHot.reduce((s,r)=>s+r.ev,0);
+  const worst=agingHot.slice().sort((a,b)=>b.ev-a.ev)[0];
+  el.innerHTML=`<div class="sec-head"><h2>⚠ Revenue at Risk</h2><span class="sub">Protecting revenue is easier than creating it</span></div>`
+    +`<div style="${P4CARD}border-color:var(--danger,#C0392B);"><div style="${P4SUB}">ESTIMATED REVENUE AT RISK</div>`
+    +`<div class="money p4big" style="font-size:1.5rem;font-weight:800;">${fmt(atRisk)}</div>`
+    +`<div style="margin-top:.4rem;font-size:.95rem;"><b>${agingHot.length}</b> hot/ready lead${agingHot.length===1?'':'s'} inactive &gt;14 days · <b>${agingAll.length}</b> aging opportunit${agingAll.length===1?'y':'ies'}</div>`
+    +(worst?`<div style="margin-top:.6rem;padding-top:.55rem;border-top:1px solid var(--border);"><div style="${P4SUB}">WORST OFFENDER</div><div style="font-weight:800;">${esc(worst.name)} — <span class="money">${fmt(worst.ev)}</span> · ${worst.ageDays} days inactive</div><div style="${P4SUB}margin-top:.2rem;">➤ ${esc(worst.action)}</div></div>`:'')+`</div>`;
+}
+function renderTopOpps(){
+  const el=document.getElementById('sec-top-opps'); if(!el) return;
+  const top=honestRanked().sort((a,b)=>b.ev-a.ev).slice(0,10);
+  if(!top.length){ el.innerHTML=`<div class="sec-head"><h2>🎯 Top Opportunities</h2></div><p class="sub" style="color:var(--mid,#888);">No opportunities.</p>`; return; }
+  el.innerHTML=`<div class="sec-head"><h2>🎯 Top Opportunities</h2><span class="sub">Real & primary only — with why each ranks</span></div>`
+    +`<div style="display:flex;flex-direction:column;gap:0.6rem;">`
+    +top.map((r,i)=>`<div style="${P4CARD}"><div style="display:flex;justify-content:space-between;gap:1rem;"><div><b>${i+1}. ${esc(r.name)}</b> <span style="${P4SUB}">${esc(r.label)} · ${esc(r.offer)}</span></div><div style="text-align:right;white-space:nowrap;"><span class="money" style="font-weight:800;">${fmt(r.ev)}</span> <span style="${P4SUB}">${pctOf(r.conf)} · ${r.minutes}m · ${revInflPct(r.ev)} of goal</span></div></div>`
+      +`<div style="${P4SUB}margin-top:.35rem;">WHY: ${(r.why||[]).slice(0,3).map(esc).join(' · ')}</div></div>`).join('')+`</div>`;
+}
+
+function renderFounderFocus(){
+  const el=document.getElementById('sec-founder-focus'); if(!el) return;
+  const top=honestRanked().sort((a,b)=>b.roi-a.roi)[0];
+  if(!top){ el.innerHTML=''; return; }
+  const cell=`<div><div style="${P4SUB}">`;
+  el.innerHTML=`<div class="sec-head"><h2>🔥 Founder Focus</h2><span class="sub">If Najah only does ONE thing today</span></div>`
+    +`<div style="${P4CARD}border:1.5px solid var(--gold);background:linear-gradient(135deg,rgba(200,151,58,0.16),var(--card));">`
+    +`<div class="p4big" style="font-size:1.35rem;font-weight:800;color:var(--gold);">${esc(top.action)}</div>`
+    +`<div class="p4grid" style="margin-top:.55rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.6rem;font-size:.95rem;">`
+    +`${cell}EXPECTED VALUE</div><b class="money">${fmt(top.ev)}</b></div>`
+    +`${cell}CONFIDENCE</div><b>${pctOf(top.conf)}</b></div>`
+    +`${cell}TIME</div><b>${top.minutes} min</b></div>`
+    +`${cell}REVENUE INFLUENCE</div><b>${revInflPct(top.ev)} of goal</b></div>`
+    +`</div>`
+    +`<div style="${P4SUB}margin-top:.6rem;">Reason: Highest revenue-per-minute opportunity${top.why&&top.why.length?` — ${esc(top.why[0])}`:''}</div>`
+    +`</div>`;
+}
+// Derived cause label from existing intel state — no new fields/collections.
+function causeFor(r){
+  if(r.src==='overdue') return 'No follow-up after contact';
+  if(r.src==='newlead' && r.offer==='Manufacturing') return 'No quote sent';
+  if(r.replied) return 'No response after pricing';
+  if(r.src==='dormant' || r.src==='lost') return 'Gone quiet — needs reactivation';
+  return 'Stalled — needs outreach';
+}
+function renderMoneyMissed(){
+  const el=document.getElementById('sec-money-missed'); if(!el) return;
+  const aging=honestRanked().filter(r=>r.ageDays!=null && r.ageDays>14);
+  if(!aging.length){ el.innerHTML=''; return; }
+  const atRisk=aging.filter(r=>r.label==='Hot'||r.label==='Ready').reduce((s,r)=>s+r.ev,0);
+  const tally={}; aging.forEach(r=>{ const c=causeFor(r); tally[c]=(tally[c]||0)+1; });
+  const causes=Object.entries(tally).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  el.innerHTML=`<div class="sec-head"><h2>💸 Money Missed This Week</h2><span class="sub">Why revenue is slipping — fixable causes</span></div>`
+    +`<div style="${P4CARD}"><div class="money p4big" style="font-size:1.4rem;font-weight:800;">${fmt(atRisk)} at risk</div>`
+    +`<div style="${P4SUB}margin-top:.25rem;">${aging.length} aging opportunities (&gt;14 days inactive)</div>`
+    +`<div style="margin-top:.6rem;${P4SUB}">TOP 3 CAUSES</div>`
+    +causes.map(([c,n])=>`<div style="padding:.2rem 0;">• ${esc(c)} <span style="${P4SUB}">(${n})</span></div>`).join('')
+    +`</div>`;
+}
+
+function renderRevenueByOffer(){
+  const el=document.getElementById('sec-revenue-offer'); if(!el) return;
+  const honest=leadFilters.honest(INTEL);
+  if(!honest.length){ el.innerHTML=''; return; }
+  const tot=honest.reduce((s,i)=>s+(Number(i.expectedValue)||0),0)||1;
+  const g={};
+  honest.forEach(i=>{ const o=i.recommendedOffer||'Other'; (g[o]=g[o]||{n:0,ev:0}); g[o].n++; g[o].ev+=Number(i.expectedValue)||0; });
+  const rows=Object.entries(g).sort((a,b)=>b[1].ev-a[1].ev);
+  el.innerHTML=`<div class="sec-head"><h2>📊 Revenue by Offer</h2><span class="sub">Honest expected revenue by offer route</span></div>`
+    +`<div class="p4grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0.8rem;">`
+    +rows.map(([o,v])=>`<div style="${P4CARD}"><div style="${P4SUB}">${esc(o).toUpperCase()}</div><div class="money" style="font-size:1.3rem;font-weight:800;">${fmt(v.ev)}</div><div style="${P4SUB}">${v.n} leads · ${(100*v.ev/tot).toFixed(1)}% of honest pipeline</div><div style="height:6px;background:var(--border);border-radius:4px;margin-top:.4rem;overflow:hidden;"><div style="height:100%;width:${(100*v.ev/tot).toFixed(1)}%;background:var(--gold);"></div></div></div>`).join('')
+    +`</div>`;
+}
+function renderLeadCommand(){
+  const el=document.getElementById('sec-lead-command'); if(!el) return;
+  const rows=honestRanked().sort((a,b)=>b.ev-a.ev);
+  if(!rows.length){ el.innerHTML=`<div class="sec-head"><h2>💼 Lead Command Center</h2></div><p class="sub" style="color:var(--mid,#888);">No intelligence loaded.</p>`; return; }
+  const show=rows.slice(0,50);
+  const th='text-align:left;padding:.5rem .6rem;color:var(--mid,#888);font-size:.64rem;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap;';
+  const td='padding:.5rem .6rem;border-bottom:1px solid var(--border);font-size:.85rem;white-space:nowrap;';
+  el.innerHTML=`<div class="sec-head"><h2>💼 Lead Command Center</h2><span class="sub">${rows.length} real leads (test & duplicates excluded) · top ${show.length} shown</span></div>`
+    +`<div style="overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:13px;">`
+    +`<table style="width:100%;border-collapse:collapse;"><thead><tr>`
+    +['#','Lead','Score','Label','Offer','Close','Expected','Age','Next Action'].map(h=>`<th style="${th}">${h}</th>`).join('')
+    +`</tr></thead><tbody>`
+    +show.map((r,i)=>`<tr><td style="${td}">${i+1}</td><td style="${td}">${esc(r.name)}</td><td style="${td}">${r.score}</td><td style="${td}">${esc(r.label)}</td><td style="${td}">${esc(r.offer)}</td><td style="${td}">${pctOf(r.conf)}</td><td style="${td}" class="money">${fmt(r.ev)}</td><td style="${td}">${r.ageDays!=null?r.ageDays+'d':'—'}</td><td style="${td}white-space:normal;">${esc(r.action)}</td></tr>`).join('')
+    +`</tbody></table></div>`;
+}
+
 function rebuild(){
   OPPS = buildOpportunities();
   CONTEXT = computeContext();
+  // Phase 4 decision-first cards (refined visual priority order)
+  renderFounderFocus();
+  renderTodayMoney();
+  renderTopActions();
+  renderNext15();
+  renderRevenueTarget();
+  renderRevenueRisk();
+  renderMoneyMissed();
+  renderHonestPipeline();
+  renderTopOpps();
+  renderLeadCommand();
+  renderRevenueByOffer();
   renderNextBest();
   renderMarketing();
   renderCeo();
@@ -1986,6 +2314,15 @@ async function enrichOpportunities(){
   }catch(e){ /* dashboard already rendered; ignore */ }
 }
 
+// Refresh button — re-pull all collections from Firestore and re-render.
+window.jRefresh = async function(){
+  const b = document.getElementById('refresh-btn');
+  if(b){ b.disabled = true; b.textContent = '⏳ Refreshing…'; }
+  try { await loadData(); }
+  catch(e){ console.warn('[Jarvis] refresh failed:', e); }
+  finally { if(b){ b.disabled = false; b.textContent = '🔄 Refresh'; } }
+};
+
 async function loadData(){
   const [oSnap, lSnap] = await Promise.all([
     getDocs(collection(db,'orders')),
@@ -2018,6 +2355,18 @@ async function loadData(){
   }catch(e){
     MC_PRODUCTS = [];
   }
+  // Phase 4: load v4 lead_intelligence (non-blocking — dashboard still renders if
+  // the collection/rules aren't ready; Honest Pipeline just shows its empty state).
+  try{
+    const iSnap = await getDocs(collection(db,'lead_intelligence'));
+    INTEL = iSnap.docs.map(d=>({ ...d.data(), leadId:d.id }));
+    Object.keys(INTEL_BY_ID).forEach(k=>delete INTEL_BY_ID[k]);
+    INTEL.forEach(i=>{ INTEL_BY_ID[i.leadId] = i; });
+    console.log(`[Jarvis] lead_intelligence loaded: ${INTEL.length}`);
+  }catch(e){
+    INTEL = [];
+    console.warn('[Jarvis] lead_intelligence read failed (check Firestore rules):', e?.code||e);
+  }
   const allOrders = oSnap.docs.map(d=>({...d.data(), dbId:d.id}));
   // Log the product field shape of the first 3 orders to understand the data structure.
   allOrders.slice(0,3).forEach((o,i)=>console.log(`[Jarvis] order ${i} product fields:`,
@@ -2025,12 +2374,64 @@ async function loadData(){
   // Filter out the owner's test orders/leads from everything (fix #5).
   ORDERS = allOrders.filter(o=>!isOwnerOrder(o));
   LEADS  = lSnap.docs.map(d=>({...d.data(), _docId:d.id})).filter(l=>!isOwnerLead(l));
+  Object.keys(LEAD_BY_ID).forEach(k=>delete LEAD_BY_ID[k]);
+  LEADS.forEach(l=>{ LEAD_BY_ID[l._docId] = l; });
   console.log(`[Jarvis] orders: ${allOrders.length} total, ${ORDERS.length} after owner/test filter; leads: ${LEADS.length}`);
   rebuild();
   document.getElementById('loading').style.display='none';
   document.getElementById('app').style.display='block';
   enrichOpportunities(); // fire-and-forget Mem0 enrichment
 }
+
+// ── TEMP: Phase 2 dry-run trigger (remove/repurpose in Phase 4) ──
+// Calls the admin-only scoreLeadsBackfill callable in dry-run mode (zero writes)
+// and renders the returned sample. Lives inside #app, which is only shown to admins.
+async function runDryRunScoring(){
+  const btn = document.getElementById('dryrun-btn');
+  const out = document.getElementById('dryrun-out');
+  if(!btn || !out) return;
+  btn.disabled = true;
+  out.innerHTML = '<span class="sub">Running dry-run scoring…</span>';
+  try{
+    const call = httpsCallable(functions, 'scoreLeadsBackfill');
+    const res  = await call({ dryRun: true, limit: 20 });
+    const d    = res.data || {};
+    console.log('[dry-run scoreLeadsBackfill]', JSON.stringify(d, null, 2));
+    const rows = Array.isArray(d.sample) ? d.sample : [];
+    const cell = 'padding:.45rem .6rem;border-bottom:1px solid #222;text-align:left;vertical-align:top;';
+    const head = 'padding:.45rem .6rem;border-bottom:1px solid #444;text-align:left;color:var(--gold,#C8973A);';
+    let html = `<p class="sub" style="margin:0 0 .6rem;">scored: ${d.scored} · written: ${d.written} · dryRun: ${d.dryRun}${d.killed?' · ⚠️ KILL SWITCH ON':''}</p>`;
+    if(!rows.length){
+      html += '<p class="sub">No sample rows returned.</p>';
+    } else {
+      html += `<table style="border-collapse:collapse;width:100%;min-width:760px;">
+        <thead><tr>
+          <th style="${head}">Name</th><th style="${head}">Score</th><th style="${head}">Label</th>
+          <th style="${head}">Offer</th><th style="${head}">Expected Value</th>
+          <th style="${head}">Close Prob</th><th style="${head}">Next Action</th>
+        </tr></thead><tbody>`;
+      for(const r of rows){
+        html += `<tr>
+          <td style="${cell}">${esc(r.name||'—')}</td>
+          <td style="${cell}">${r.score}</td>
+          <td style="${cell}">${esc(r.label||'')}</td>
+          <td style="${cell}">${esc(r.offer||'')}</td>
+          <td style="${cell}">J$${Number(r.expectedValue||0).toLocaleString('en-US')}</td>
+          <td style="${cell}">${Math.round((r.closeProbability||0)*100)}%</td>
+          <td style="${cell}">${esc(r.nextAction||'')}</td>
+        </tr>`;
+      }
+      html += '</tbody></table>';
+    }
+    out.innerHTML = html;
+  }catch(e){
+    console.error('[dry-run] error', e);
+    out.innerHTML = `<p style="color:var(--red);">Error: ${esc(e.message||String(e))}</p>`;
+  }finally{
+    btn.disabled = false;
+  }
+}
+document.getElementById('dryrun-btn')?.addEventListener('click', runDryRunScoring);
 
 // ── Auth gate — same admin login as admin.html ──
 onAuthStateChanged(auth, async (user)=>{

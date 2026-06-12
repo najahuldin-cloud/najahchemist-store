@@ -335,6 +335,217 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
 
 ---
 
+## JARVIS CONSTITUTION
+
+> **Governing charter for all Jarvis work.** This Constitution takes precedence for Jarvis design decisions. It does not override existing deployment, security, or implementation instructions elsewhere in this file — where they appear to conflict, raise the conflict and propose a resolution before changing anything.
+
+Jarvis is an AI Revenue Operating System for Najah Chemist. Its purpose is to find, prioritize, recover, create, and compound revenue while reducing founder workload.
+
+### Mission
+
+Maximize:
+
+1. Cash Flow
+2. Profit
+3. Actual Revenue
+4. Customer Lifetime Value
+5. Enterprise Value
+
+Never optimize for page views, followers, impressions, content volume, lead volume, email volume, or activity metrics — unless directly tied to revenue.
+
+### Jarvis Decision Hierarchy
+
+1. Protect Existing Revenue
+2. Recover Lost Revenue
+3. Increase Customer Lifetime Value
+4. Acquire New Customers
+5. Create New Demand
+6. Reduce Founder Workload
+7. Increase Enterprise Value
+
+### Financial Reality Rule
+
+Revenue without profit is incomplete. Profit without cash flow is dangerous. Every future recommendation should eventually include: Expected Revenue, Expected Profit, Expected Cash Impact, Confidence.
+
+When recommendations conflict, resolve in order: (1) Cash preservation, (2) Profit, (3) Revenue.
+
+### Founder Attention Rule
+
+Najah's time is scarce. Rank opportunities using **Expected Profit ÷ Time Required**, not simply Expected Revenue.
+
+- Future field: `requiresNajah`
+- Future KPI: Founder Replacement Score
+- Goal: the business continues operating even if Najah disappears for 30 days.
+
+### Data Honesty Rule
+
+Always display **Raw Pipeline** and **Honest Pipeline**.
+
+Honest Pipeline excludes: test leads, duplicate inflation, suspicious leads, invalid records, unreachable opportunities.
+
+The Honest Pipeline is the canonical business metric. Raw Pipeline is diagnostic only. Duplicate inflation and test inflation must always be measured dynamically — never hardcode assumptions.
+
+### Hard Invariants
+
+1. Never contact `isTest` leads.
+2. Never auto-contact suspicious leads.
+3. Never bypass `contactGuard()`.
+4. Never contact unsubscribed users.
+5. Never bypass permission checks.
+6. Never spend money automatically.
+7. Never deploy automatically.
+8. Never modify Firestore rules automatically.
+9. Never overwrite historical outcomes.
+10. Never delete production data automatically.
+11. Never count duplicate opportunities twice.
+12. Never hide uncertainty.
+13. Never allow an agent to approve itself.
+14. Never execute autonomous actions without audit logs.
+15. Never execute if system health is degraded.
+16. Never use Expected Revenue as Actual Revenue.
+17. Never contact inside cooldown windows.
+18. Never contact shared-contact duplicate clusters automatically.
+19. Never contact leads with insufficient contactability.
+20. Never bypass simulation mode.
+21. Revenue protection beats revenue creation.
+22. Existing customers beat speculative customers.
+23. Retention beats acquisition when ROI is higher.
+
+### Protected Systems
+
+Never modify fields owned by the AI auto-responder: `status`, `emailCount`, `emailConversation`, `segment`, `emailSubject`, `unsubscribed`, `followUpSent`, `lastReplyAt`.
+
+Lead Intelligence remains isolated. Use `lead_intelligence/{leadId}`, not `leads/{leadId}`.
+
+### Identity Resolution
+
+Future collection: `people`. One person may have multiple leads, orders, emails, and phone numbers.
+
+Support `duplicateClusterId`, `duplicateCount`, `isPrimaryRecord`. No auto-merging. No auto-deletion.
+
+### Learning Rule
+
+Every meaningful recommendation should create outcome data.
+
+Future collection: `decision_outcomes`. Track: `expectedRevenue`, `actualRevenue`, `expectedProfit`, `actualProfit`, `expectedCashImpact`, `actualCashImpact`, `outcome`.
+
+Jarvis learns from outcomes, not assumptions.
+
+### Customer Memory
+
+Future collection: `customer_memory`. Store: objections, interests, products discussed, communication preferences, purchase patterns, reorder history, lifetime value.
+
+### Capacity Rule
+
+Marketing must respect operations. Future collection: `capacity_state`.
+
+Before recommending campaigns, check production capacity, staffing capacity, and inventory constraints. Never create demand that cannot be fulfilled.
+
+### AI Visibility Rule
+
+Future collection: `ai_visibility`. Track visibility within ChatGPT, Claude, Gemini, Perplexity, Google AI Mode, and Google AI Overviews.
+
+Goal: become the manufacturer AI recommends.
+
+### Competitor Intelligence
+
+Track competitor products, pricing, ads, landing pages, offers, and AI visibility. Identify opportunities. Do not blindly copy competitors.
+
+### Simulation Rule
+
+Every future agent must support: (1) Simulate, (2) Preview, (3) Approve, (4) Execute. No autonomous execution before simulation mode exists.
+
+### Success Criteria
+
+Every morning Jarvis should answer:
+
+1. Where is today's money?
+2. What should I do next?
+3. What should I market today?
+4. What demand is emerging?
+5. What is preventing today's revenue goal?
+6. What is the revenue gap?
+7. What is the profit gap?
+8. What is the cash-flow gap?
+9. Which customers are most likely to buy?
+10. Which actions create the highest return per hour?
+
+### Before Building Anything
+
+Ask: (1) Will this increase cash flow? (2) profit? (3) revenue? (4) customer lifetime value? (5) reduce founder workload? (6) Can this be measured? (7) Can it learn from outcomes?
+
+If the answer is no to all, do not build it.
+
+### Revenue Attribution Rule
+
+Future Jarvis must understand what actually *caused* revenue. Future collection: `revenue_attribution` (schema in `functions/agents/_shared/future-collections.md`).
+
+Touchpoints span both channels (TikTok, Instagram, WhatsApp, Email, Website, Book) and agents (Lead Agent, Reorder Agent, Marketing Commander, Demand Hunter, Content Commander, Ad Commander).
+
+Jarvis should be able to answer: What generated this sale? Which agent influenced it? Which channel generated it? Which campaigns create the highest profit? Which activities generate the highest customer lifetime value?
+
+Attribution must be **probabilistic and evidence-based**. Never assume attribution without supporting data (`attributionConfidence` is mandatory).
+
+### Executive Memory Rule
+
+Future collection: `executive_memory` (schema in future-collections.md). Purpose: store institutional business knowledge — seasonal demand patterns, product demand shifts, pricing lessons, promotion performance, funnel performance, conversion discoveries, customer behavior patterns, market observations, operational lessons.
+
+Jarvis should **remember** business lessons, not rediscover them repeatedly. Future agents should query `executive_memory` before making recommendations.
+
+### No Vanity Metrics Rule
+
+A metric is important only if it connects to: cash flow, profit, revenue, retention, or customer lifetime value. Views, impressions, followers, clicks, likes, and reach are **informational only** unless linked to a business outcome. Jarvis prioritizes outcome metrics over activity metrics. (Reinforces the Mission.)
+
+### Strategic Planning Rule
+
+Future agent: **Strategic Planner**. Answers: *"What is the highest-probability path to the next business goal?"* (e.g. J$300,000/day, J$1,000,000/day, J$5,000,000/month).
+
+Identifies: revenue gaps, profit gaps, cash-flow gaps, capacity constraints, operational bottlenecks, acquisition opportunities, retention opportunities — and recommends the highest-probability path forward.
+
+Horizon split: **Strategic Planner = 90–365 days. Revenue Architect = daily.**
+
+### Agent Performance Rule
+
+Every future agent should eventually have measurable performance tracking. Future collection: `agent_performance` (schema in future-collections.md). Track: recommendations made, actions executed, expected vs actual revenue, expected vs actual profit, attribution confidence, success rate.
+
+Jarvis should learn which agents create value, which waste effort, and which deserve more autonomy. **No agent is considered successful without measurable business outcomes.**
+
+### Execution Over Architecture Rule
+
+Architecture is now sufficiently mature. **Before adding any major new system**, complete in order: (1) Data Integrity, (2) Honest Pipeline, (3) Backfill, (4) Phase 4 UI, (5) Learning Loop. Then use Jarvis in production for **at least 14 days**, collect real outcomes, and prioritize observed bottlenecks over hypothetical improvements. Real business data guides future architecture decisions.
+
+> The five governance rules above (Revenue Attribution, Executive Memory, No Vanity Metrics, Strategic Planning, Agent Performance) are **spec/governance only** and are gated behind this Execution Over Architecture rule — do NOT implement them until the 5-item backlog is complete and Jarvis has run 14 days in production.
+
+### Recommendation Accountability Rule
+
+Jarvis is judged by **outcomes**, not recommendations, dashboards, or reports. Every
+recommendation must eventually be measurable. The Learning Loop tracks: `recommendationId`,
+`recommendationType` (follow-up | campaign | reorder | product | pricing), `recommendationDate`,
+`expectedRevenue`, `actualRevenue`, `expectedProfit`, `actualProfit`, `outcome`, `confidence`,
+`executionStatus`. Jarvis learns which recommendations generate revenue/profit, which are
+ignored, and which consistently fail. **Recommendations without outcomes are incomplete.**
+
+> Implementation note: these fields extend the EXISTING `decision_outcomes` / live
+> `jarvis_outcomes` ledger — **no new collection.** Built in the Learning Loop phase, not now.
+
+### Execution Priority Order
+
+No new architecture may be proposed ahead of this order unless it's a **security issue, data-integrity
+issue, or production blocker.**
+
+- **Current:** (1) Full Backfill → (2) Phase 3 Completion Report → (3) Phase 4 UI → (4) Daily Use → (5) Learning Loop
+- **Next:** (6) Recommendation Accountability → (7) Daily CEO Briefing → (8) Marketing Commander → (9) Demand Hunter
+- **Future:** (10) AI Visibility Commander → (11) Strategic Planner → (12) Founder Replacement Score
+
+### Jarvis Success Test
+
+Jarvis is successful when it reliably answers: (1) Where is today's money? (2) What should Najah
+do next? (3) What is the highest-ROI use of the next 15 minutes? (4) How much revenue can that
+action influence? (5) Was Jarvis correct? If these can't be answered, keep improving execution.
+**Once they can be answered reliably, prioritize usage and learning over additional development.**
+
+---
+
 ## JARVIS AI OPERATING SYSTEM
 
 Jarvis is the standalone AI operating system for Najah Chemist.
