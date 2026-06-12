@@ -1,16 +1,11 @@
-// Jarvis OS — Maps a lead's segment → recommendedOffer (rule-sourced), plus the
-// reasons other offers were NOT recommended (whyNot). Offers are real Najah SKUs.
+// Jarvis OS — Offer model. Maps a lead to exactly one of the three REVENUE offers
+// (Manufacturing | First Sale System | Coaching), computes its potentialValue from
+// the offer-level model in rule-values.js (NOT retail AOV), and suggests a public
+// catalogue product for the outreach copy (suggestedProduct — separate field).
 
-const { rule } = require('./rule-values');
+const RV = require('./rule-values');
 
-// Canonical offer catalogue (J$). Values are rule-sourced first-order assumptions.
-const OFFERS = {
-  skincare: { name: 'HydraGlow Skincare Bundle',      value: rule(25200, 0.5) },
-  feminine: { name: 'Feminine Care Starter Kit',      value: rule(12500, 0.5) },
-  mens:     { name: 'Mencare Bundle',                 value: rule(11000, 0.5) },
-  haircare: { name: '1L Ayurvedic Hair Growth Oil',   value: rule(7500, 0.5) },
-  general:  { name: 'Starter Litre (single product)', value: rule(7500, 0.4) },
-};
+const OFFER_NAMES = ['Manufacturing', 'First Sale System', 'Coaching'];
 
 // Mirrors leadSegment() in admin-module.js / functions/index.js.
 function segmentKey(brandType) {
@@ -22,14 +17,97 @@ function segmentKey(brandType) {
   return 'general';
 }
 
-function recommendOffer(brandType) {
-  const key = segmentKey(brandType);
-  const offer = OFFERS[key];
-  const offered = { key, name: offer.name, value: offer.value };
-  const whyNot = Object.entries(OFFERS)
-    .filter(([k]) => k !== key)
-    .map(([k, o]) => `${o.name} not recommended — lead segment is ${key}, not ${k}.`);
-  return { offered, whyNot, segmentKey: key };
+// Public catalogue product to name in the outreach copy (NOT used for valuation).
+const PRODUCT_BY_SEGMENT = {
+  skincare: 'HydraGlow Skincare Bundle',
+  feminine: 'Feminine Care Starter Kit',
+  mens:     'Mencare Bundle',
+  haircare: '1L Ayurvedic Hair Growth Oil',
+  general:  'Starter Litre',
+};
+
+function suggestProduct(brandType) {
+  return PRODUCT_BY_SEGMENT[segmentKey(brandType)] || PRODUCT_BY_SEGMENT.general;
 }
 
-module.exports = { OFFERS, segmentKey, recommendOffer };
+// Free text to scan for EXPLICIT offer signals (only used for nicheless leads).
+function leadText(lead) {
+  return [
+    lead.journey, lead.hearAboutUs, lead.notes, lead.message,
+    Array.isArray(lead.answers) ? lead.answers.join(' ') : lead.answers,
+  ].filter(Boolean).join(' ').toLowerCase();
+}
+
+// Explicit signals only — generic business words (business/selling/income/revenue/
+// customers) are deliberately NOT here: every manufacturing lead uses them.
+const FSS_SIGNAL      = /(first sale system|e-?book|\bbook\b|\bcourse\b|digital product)/;
+const COACHING_SIGNAL = /(coaching|mentorship|consult|one[ -]on[ -]one)/;
+
+// Only an explicit J$/JMD numeric budget below threshold counts. USD tier labels
+// ("Under $200 USD" etc.) are NOT treated as sub-J$10,000.
+function statedBudgetBelowJMD(lead, threshold) {
+  const b = (lead.budget == null ? '' : String(lead.budget));
+  if (/usd/i.test(b)) return false;
+  const m = b.match(/([\d,]+)/);
+  if (!m) return false;
+  const n = Number(m[1].replace(/,/g, ''));
+  return Number.isFinite(n) && n > 0 && n < threshold;
+}
+
+// Routing precedence (rule-sourced; learning can override later):
+//   1) Recognized product niche/segment from /start → Manufacturing, ALWAYS
+//      (segment is the strongest signal we have).
+//   2) FSS only on explicit signals (book/ebook/course/digital product/"first sale
+//      system") or an explicit stated J$ budget below 10,000.
+//   3) Coaching only on explicit signals (coaching/mentorship/consult/one on one).
+//   4) Default → Manufacturing.
+function chooseOffer(lead) {
+  if (segmentKey(lead.brandType) !== 'general') return 'Manufacturing';
+  const text = leadText(lead);
+  if (COACHING_SIGNAL.test(text)) return 'Coaching';
+  if (FSS_SIGNAL.test(text) || statedBudgetBelowJMD(lead, 10000)) return 'First Sale System';
+  return 'Manufacturing';
+}
+
+// FSS kept as a DOWNSELL FLAG on low-budget / early Manufacturing leads — their
+// offer stays Manufacturing (mirrors the existing Jarvis "💡 Downsell candidate").
+function isDownsellCandidate(lead, offer) {
+  if (offer !== 'Manufacturing') return false;
+  const b = (lead.budget || '').toLowerCase();
+  const j = (lead.journey || '').toLowerCase();
+  return b.includes('under $200') || j.includes('exploring');
+}
+
+// potentialValue { value, source, confidence } from the offer model + modifiers.
+function offerPotentialValue(offer, scoreLabel, { premiumNiche, engaged }) {
+  const baseRule = offer === 'Manufacturing'
+    ? RV.OFFER_VALUES.Manufacturing[scoreLabel]
+    : RV.OFFER_VALUES[offer];
+  let value = baseRule.value;
+  if (premiumNiche) value *= RV.PREMIUM_NICHE_MULT.value; // +20%
+  if (engaged)      value *= RV.ENGAGEMENT_MULT.value;    // +15%
+  return { value: Math.round(value), source: 'rule', confidence: baseRule.confidence };
+}
+
+// Offer-level reasons the other two offers were not recommended.
+const WHYNOT_REASON = {
+  Manufacturing: 'lead has a product niche / manufacturing intent — sell the wholesale order.',
+  'First Sale System': 'no explicit digital-product/book signal and budget is not sub-J$10k.',
+  Coaching: 'no explicit coaching/mentorship/consult request.',
+};
+
+function recommendOffer(lead, scoreLabel, { premiumNiche, engaged }) {
+  const offer = chooseOffer(lead);
+  const potentialValue = offerPotentialValue(offer, scoreLabel, { premiumNiche, engaged });
+  const suggestedProduct = suggestProduct(lead.brandType);
+  const downsellCandidate = isDownsellCandidate(lead, offer);
+  const whyNot = OFFER_NAMES
+    .filter(o => o !== offer)
+    .map(o => `${o} not recommended — ${WHYNOT_REASON[o]}`);
+  return { offer, potentialValue, suggestedProduct, downsellCandidate, whyNot };
+}
+
+module.exports = {
+  OFFER_NAMES, segmentKey, suggestProduct, leadText, chooseOffer,
+  isDownsellCandidate, statedBudgetBelowJMD, offerPotentialValue, recommendOffer,
+};

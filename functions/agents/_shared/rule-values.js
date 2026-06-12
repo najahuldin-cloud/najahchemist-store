@@ -3,17 +3,13 @@
 // NO STATIC RULES WITHOUT LEARNING: every assumption is stored as
 // { value, source: 'rule', confidence }. The learning layer (Phase 5) can later
 // promote data-derived values (source: 'data', higher confidence) without code
-// changes. Seeds reuse constants already proven in jarvis.html (AOV, close probs)
-// so the new persisted intelligence stays numerically consistent with the dashboard.
+// changes. Close-probability seeds reuse the constants proven in jarvis.html.
 
-const SCORER_VERSION = 1;
+const SCORER_VERSION = 3; // v3: segment-first offer routing + FSS downsell flag
 
 function rule(value, confidence) {
   return { value, source: 'rule', confidence };
 }
-
-// Average order value (J$) — jarvis.html AOV = 22535.
-const AOV = rule(22535, 0.6);
 
 // Base close probabilities by opportunity source — jarvis.html PROB map.
 const CLOSE_PROB = {
@@ -25,16 +21,27 @@ const CLOSE_PROB = {
   lost:    rule(0.02, 0.5),
 };
 
-// Budget tier (lead.budget string) → potential first-order value (J$). Assumptions.
-// Both en-dash and hyphen variants are mapped because the funnel has used both.
-const BUDGET_VALUE = {
-  'Under $200 USD':  rule(28000, 0.4),
-  '$200–$500 USD':   rule(56000, 0.4),
-  '$200-$500 USD':   rule(56000, 0.4),
-  '$500–$1,000 USD': rule(120000, 0.4),
-  '$500-$1,000 USD': rule(120000, 0.4),
-  '$1,000+ USD':     rule(200000, 0.4),
+// ── Offer-level revenue model (the three revenue offers) ──────────────────────
+// Manufacturing is tiered by scoreLabel; First Sale System and Coaching are flat.
+// potentialValue, pipeline value, and expectedValue are ALL derived from this
+// model — never from retail product AOV. Product names are a separate suggestion.
+const OFFER_VALUES = {
+  Manufacturing: {
+    Cold:  rule(25000, 0.5),
+    Warm:  rule(45000, 0.5),
+    Hot:   rule(75000, 0.5),
+    Ready: rule(120000, 0.5),
+  },
+  'First Sale System': rule(3999, 0.6),
+  Coaching:            rule(25000, 0.5),
 };
+
+// Multipliers applied to the chosen offer's base potentialValue.
+const PREMIUM_NICHE_MULT = rule(1.20, 0.4); // +20% for premium niches
+const ENGAGEMENT_MULT    = rule(1.15, 0.4); // +15% when the lead has engaged
+
+// Niches with higher willingness-to-pay (premium +20% applies).
+const PREMIUM_SEGMENTS = ['feminine', 'skincare'];
 
 // Expected reorders within first year (for predictedLifetimeValue). Assumption.
 const REORDER_MULTIPLIER = rule(3, 0.3);
@@ -56,6 +63,7 @@ const LABEL_THRESHOLDS = [
 ];
 
 module.exports = {
-  SCORER_VERSION, rule, AOV, CLOSE_PROB, BUDGET_VALUE,
+  SCORER_VERSION, rule, CLOSE_PROB, OFFER_VALUES,
+  PREMIUM_NICHE_MULT, ENGAGEMENT_MULT, PREMIUM_SEGMENTS,
   REORDER_MULTIPLIER, DECAY_STEPS, LABEL_THRESHOLDS,
 };

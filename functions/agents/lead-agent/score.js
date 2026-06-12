@@ -3,10 +3,15 @@
 // buildIntelligence(lead, leadId, prevIntel, now) → the full intelligence object,
 // WITHOUT lastScoredAt (the writer stamps that as a server timestamp). Pure & local:
 // no Claude/Mem0/network calls, so it is fully unit-testable.
+//
+// Valuation is driven by the OFFER-LEVEL revenue model (Manufacturing | First Sale
+// System | Coaching) — never retail product AOV. The catalogue product is a separate
+// `suggestedProduct` used only in the outreach copy.
 
 const RV = require('../_shared/rule-values');
 const S  = require('../_shared/scoring');
-const { recommendOffer } = require('../_shared/offers');
+const { recommendOffer, segmentKey } = require('../_shared/offers');
+const { firstName } = require('../_shared/names');
 const LC = require('../_shared/lifecycle');
 const { buildAttribution } = require('../_shared/attribution');
 const { whyRecommended, executiveSummary } = require('../_shared/summary');
@@ -26,11 +31,6 @@ const CONTENT_BY_SEGMENT = {
   haircare: ['natural-hair-growth', 'scalp-care'],
   general:  ['start-a-brand'],
 };
-
-function potentialValue(lead) {
-  if (lead.budget && RV.BUDGET_VALUE[lead.budget]) return RV.BUDGET_VALUE[lead.budget];
-  return RV.AOV;
-}
 
 function closeProbability(opportunitySource, lead, decay) {
   const base = (RV.CLOSE_PROB[opportunitySource] || RV.CLOSE_PROB.newlead).value;
@@ -58,6 +58,12 @@ function rawScore(lead, opportunitySource, decay) {
   return S.clamp(Math.round(s), 0, 100);
 }
 
+function isEngaged(lead) {
+  return lead.status === 'Interested'
+    || (lead.emailCount || 0) > 1
+    || (Array.isArray(lead.emailConversation) && lead.emailConversation.some(t => t.role === 'user'));
+}
+
 function buildTimeline(lead) {
   const tl = [];
   const push = (at, type, detail) => {
@@ -71,15 +77,18 @@ function buildTimeline(lead) {
   return tl.sort((a, b) => (a.at < b.at ? -1 : 1));
 }
 
-function nextActionFor(opportunitySource, lead, offer) {
+// Copy matches scoreLabel (no more "warm lead" for a Hot-labeled lead) and uses a
+// sanitized first name. suggestedProduct (catalogue) is named alongside the offer.
+function nextActionFor(opportunitySource, lead, scoreLabel, offer, suggestedProduct) {
   const channel = lead.whatsapp ? 'WhatsApp' : 'Email';
-  const first = (lead.name || 'lead').split(' ')[0];
+  const first = firstName(lead.name);
+  const prod = suggestedProduct ? ` (suggest ${suggestedProduct})` : '';
   switch (opportunitySource) {
-    case 'overdue': return `${channel} now — follow-up is overdue. Pitch ${offer.offered.name}.`;
-    case 'hot':     return `${channel} ${first} — warm lead. Offer ${offer.offered.name}.`;
-    case 'dormant': return `Reactivation ${channel.toLowerCase()} — dormant lead.`;
-    case 'lost':    return `No outbound — lead is lost. Eligible for win-back campaign only.`;
-    default:        return `${channel} first outreach — introduce ${offer.offered.name}.`;
+    case 'overdue': return `${channel} ${first} now — follow-up overdue. Pitch ${offer}${prod}.`;
+    case 'hot':     return `${channel} ${first} — ${scoreLabel} lead. Offer ${offer}${prod}.`;
+    case 'dormant': return `Reactivation ${channel.toLowerCase()} — dormant ${first}. Offer ${offer}.`;
+    case 'lost':    return `No outbound — lead is lost. Win-back campaign only.`;
+    default:        return `${channel} ${first} — first outreach. Introduce ${offer}${prod}.`;
   }
 }
 
@@ -94,14 +103,19 @@ function buildIntelligence(lead, leadId, prevIntel, now) {
 
   const score = rawScore(lead, oppSource, decay);
   const label = S.scoreLabel(score);
-  const offer = recommendOffer(lead.brandType);
-  const segKey = offer.offered.key;
-  const pv = potentialValue(lead);
+
+  const segKey = segmentKey(lead.brandType);
+  const premiumNiche = RV.PREMIUM_SEGMENTS.includes(segKey);
+  const engaged = isEngaged(lead);
+
+  // Offer-level revenue model drives valuation (NOT retail AOV).
+  const rec = recommendOffer(lead, label, { premiumNiche, engaged });
+  const pv = rec.potentialValue;          // { value, source, confidence }
   const cp = closeProbability(oppSource, lead, decay);
   const ev = Math.round(S.getValue(pv) * cp);
 
   const urgency = LC.urgencyScore(lead, now, stage);
-  const nextAction = nextActionFor(oppSource, lead, offer);
+  const nextAction = nextActionFor(oppSource, lead, label, rec.offer, rec.suggestedProduct);
 
   let trend = 'new';
   if (prevIntel && typeof prevIntel.score === 'number') {
@@ -115,12 +129,16 @@ function buildIntelligence(lead, leadId, prevIntel, now) {
   };
 
   const ctx = {
-    lead, offer, score, scoreLabel: label, closeProbability: cp,
-    potentialValue: pv, opportunitySource: oppSource, urgency, nextAction,
+    lead, offer: rec.offer, suggestedProduct: rec.suggestedProduct,
+    score, scoreLabel: label, closeProbability: cp, potentialValue: pv,
+    opportunitySource: oppSource, urgency, nextAction,
   };
   const why = whyRecommended(ctx);
+  if (rec.downsellCandidate) {
+    why.push('💡 Downsell candidate — offer First Sale System (J$3,999) first if they hesitate.');
+  }
   const summary = executiveSummary(ctx);
-  const decision = buildDecision({ nextAction, offer, closeProbability: cp, potentialValue: pv, whyRecommended: why });
+  const decision = buildDecision({ nextAction, potentialValue: pv, closeProbability: cp, whyRecommended: why });
 
   const lastMeaningful = S.toDate(lastActivity);
 
@@ -130,15 +148,17 @@ function buildIntelligence(lead, leadId, prevIntel, now) {
     scoreLabel: label,
     scoreTrend: trend,
     closeProbability: cp,
-    recommendedOffer: { name: offer.offered.name, ...offer.offered.value }, // {name, value, source, confidence}
-    offerConfidence: offer.offered.value.confidence,
-    potentialValue: pv,                    // { value, source, confidence }
+    recommendedOffer: rec.offer,           // exactly one of Manufacturing | First Sale System | Coaching
+    downsellCandidate: rec.downsellCandidate, // FSS downsell flag (offer stays Manufacturing)
+    suggestedProduct: rec.suggestedProduct, // public catalogue product (copy only, not valuation)
+    offerConfidence: pv.confidence,
+    potentialValue: pv,                    // { value, source, confidence } — offer-level
     expectedValue: ev,                     // potentialValue.value × closeProbability
     predictedLifetimeValue: pltv,          // { value, source, confidence }
     urgencyScore: urgency,
     nextAction,
     whyRecommended: why,
-    whyNot: offer.whyNot,
+    whyNot: rec.whyNot,                    // offer-level reasons the other two were not chosen
     revenueRoute: LC.revenueRoute(lead, stage),
     agentOwner: 'lead-agent',
     lifecycleStage: stage,

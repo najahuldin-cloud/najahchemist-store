@@ -4,8 +4,8 @@
 const { getValue } = require('./scoring');
 
 function buildDecision(ctx) {
-  const { nextAction, offer, closeProbability, potentialValue, whyRecommended } = ctx;
-  const offerConf = (offer.offered.value && offer.offered.value.confidence) || 0.5;
+  const { nextAction, potentialValue, closeProbability, whyRecommended } = ctx;
+  const offerConf = (potentialValue && potentialValue.confidence) || 0.5;
   const confidence = Math.round(((offerConf + closeProbability) / 2) * 100) / 100;
   return {
     recommendation: nextAction,

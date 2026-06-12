@@ -15,6 +15,7 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 
 const { buildIntelligence } = require('./score');
+const { cleanName } = require('../_shared/names');
 const { assertPermission } = require('../_shared/permissions');
 const { isKilled } = require('../_shared/killswitch');
 const { logAction } = require('../_shared/audit');
@@ -52,13 +53,17 @@ async function scoreAll(db, { write, limit }) {
     const lead = doc.data();
     const intel = buildIntelligence(lead, doc.id, prev.get(doc.id), now);
 
-    if (sample.length < 5) {
+    if (sample.length < 25) {
       sample.push({
         leadId: doc.id,
+        name: cleanName(lead.name),
         score: intel.score,
         label: intel.scoreLabel,
+        offer: intel.recommendedOffer,            // Manufacturing | First Sale System | Coaching
+        downsellCandidate: intel.downsellCandidate,
+        suggestedProduct: intel.suggestedProduct, // catalogue product (copy)
         expectedValue: intel.expectedValue,
-        offer: intel.recommendedOffer.name,
+        closeProbability: intel.closeProbability,
         nextAction: intel.nextAction,
       });
     }
