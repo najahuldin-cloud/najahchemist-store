@@ -1,5 +1,5 @@
-// Read-only script: list products where ingredients is empty, null, or missing
-// Run: node scripts/check-missing-ingredients.js
+// Read-only script: list products where inci is empty, null, or missing
+// Run: node scripts/check-missing-inci.js
 
 const os = require('os');
 const fs = require('fs');
@@ -37,9 +37,15 @@ async function fetchAllProducts(token) {
     for (const doc of json.documents || []) {
       const docId = doc.name.split('/').pop();
       const fields = doc.fields || {};
-      const name = getString(fields, 'name') || getString(fields, 'title') || getString(fields, 'productName') || getString(fields, 'displayName') || Object.keys(fields).join(', ') || '—';
-      const ingredients = getString(fields, 'ingredients');
-      results.push({ docId, name, ingredients });
+      const name =
+        getString(fields, 'name') ||
+        getString(fields, 'title') ||
+        getString(fields, 'productName') ||
+        getString(fields, 'displayName') ||
+        Object.keys(fields).join(', ') ||
+        '—';
+      const inci = getString(fields, 'inci');
+      results.push({ docId, name, inci });
     }
 
     pageToken = json.nextPageToken || null;
@@ -53,16 +59,16 @@ async function fetchAllProducts(token) {
     const token = getToken();
     const products = await fetchAllProducts(token);
 
-    const missing = products.filter(p => !p.ingredients || p.ingredients.trim() === '');
+    const missing = products.filter(p => !p.inci || p.inci.trim() === '');
 
     console.log(`Total products fetched: ${products.length}`);
-    console.log(`Products with missing/empty ingredients: ${missing.length}\n`);
+    console.log(`Products with missing/empty inci: ${missing.length}\n`);
 
     if (missing.length === 0) {
-      console.log('All products have ingredients. ✓');
+      console.log('All products have inci. ✓');
     } else {
       missing.forEach(p => {
-        const status = p.ingredients === null ? 'MISSING' : 'EMPTY';
+        const status = p.inci === null ? 'MISSING' : 'EMPTY';
         console.log(`[${status}]  ${p.docId.padEnd(12)}  ${p.name}`);
       });
     }

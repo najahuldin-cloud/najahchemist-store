@@ -6,7 +6,7 @@ const os = require('os');
 const fs = require('fs');
 const path = require('path');
 
-const PROJECT_ID = 'najah-chemist-362ad';
+const PROJECT_ID = 'najah-chemist';
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 const TOKEN_PATH = path.join(os.homedir(), '.config', 'configstore', 'firebase-tools.json');
 
