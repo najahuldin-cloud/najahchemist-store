@@ -378,16 +378,6 @@
     <div class="insight-grid" id="growth-grid"></div>
   </section>
 
-  <!-- TEMP: Phase 2 dry-run trigger — remove/repurpose in Phase 4 (Command Center) -->
-  <section id="sec-dryrun" style="margin-bottom:3rem;border-top:1px dashed #333;padding-top:1.5rem;">
-    <div class="sec-head"><h2>🧪 Dry-Run Scoring</h2><span class="sub">temporary — Phase 2 verification, zero writes</span></div>
-    <button id="dryrun-btn" type="button"
-      style="background:var(--gold,#C8973A);color:#000;border:none;padding:.7rem 1.1rem;border-radius:8px;font-weight:700;cursor:pointer;">
-      🧪 Dry-Run Scoring (20)
-    </button>
-    <div id="dryrun-out" style="margin-top:1rem;overflow-x:auto;font-size:.85rem;"></div>
-  </section>
-
 </main>
 
 <div class="toast" id="toast"></div>
@@ -2422,56 +2412,6 @@ async function loadData(){
   document.getElementById('app').style.display='block';
   enrichOpportunities(); // fire-and-forget Mem0 enrichment
 }
-
-// ── TEMP: Phase 2 dry-run trigger (remove/repurpose in Phase 4) ──
-// Calls the admin-only scoreLeadsBackfill callable in dry-run mode (zero writes)
-// and renders the returned sample. Lives inside #app, which is only shown to admins.
-async function runDryRunScoring(){
-  const btn = document.getElementById('dryrun-btn');
-  const out = document.getElementById('dryrun-out');
-  if(!btn || !out) return;
-  btn.disabled = true;
-  out.innerHTML = '<span class="sub">Running dry-run scoring…</span>';
-  try{
-    const call = httpsCallable(functions, 'scoreLeadsBackfill');
-    const res  = await call({ dryRun: true, limit: 20 });
-    const d    = res.data || {};
-    console.log('[dry-run scoreLeadsBackfill]', JSON.stringify(d, null, 2));
-    const rows = Array.isArray(d.sample) ? d.sample : [];
-    const cell = 'padding:.45rem .6rem;border-bottom:1px solid #222;text-align:left;vertical-align:top;';
-    const head = 'padding:.45rem .6rem;border-bottom:1px solid #444;text-align:left;color:var(--gold,#C8973A);';
-    let html = `<p class="sub" style="margin:0 0 .6rem;">scored: ${d.scored} · written: ${d.written} · dryRun: ${d.dryRun}${d.killed?' · ⚠️ KILL SWITCH ON':''}</p>`;
-    if(!rows.length){
-      html += '<p class="sub">No sample rows returned.</p>';
-    } else {
-      html += `<table style="border-collapse:collapse;width:100%;min-width:760px;">
-        <thead><tr>
-          <th style="${head}">Name</th><th style="${head}">Score</th><th style="${head}">Label</th>
-          <th style="${head}">Offer</th><th style="${head}">Expected Value</th>
-          <th style="${head}">Close Prob</th><th style="${head}">Next Action</th>
-        </tr></thead><tbody>`;
-      for(const r of rows){
-        html += `<tr>
-          <td style="${cell}">${esc(r.name||'—')}</td>
-          <td style="${cell}">${r.score}</td>
-          <td style="${cell}">${esc(r.label||'')}</td>
-          <td style="${cell}">${esc(r.offer||'')}</td>
-          <td style="${cell}">J$${Number(r.expectedValue||0).toLocaleString('en-US')}</td>
-          <td style="${cell}">${Math.round((r.closeProbability||0)*100)}%</td>
-          <td style="${cell}">${esc(r.nextAction||'')}</td>
-        </tr>`;
-      }
-      html += '</tbody></table>';
-    }
-    out.innerHTML = html;
-  }catch(e){
-    console.error('[dry-run] error', e);
-    out.innerHTML = `<p style="color:var(--red);">Error: ${esc(e.message||String(e))}</p>`;
-  }finally{
-    btn.disabled = false;
-  }
-}
-document.getElementById('dryrun-btn')?.addEventListener('click', runDryRunScoring);
 
 // ── Auth gate — same admin login as admin.html ──
 onAuthStateChanged(auth, async (user)=>{

@@ -82,10 +82,18 @@ exports.handler = async (event) => {
       // generic business facts (AOV, shipping) seeded/stored in the interactions
       // store would otherwise leak into every client's Why field. Drop anything
       // that does not name the client.
-      const tokens = name.toLowerCase().split(/\s+/).filter(t => t.length >= 3);
-      const clientMems = tokens.length
-        ? mems.filter(m => { const low = m.toLowerCase(); return tokens.some(t => low.includes(t)); })
-        : [];
+      // Strict match: a multi-name client requires BOTH first AND last name in the
+      // memory text (prevents "Sheleta Davis" leaking onto "Shanique Davis" via a
+      // shared surname). A single-name client requires that exact name (>= 4 chars).
+      const parts = name.toLowerCase().split(/\s+/).filter(Boolean);
+      let clientMems = [];
+      if (parts.length >= 2) {
+        const first = parts[0], last = parts[parts.length - 1];
+        clientMems = mems.filter(m => { const low = m.toLowerCase(); return low.includes(first) && low.includes(last); });
+      } else if (parts.length === 1 && parts[0].length >= 4) {
+        const only = parts[0];
+        clientMems = mems.filter(m => m.toLowerCase().includes(only));
+      }
       if (clientMems.length) memories[n] = clientMems.slice(0, 2).join(" · ");
     }));
     return {
