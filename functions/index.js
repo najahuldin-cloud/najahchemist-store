@@ -7,7 +7,7 @@
 //
 // Required environment variables (set via Firebase dashboard or CLI):
 //   RESEND_API_KEY       — from Resend dashboard
-//   WHATSAPP_TOKEN       — Meta WhatsApp Business Cloud API token
+//   WHATSAPP_SYSTEM_TOKEN       — Meta WhatsApp Business Cloud API token
 //   WHATSAPP_PHONE_ID    — Meta phone number ID (from Meta for Developers dashboard)
 
 const { onSchedule } = require('firebase-functions/v2/scheduler');
@@ -124,7 +124,7 @@ exports.onOrderComplete = onDocumentUpdated(
 // ── Firestore Trigger: notify owner when new order created ────────────────────
 
 exports.onOrderCreated = onDocumentCreated(
-  { document: 'orders/{orderId}', secrets: ['RESEND_API_KEY', 'WHATSAPP_TOKEN', 'WHATSAPP_PHONE_ID'] },
+  { document: 'orders/{orderId}', secrets: ['RESEND_API_KEY', 'WHATSAPP_SYSTEM_TOKEN', 'WHATSAPP_PHONE_ID'] },
   async (event) => {
     const data    = event.data.data();
     const orderId = event.params.orderId;
@@ -305,7 +305,7 @@ async function sendOrderCompleteEmail(email, order, docId) {
 // Runs daily at 9:00am Jamaica time (America/Jamaica = UTC-5, no DST)
 
 exports.reorderReminder = onSchedule(
-  { schedule: '0 9 * * *', timeZone: 'America/Jamaica', secrets: ['WHATSAPP_TOKEN', 'WHATSAPP_PHONE_ID'] },
+  { schedule: '0 9 * * *', timeZone: 'America/Jamaica', secrets: ['WHATSAPP_SYSTEM_TOKEN', 'WHATSAPP_PHONE_ID'] },
   async () => {
     const db = getFirestore();
 
@@ -405,11 +405,11 @@ exports.reorderReminder = onSchedule(
 // ── WhatsApp via Meta Business Cloud API ──────────────────────────────────────
 
 async function sendWhatsApp(phone, message, templateOpts) {
-  const token   = process.env.WHATSAPP_TOKEN;
+  const token   = process.env.WHATSAPP_SYSTEM_TOKEN;
   const phoneId = process.env.WHATSAPP_PHONE_ID;
 
   if (!token || !phoneId) {
-    console.warn('[whatsapp] WHATSAPP_TOKEN or WHATSAPP_PHONE_ID not configured — skipping WhatsApp');
+    console.warn('[whatsapp] WHATSAPP_SYSTEM_TOKEN or WHATSAPP_PHONE_ID not configured — skipping WhatsApp');
     return;
   }
 
@@ -452,7 +452,7 @@ async function sendWhatsApp(phone, message, templateOpts) {
 // ── Morning digest: daily 8am Jamaica lead/order summary to the owner ──────────
 
 exports.morningDigest = onSchedule(
-  { schedule: '0 8 * * *', timeZone: 'America/Jamaica', secrets: ['RESEND_API_KEY', 'WHATSAPP_TOKEN', 'WHATSAPP_PHONE_ID'] },
+  { schedule: '0 8 * * *', timeZone: 'America/Jamaica', secrets: ['RESEND_API_KEY', 'WHATSAPP_SYSTEM_TOKEN', 'WHATSAPP_PHONE_ID'] },
   async () => {
     const db = getFirestore();
 
@@ -511,7 +511,7 @@ exports.morningDigest = onSchedule(
 // ── Evening digest: daily 6pm Jamaica lead/order summary to the owner ──────────
 
 exports.eveningDigest = onSchedule(
-  { schedule: '0 18 * * *', timeZone: 'America/Jamaica', secrets: ['RESEND_API_KEY', 'WHATSAPP_TOKEN', 'WHATSAPP_PHONE_ID'] },
+  { schedule: '0 18 * * *', timeZone: 'America/Jamaica', secrets: ['RESEND_API_KEY', 'WHATSAPP_SYSTEM_TOKEN', 'WHATSAPP_PHONE_ID'] },
   async () => {
     const db = getFirestore();
 
@@ -2401,6 +2401,25 @@ exports.handleEmailReply = onRequest(
       console.error('[handleEmailReply] Error:', err.message);
     }
     res.status(204).send();
+  }
+);
+
+// ── Scheduled: renew the Gmail watch weekly (Gmail watches expire every 7 days) ──
+exports.renewGmailWatch = onSchedule(
+  { schedule: '0 4 * * 1', timeZone: 'America/Jamaica',
+    secrets: ['GMAIL_CLIENT_ID', 'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN'] },
+  async () => {
+    const gmail = gmailClient();
+    const res = await gmail.users.watch({
+      userId: 'me',
+      requestBody: {
+        topicName: 'projects/najah-chemist/topics/najah-chemist-gmail-replies',
+        labelIds: ['INBOX'],
+        labelFilterBehavior: 'INCLUDE'
+      }
+    });
+    console.log('[renewGmailWatch] watch renewed — historyId',
+      res.data.historyId, 'expires', new Date(Number(res.data.expiration)).toISOString());
   }
 );
 
