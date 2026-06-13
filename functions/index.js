@@ -488,7 +488,8 @@ exports.morningDigest = onSchedule(
       `📅 Follow-ups due today: ${followUpsDue}\n` +
       `📦 Orders pending: ${ordersPending}\n\n` +
       `Open Lead Manager: https://najahchemistja.com/admin\n\n` +
-      `— Najah Chemist System 🌿`;
+      `— Najah Chemist System 🌿\n\n` +
+      `🔗 Open Jarvis: https://najahchemistja.com/jarvis`;
 
     console.log(`[morningDigest] ${todayStr} — new:${newLeads} followups:${followUpsDue} pending:${ordersPending}`);
 
