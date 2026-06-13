@@ -183,6 +183,22 @@
   .oc-msg.oc-ok{color:var(--green);}
   .oc-msg.oc-bad{color:#e8786b;}
 
+  /* outcome reason modal (Won / Lost / Skip) */
+  .oc-modal{position:fixed;inset:0;background:rgba(0,0,0,0.62);display:flex;align-items:center;justify-content:center;z-index:200;padding:1rem;}
+  .oc-modal-card{background:var(--card);border:1px solid var(--gold);border-radius:14px;padding:1.2rem 1.3rem;max-width:380px;width:100%;display:flex;flex-direction:column;gap:0.4rem;}
+  .oc-modal-card .ocm-t{font-size:1rem;font-weight:800;color:var(--text);}
+  .oc-modal-card .ocm-sub{font-size:0.82rem;color:var(--mid);}
+  .oc-modal-card .ocm-l{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.6px;color:var(--gold);margin-top:0.4rem;}
+  .oc-modal-card .ocm-input,.oc-modal-card .ocm-select{background:var(--card2,#1c1c1c);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.5rem 0.6rem;font-size:0.9rem;width:100%;box-sizing:border-box;}
+  .oc-modal-card .ocm-acts{display:flex;justify-content:flex-end;gap:0.5rem;margin-top:0.8rem;}
+
+  /* outcome summary card: expected vs actual vs variance */
+  .oc-summary{margin-top:0.5rem;border:1px solid var(--border);border-left:3px solid var(--green);border-radius:10px;padding:0.7rem 0.85rem;background:var(--card);font-size:0.8rem;display:flex;flex-direction:column;gap:0.25rem;max-width:300px;}
+  .oc-summary .ocs-row{display:flex;justify-content:space-between;gap:1rem;}
+  .oc-summary .ocs-row b{color:var(--gold);}
+  .oc-summary .ocs-pos{color:var(--green);font-weight:700;}
+  .oc-summary .ocs-neg{color:var(--red);font-weight:700;}
+
   /* revenue leaderboard */
   .lb-score{border:1.5px solid var(--gold);border-radius:14px;padding:1.2rem 1.4rem;background:linear-gradient(135deg,rgba(200,151,58,0.16) 0%,rgba(200,151,58,0.04) 50%,var(--card) 100%);}
   .lb-score .lbs-t{font-size:0.72rem;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold);}
@@ -427,7 +443,7 @@ let CONTEXT = {};
 let askHistory = []; // {role, content}
 let showAllRows = false;
 const MEM0_CACHE = {}; // lowercased person name -> recalled Mem0 snippet
-let OUTCOMES = [];          // jarvis_outcomes docs: {id, opportunityType, name, whatsapp, expectedRevenue, actualRevenue, status, recommendedAt, resolvedAt}
+let OUTCOMES = [];          // jarvis_outcomes docs: {id, opportunityType, name, whatsapp, expectedRevenue, actualRevenue, status, recommendedAt, resolvedAt, actionedBy, actionedAt, repliedAt, quotedAt, wonReason, lostReason, skipReason, revenueVariance, accuracyScore}
 const ACTIONED = {};        // session map: opp.id -> outcome doc id (prevents duplicate outcome rows)
 let digitalActioned = false;// session guard for the First Sale System downsell button
 let CAMPAIGNS = [];         // campaigns collection docs: {_docId, campaignId, campaignType, ...}
@@ -556,8 +572,11 @@ window.jActIntel = function(leadId){
     actualRevenue: null,
     status: 'pending',
     source: 'jarvis-dashboard',
+    actionedBy: actorUid(),
     recommendedAt: todayISO(),
     actionedAt: new Date().toISOString(),           // exact action timestamp
+    repliedAt: null,
+    quotedAt: null,
     resolvedAt: null,
     campaignId: null
   };
@@ -743,12 +762,62 @@ function setOcHTML(oppId, html){
   if(!oppId) return;
   document.querySelectorAll(`[data-oc="${oppId}"]`).forEach(el=>{ el.innerHTML = html; });
 }
+// Reason vocabularies (Learning Loop / Recommendation Accountability)
+const WON_REASONS  = ['Manufacturing Order','Course Sale','Coaching Sale','Repeat Customer','Referral','Digital Product'];
+const LOST_REASONS = ['No Budget','No Response','Competitor','Wrong Timing','MOQ Issue','Shipping Issue','Not Qualified','Price Objection','Other'];
+const SKIP_REASONS = ['Capacity','Low Priority','Duplicate','Bad Recommendation','Other'];
+
+// Firebase Auth uid of whoever actioned the recommendation (null if unavailable).
+function actorUid(){ try{ return (auth && auth.currentUser && auth.currentUser.uid) || null; }catch(_){ return null; } }
+
+// Promise-based reason modal. Resolves {reason, revenue} on Save, or null on Cancel.
+function ocModal({title, sub, options, withRevenue, expected}){
+  return new Promise(resolve=>{
+    const ov = document.createElement('div');
+    ov.className = 'oc-modal';
+    const opts = (options||[]).map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join('');
+    ov.innerHTML = `<div class="oc-modal-card">
+      <div class="ocm-t">${esc(title||'')}</div>
+      ${sub?`<div class="ocm-sub">${esc(sub)}</div>`:''}
+      ${withRevenue?`<label class="ocm-l">Revenue generated (J$)</label><input class="ocm-input" id="ocm-rev" type="number" inputmode="numeric" value="${Math.round(expected||0)}">`:''}
+      <label class="ocm-l">Reason</label>
+      <select class="ocm-select" id="ocm-reason">${opts}</select>
+      <div class="ocm-acts">
+        <button class="btn btn-ghost btn-sm" id="ocm-cancel">Cancel</button>
+        <button class="btn btn-done btn-sm" id="ocm-save">Save</button>
+      </div>
+    </div>`;
+    document.body.appendChild(ov);
+    const close = val=>{ ov.remove(); resolve(val); };
+    ov.querySelector('#ocm-cancel').onclick = ()=>close(null);
+    ov.addEventListener('click', e=>{ if(e.target===ov) close(null); });
+    ov.querySelector('#ocm-save').onclick = ()=>{
+      const reason = ov.querySelector('#ocm-reason').value;
+      let revenue = null;
+      if(withRevenue){ const raw = ov.querySelector('#ocm-rev').value; revenue = Math.round(parseFloat(String(raw).replace(/[^0-9.]/g,''))||0); }
+      close({reason, revenue});
+    };
+  });
+}
+
+// Post-save summary: Expected vs Actual vs Variance (+ estimate accuracy).
+function ocSummaryHTML(expected, actual, variance, accuracy){
+  const vCls = variance>=0 ? 'ocs-pos' : 'ocs-neg';
+  const vTxt = (variance>=0?'+':'') + fmt(variance);
+  return `<div class="oc-summary">
+    <div class="ocs-row"><span>Expected</span><b>${fmt(expected)}</b></div>
+    <div class="ocs-row"><span>Actual</span><b>${fmt(actual)}</b></div>
+    <div class="ocs-row"><span>Variance</span><span class="${vCls}">${vTxt}</span></div>
+    ${accuracy!=null?`<div class="ocs-row"><span>Estimate accuracy</span><b>${accuracy}%</b></div>`:''}
+  </div>`;
+}
+
 function outcomeButtonsHTML(oppId, outcomeId, expected){
   const e = Math.round(expected||0);
-  return `<span class="oc-msg oc-ok">✓ pending</span>`
-    + `<button class="btn btn-done btn-sm" onclick="jConverted('${outcomeId}','${oppId}',${e})">✅ Converted</button>`
-    + `<button class="btn btn-snooze btn-sm" onclick="jNotYet('${outcomeId}')">⏳ Not Yet</button>`
-    + `<button class="btn btn-lost btn-sm" onclick="jLost('${outcomeId}','${oppId}')">❌ Lost</button>`;
+  return `<span class="oc-msg oc-ok">Marked as actioned. Did it work?</span>`
+    + `<button class="btn btn-done btn-sm" onclick="jConverted('${outcomeId}','${oppId}',${e})">Won</button>`
+    + `<button class="btn btn-lost btn-sm" onclick="jLost('${outcomeId}','${oppId}')">Lost</button>`
+    + `<button class="btn btn-snooze btn-sm" onclick="jNotYet('${outcomeId}')">Pending</button>`;
 }
 
 // ✅ Done — record a PENDING outcome and swap the control to the 3 outcome buttons.
@@ -756,8 +825,8 @@ window.jDone = async function(id){
   const o = OPPS.find(x=>x.id===id);
   markDone(id);
   if(ACTIONED[id]){ setOcHTML(id, outcomeButtonsHTML(id, ACTIONED[id], o?o.value:0)); return; }
-  setOcHTML(id, `<span class="oc-msg oc-ok">✓ Actioned — outcome pending</span>`);
-  toast('✓ Actioned — outcome pending');
+  setOcHTML(id, `<span class="oc-msg oc-ok">Marked as actioned. Did it work?</span>`);
+  toast('✓ Marked as actioned');
   try{
     const outcome = {
       opportunityType: o ? o.type : 'Unknown',
@@ -766,7 +835,11 @@ window.jDone = async function(id){
       expectedRevenue: o ? Math.round(o.value||0) : 0,
       actualRevenue: null,
       status: 'pending',
+      actionedBy: actorUid(),
       recommendedAt: todayISO(),
+      actionedAt: new Date().toISOString(),
+      repliedAt: null,
+      quotedAt: null,
       resolvedAt: null,
       campaignId: mcActiveCampaignId()   // link to an active campaign launched in last 7 days, else null
     };
@@ -782,31 +855,43 @@ window.jDone = async function(id){
   }
 };
 
-// ✅ Converted — prompt for actual revenue (prefilled with expected), then save.
+// Won — reason dropdown + actual revenue, compute variance/accuracy, then save + summary.
 window.jConverted = async function(outcomeId, oppId, expected){
-  const input = prompt('Revenue generated? (J$)', expected);
-  if(input===null) return; // cancelled — keep buttons
-  const actual = Math.round(parseFloat(String(input).replace(/[^0-9.]/g,''))||0);
+  const res = await ocModal({ title:'Won — record the sale', sub:'How much revenue did this generate?', options:WON_REASONS, withRevenue:true, expected });
+  if(res===null) return; // cancelled — keep buttons
+  const actual = res.revenue||0;
+  const exp = Math.round(expected||0);
+  const variance = actual - exp;
+  const accuracy = exp>0 ? Math.max(0, Math.round((1 - Math.abs(variance)/exp) * 100)) : null;
   try{
-    await updateDoc(doc(db,'jarvis_outcomes',outcomeId), { status:'converted', actualRevenue:actual, resolvedAt:todayISO() });
+    await updateDoc(doc(db,'jarvis_outcomes',outcomeId), {
+      status:'converted', actualRevenue:actual, wonReason:res.reason,
+      revenueVariance:variance, accuracyScore:accuracy,
+      actionedBy:actorUid(), resolvedAt:todayISO()
+    });
     const oc = OUTCOMES.find(x=>x.id===outcomeId);
-    if(oc){ oc.status='converted'; oc.actualRevenue=actual; oc.resolvedAt=todayISO(); }
-    setOcHTML(oppId, `<span class="oc-msg oc-ok">🎉 ${fmt(actual)} recorded</span>`);
+    if(oc){ oc.status='converted'; oc.actualRevenue=actual; oc.wonReason=res.reason; oc.revenueVariance=variance; oc.accuracyScore=accuracy; oc.resolvedAt=todayISO(); }
+    setOcHTML(oppId, ocSummaryHTML(exp, actual, variance, accuracy));
     toast(`🎉 ${fmt(actual)} recorded`);
     renderLeaderboard(); renderPending(); renderInsights();
   }catch(e){ console.error('[Jarvis] convert failed', e); toast('⚠ Could not save'); }
 };
 
-// ⏳ Not Yet — stays pending, keeps the outcome buttons visible.
-window.jNotYet = function(outcomeId){ toast('⏳ Following up'); };
+// Pending — stays pending, keeps the outcome buttons visible.
+window.jNotYet = function(outcomeId){ toast('⏳ Still pending — follow up'); };
 
-// ❌ Lost — mark lost with zero revenue.
+// Lost — reason dropdown, mark lost with zero revenue.
 window.jLost = async function(outcomeId, oppId){
+  const res = await ocModal({ title:'Lost — what happened?', options:LOST_REASONS });
+  if(res===null) return; // cancelled — keep buttons
   try{
-    await updateDoc(doc(db,'jarvis_outcomes',outcomeId), { status:'lost', actualRevenue:0, resolvedAt:todayISO() });
+    await updateDoc(doc(db,'jarvis_outcomes',outcomeId), {
+      status:'lost', actualRevenue:0, lostReason:res.reason,
+      actionedBy:actorUid(), resolvedAt:todayISO()
+    });
     const oc = OUTCOMES.find(x=>x.id===outcomeId);
-    if(oc){ oc.status='lost'; oc.actualRevenue=0; oc.resolvedAt=todayISO(); }
-    setOcHTML(oppId, `<span class="oc-msg oc-bad">❌ Marked as lost</span>`);
+    if(oc){ oc.status='lost'; oc.actualRevenue=0; oc.lostReason=res.reason; oc.resolvedAt=todayISO(); }
+    setOcHTML(oppId, `<span class="oc-msg oc-bad">❌ Lost — ${esc(res.reason)}</span>`);
     toast('❌ Marked as lost');
     renderLeaderboard(); renderPending(); renderInsights();
   }catch(e){ console.error('[Jarvis] lost failed', e); toast('⚠ Could not save'); }
@@ -817,12 +902,14 @@ window.jDoneDigital = async function(){
   if(digitalActioned) return;
   digitalActioned = true;
   const s = CONTEXT.digitalSample;
-  toast('✓ Actioned — outcome pending');
+  toast('✓ Marked as actioned');
   try{
     const outcome = {
       opportunityType:'First Sale System', name: s?(s.name||''):'', whatsapp: s?(s.phone||''):'',
       expectedRevenue: FIRST_SALE.price, actualRevenue:null, status:'pending',
-      recommendedAt: todayISO(), resolvedAt:null,
+      actionedBy: actorUid(),
+      recommendedAt: todayISO(), actionedAt: new Date().toISOString(),
+      repliedAt: null, quotedAt: null, resolvedAt:null,
       campaignId: mcActiveCampaignId()
     };
     const ref = await addDoc(collection(db,'jarvis_outcomes'), outcome);
@@ -832,6 +919,35 @@ window.jDoneDigital = async function(){
 };
 
 window.jSnooze = function(id){ snooze(id,3); rebuild(); toast('⏰ Snoozed 3 days'); };
+
+// Skip — a real, tracked action: reason dropdown → record a 'skipped' outcome, then hide the card.
+window.jSkip = async function(id){
+  const o = OPPS.find(x=>x.id===id);
+  const res = await ocModal({ title:'Skip this recommendation', sub:'Why are you skipping it?', options:SKIP_REASONS });
+  if(res===null) return; // cancelled — leave the card in place
+  try{
+    const outcome = {
+      opportunityType: o ? o.type : 'Unknown',
+      name: o ? (o.name||'') : '',
+      whatsapp: o ? (o.phone||'') : '',
+      expectedRevenue: o ? Math.round(o.value||0) : 0,
+      actualRevenue: 0,
+      status: 'skipped',
+      skipReason: res.reason,
+      actionedBy: actorUid(),
+      recommendedAt: todayISO(),
+      actionedAt: new Date().toISOString(),
+      repliedAt: null,
+      quotedAt: null,
+      resolvedAt: todayISO(),
+      campaignId: null
+    };
+    const ref = await addDoc(collection(db,'jarvis_outcomes'), outcome);
+    outcome.id = ref.id; OUTCOMES.push(outcome);
+    toast('⤬ Skipped — '+res.reason);
+  }catch(e){ console.error('[Jarvis] skip save failed', e); toast('⚠ Could not save skip'); }
+  snooze(id,3); rebuild();   // hide from the current view (reuses the existing snooze mechanism)
+};
 let INSIGHT_QS = [], GROWTH_QS = [];
 function _prefill(q){
   if(q==null) return;
@@ -1153,9 +1269,9 @@ function actionBtns(o, mode){
   const wa = link
     ? `<a class="btn btn-wa ${mode==='sm'?'btn-sm':''}" href="${esc(link)}" target="_blank" rel="noopener" onclick="jDone('${esc(o.id)}')">📱${mode==='sm'?'':' WhatsApp'}</a>`
     : `<button class="btn btn-ghost ${mode==='sm'?'btn-sm':''}" disabled>no #</button>`;
-  const done = `<button class="btn btn-done ${mode==='sm'?'btn-sm':''}" onclick="jDone('${esc(o.id)}')">✅</button>`;
-  const snz  = `<button class="btn btn-snooze ${mode==='sm'?'btn-sm':''}" onclick="jSnooze('${esc(o.id)}')">⏰</button>`;
-  // swappable control: ✅+⏰ now, replaced by outcome buttons once actioned
+  const done = `<button class="btn btn-done ${mode==='sm'?'btn-sm':''}" onclick="jDone('${esc(o.id)}')">✓ Mark Done</button>`;
+  const snz  = `<button class="btn btn-snooze ${mode==='sm'?'btn-sm':''}" onclick="jSkip('${esc(o.id)}')">Skip</button>`;
+  // swappable control: Mark Done + Skip now, replaced by outcome buttons once actioned
   const oc = `<span class="oc" data-oc="${esc(o.id)}">${done}${snz}</span>`;
   return {wa,done,snz,oc};
 }
@@ -1472,6 +1588,7 @@ function computeLeaderboard(){
   const byType = {};
   const ensure = t => (byType[t] = byType[t] || {type:t, actioned:0, converted:0, revenue:0, expResolved:0, actResolved:0});
   month.forEach(o=>{
+    if(o.status==='skipped') return;   // skips are tracked but never count as actioned/converted
     const r = ensure(o.opportunityType||'Unknown');
     r.actioned++;
     if(o.status==='converted'){ r.converted++; r.revenue += (+o.actualRevenue||0); }
@@ -1558,8 +1675,8 @@ function renderPending(){
       <div class="pend-h"><span class="pend-n">${esc(o.name||'—')}</span><span class="pend-ty">${esc(o.opportunityType||'')}</span></div>
       <div class="pend-meta">Expected <b class="money">${fmt(exp)}</b> · actioned ${esc(o.recommendedAt||'—')}${sinceTxt?` · ${sinceTxt}`:''}</div>
       <div class="pend-acts">
-        <button class="btn btn-done btn-sm" onclick="jConverted('${o.id}','',${exp})">✅ Converted ${fmt(exp)}</button>
-        <button class="btn btn-lost btn-sm" onclick="jLost('${o.id}','')">❌ Lost</button>
+        <button class="btn btn-done btn-sm" onclick="jConverted('${o.id}','',${exp})">Won</button>
+        <button class="btn btn-lost btn-sm" onclick="jLost('${o.id}','')">Lost</button>
       </div>
     </div>`;
   }).join('') + `</div>`;
