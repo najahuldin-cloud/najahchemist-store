@@ -2397,7 +2397,8 @@ exports.handleEmailReply = onRequest(
       if (!message || !message.data) { res.status(204).send(); return; }
 
       const decoded = JSON.parse(decodeB64Url(message.data)); // { emailAddress, historyId }
-      await processGmailHistory(decoded.historyId);
+      const messages = await processGmailHistory(decoded.historyId);
+      console.log(`[handleEmailReply] triggered historyId=${decoded.historyId} messages=${messages}`);
     } catch (err) {
       console.error('[handleEmailReply] Error:', err.message);
     }
@@ -2419,6 +2420,13 @@ exports.renewGmailWatch = onSchedule(
         labelFilterBehavior: 'INCLUDE'
       }
     });
+
+    // Persist the watch expiration so it can be monitored (alongside historyId/updatedAt).
+    await getFirestore().collection('system').doc('gmailWatch').set({
+      expiration: Timestamp.fromMillis(Number(res.data.expiration)),
+      updatedAt:  FieldValue.serverTimestamp()
+    }, { merge: true });
+
     console.log('[renewGmailWatch] watch renewed — historyId',
       res.data.historyId, 'expires', new Date(Number(res.data.expiration)).toISOString());
   }
@@ -2461,13 +2469,15 @@ async function processGmailHistory(newHistoryId) {
     await watchRef.set({ historyId: String(newHistoryId), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
   }
 
-  for (const id of [...new Set(messageIds)]) {
+  const uniqueIds = [...new Set(messageIds)];
+  for (const id of uniqueIds) {
     try {
       await processOneMessage(gmail, db, id);
     } catch (e) {
       console.error(`[gmail] processing message ${id} failed:`, e.message);
     }
   }
+  return uniqueIds.length;
 }
 
 // (C–K) Read one Gmail message, map to a lead, generate + send the AI reply.
