@@ -206,9 +206,9 @@ exports.onOrderCreated = onDocumentCreated(
     if (clientPhone) {
       try {
         await sendWhatsApp(clientPhone, null, {
-          name: 'order_confirmation',
-          language: 'en',
-          params: [clientName, `NC-${displayId}`, total]
+          name: 'order_shipped_v2',
+          language: 'en_US',
+          params: [clientName.split(' ')[0], `NC-${displayId}`, 'Knutsford Express']
         });
         console.log(`[onOrderCreated] Client WhatsApp sent to ${clientPhone} for ${displayId}`);
       } catch (err) {
@@ -371,12 +371,12 @@ exports.reorderReminder = onSchedule(
         const email      = order.email || order.customerEmail || '';
         const items      = buildItemsList(order);
 
-        // Action 1: Send WhatsApp message
-        const reorderMsg =
-          `Hi ${clientName} 👋 It's been 25 days since your Najah Chemist order — ` +
-          `your products might be running low soon! Ready to reorder before you sell out? ` +
-          `Place your next order here: https://najahchemistja.com/start — Najah Chemist 🌿`;
-        await sendWhatsApp(toIntlPhone(phone), reorderMsg);
+        // Action 1: Send WhatsApp message via approved Meta template
+        await sendWhatsApp(toIntlPhone(phone), null, {
+          name: 'reorder_reminder_v2',
+          language: 'en_US',
+          params: [clientName.split(' ')[0]]
+        });
 
         // Action 2: Send email via Resend (silently skip if no email)
         if (email) {
@@ -2661,7 +2661,7 @@ async function processOneMessage(gmail, db, messageId) {
 // 3-day no-reply nudge for leads still at emailCount==1.
 
 exports.checkLeadFollowUps = onSchedule(
-  { schedule: '0 9 * * *', timeZone: 'America/Jamaica', secrets: ['RESEND_API_KEY'] },
+  { schedule: '0 9 * * *', timeZone: 'America/Jamaica', secrets: ['RESEND_API_KEY', 'WHATSAPP_SYSTEM_TOKEN', 'WHATSAPP_PHONE_ID'] },
   async () => {
     const db     = getFirestore();
     const cutoff = Date.now() - 3 * 24 * 60 * 60 * 1000;
@@ -2696,6 +2696,16 @@ exports.checkLeadFollowUps = onSchedule(
           followUpAt:        FieldValue.serverTimestamp()
         }, { merge: true });
         sent++;
+
+        // Also nudge via WhatsApp template — only if the lead has a whatsapp number.
+        // (unsubscribed / Cold leads are already skipped by the guard above.)
+        if (d.whatsapp) {
+          await sendWhatsApp(toIntlPhone(d.whatsapp), null, {
+            name: 'lead_followup_day3_v2',
+            language: 'en_US',
+            params: [first]
+          });
+        }
       } catch (e) {
         console.error(`[checkLeadFollowUps] failed ${email}:`, e.message);
       }
