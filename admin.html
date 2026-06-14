@@ -1076,6 +1076,32 @@ select.finp{cursor:pointer;}
   </div>
 </div>
 
+<!-- SHIPPING METHOD MODAL (shown before saving status → Shipped) -->
+<div id="m-ship-method" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:800;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:16px;padding:2rem;width:420px;max-width:calc(100vw - 2rem);max-height:90vh;overflow-y:auto;position:relative;">
+    <button onclick="cancelShippingMethod()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#6B7280;">×</button>
+    <h3 style="margin-bottom:1.25rem;font-size:1.1rem;">How is this order being shipped?</h3>
+    <div style="display:flex;flex-direction:column;gap:0.6rem;margin-bottom:1.25rem;">
+      <label style="display:flex;align-items:center;gap:0.6rem;font-size:0.9rem;cursor:pointer;">
+        <input type="radio" name="ship-method" value="knutsford_express" checked style="cursor:pointer;">
+        <span>Knutsford Express <span style="color:#9CA3AF;">(2-3 business days)</span></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:0.6rem;font-size:0.9rem;cursor:pointer;">
+        <input type="radio" name="ship-method" value="zipmail" style="cursor:pointer;">
+        <span>Zipmail <span style="color:#9CA3AF;">(2-3 business days)</span></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:0.6rem;font-size:0.9rem;cursor:pointer;">
+        <input type="radio" name="ship-method" value="kingston_delivery" style="cursor:pointer;">
+        <span>Kingston Delivery <span style="color:#9CA3AF;">(same day / next day)</span></span>
+      </label>
+    </div>
+    <div style="display:flex;gap:0.6rem;">
+      <button onclick="confirmShippingMethod()" style="flex:1;padding:0.8rem;background:#0F0E0D;color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.9rem;font-weight:700;cursor:pointer;">Confirm</button>
+      <button onclick="cancelShippingMethod()" style="flex:1;padding:0.8rem;background:white;color:#0F0E0D;border:1.5px solid #E8E4DE;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.9rem;font-weight:700;cursor:pointer;">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════ MODALS ══════════ -->
 
 <!-- INVOICE EMAIL MODAL -->
@@ -1702,7 +1728,7 @@ function renderOrdersTable(){
     <td><select class="status-sel" onchange="updatePaymentStatus('${o._docId}','${o.id||o.orderId}',this.value)">
       ${payStatuses.map(s=>`<option${(o.paymentStatus||o.payment||'Unpaid')===s?' selected':''}>${s}</option>`).join('')}
     </select></td>
-    <td><select class="status-sel" onchange="updateOrderStatus('${o._docId}','${o.id||o.orderId}',this.value)">
+    <td><select class="status-sel" onchange="updateOrderStatus('${o._docId}','${o.id||o.orderId}',this.value,this)">
       ${['Pending','Processing','Shipped','Complete','Cancelled'].map(s=>`<option${(o.status||'Pending')===s?' selected':''}>${s}</option>`).join('')}
     </select></td>
     <td>${formatDate(o.date||o.createdAt)}</td>
@@ -1726,11 +1752,51 @@ window.filterOrders = function(f, btn) {
 };
 window.searchOrders = function(v){ _orderSearch=v; renderOrdersTable(); };
 
-window.updateOrderStatus = async function(docId, orderId, newStatus) {
+window.updateOrderStatus = async function(docId, orderId, newStatus, selectEl) {
+  // Shipping requires picking a method first — intercept and confirm via modal.
+  if (newStatus === 'Shipped') {
+    const prevStatus = (window.ordersMap && window.ordersMap[orderId] && window.ordersMap[orderId].status) || 'Pending';
+    window._shipMethodCtx = { docId, orderId, prevStatus, selectEl };
+    const modal = document.getElementById('m-ship-method');
+    const def = modal && modal.querySelector('input[name="ship-method"][value="knutsford_express"]');
+    if (def) def.checked = true;
+    if (modal) modal.style.display = 'flex';
+    return;
+  }
   try {
     await updateDoc(doc(db,'orders',docId), {status: newStatus});
     toast(`${orderId} → ${newStatus}`);
   } catch(e) { toast('Update failed: '+e.message); }
+};
+
+window.cancelShippingMethod = function() {
+  const ctx = window._shipMethodCtx;
+  // Revert the dropdown back to the previous status.
+  if (ctx && ctx.selectEl) ctx.selectEl.value = ctx.prevStatus;
+  const modal = document.getElementById('m-ship-method');
+  if (modal) modal.style.display = 'none';
+  window._shipMethodCtx = null;
+};
+
+window.confirmShippingMethod = async function() {
+  const ctx = window._shipMethodCtx;
+  if (!ctx) return;
+  const sel = document.querySelector('#m-ship-method input[name="ship-method"]:checked');
+  const shippingMethod = sel ? sel.value : 'knutsford_express';
+  try {
+    await updateDoc(doc(db,'orders',ctx.docId), { status: 'Shipped', shippingMethod });
+    if (window.ordersMap && window.ordersMap[ctx.orderId]) {
+      window.ordersMap[ctx.orderId].status = 'Shipped';
+      window.ordersMap[ctx.orderId].shippingMethod = shippingMethod;
+    }
+    toast(`${ctx.orderId} → Shipped`);
+  } catch(e) {
+    toast('Update failed: '+e.message);
+    if (ctx.selectEl) ctx.selectEl.value = ctx.prevStatus;
+  }
+  const modal = document.getElementById('m-ship-method');
+  if (modal) modal.style.display = 'none';
+  window._shipMethodCtx = null;
 };
 
 window.updatePaymentStatus = async function(docId, orderId, newStatus) {
@@ -2604,28 +2670,25 @@ window.saveAdminTracking = async function(){
   const notes = document.getElementById('atrk-notes').value.trim();
   const tracking = { courier, trackingNumber: trackingNumber||'N/A', estimatedDelivery, notes, addedAt: new Date().toISOString() };
 
-  let num = (o.customerWhatsApp||o.whatsapp||o.phone||'').replace(/\D/g,'');
-  if(num.length===7) num='1876'+num;
-  if(num.length===10) num='1'+num;
-  if(num.length===11&&!num.startsWith('1')) num='1'+num;
-  const client = o.clientName||o.client||o.customerName||'Customer';
-  const waMsg = `Hi ${client}, your Najah Chemist order ${orderId} has been shipped via ${courier}. Tracking: ${trackingNumber||'N/A'}. Track at: najahchemistja.com/track`;
-  const waOpened = num.length>=11 ? !!window.open('https://wa.me/'+num+'?text='+encodeURIComponent(waMsg),'_blank') : false;
+  // Map the courier to the shippingMethod the onOrderUpdated trigger expects.
+  const _c = (courier||'').toLowerCase();
+  const shippingMethod =
+    _c === 'knutsford express' ? 'knutsford_express' :
+    _c === 'zipmail'           ? 'zipmail' :
+    (_c === 'kingston delivery' || _c === 'delivery') ? 'kingston_delivery' :
+    'knutsford_express'; // safe default
 
+  // WhatsApp notification is handled server-side by the onOrderUpdated trigger
+  // when status changes to Shipped — no free-form WhatsApp send from here.
   try {
-    if(docId) await updateDoc(doc(db,'orders',docId),{tracking, status:'Shipped'});
+    if(docId) await updateDoc(doc(db,'orders',docId),{tracking, status:'Shipped', shippingMethod});
     const idx = ORDERS.findIndex(x=>(x.id||x.orderId)===orderId);
     if(idx>-1){ ORDERS[idx].tracking=tracking; ORDERS[idx].status='Shipped'; }
     if(window.ordersMap&&window.ordersMap[orderId]){ window.ordersMap[orderId].tracking=tracking; window.ordersMap[orderId].status='Shipped'; }
     renderOrdersTable();
   } catch(e){ toast('Save failed: '+e.message); return; }
   window.closeAdminTracking();
-  if(waOpened){
-    toast('Tracking saved ✓ — WhatsApp opened');
-  } else {
-    toast('Tracking saved ✓');
-    alert('Tracking saved. No WhatsApp number found for this client — notify them manually.');
-  }
+  toast('Tracking saved ✓');
 };
 
 // ── Shared label helpers (admin) ─────────────────────────────────────────────

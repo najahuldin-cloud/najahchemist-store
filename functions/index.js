@@ -200,22 +200,49 @@ exports.onOrderCreated = onDocumentCreated(
     } catch (err) {
       console.error(`[onOrderCreated] Notification failed for ${displayId}:`, err.message);
     }
+  }
+);
 
-    // Send WhatsApp confirmation to the client via approved Meta template
-    const clientPhone = toIntlPhone(phone);
-    if (clientPhone) {
-      try {
-        await sendWhatsApp(clientPhone, null, {
-          name: 'order_shipped_v2',
-          language: 'en_US',
-          params: [clientName.split(' ')[0], `NC-${displayId}`, 'Knutsford Express']
-        });
-        console.log(`[onOrderCreated] Client WhatsApp sent to ${clientPhone} for ${displayId}`);
-      } catch (err) {
-        console.error(`[onOrderCreated] Client WhatsApp failed for ${displayId}:`, err.message);
-      }
-    } else {
-      console.log(`[onOrderCreated] No phone on order ${displayId} — skipping client WhatsApp`);
+// ── Firestore Trigger: notify client via WhatsApp when order ships ────────────
+// Fires when an order's status transitions INTO "shipped". The comparison is
+// case-insensitive because the admin panel writes the capitalized "Shipped".
+// Sends the order_shipped_v2 template with the chosen shipping method.
+
+const SHIPPING_METHOD_NAMES = {
+  knutsford_express: 'Knutsford Express',
+  zipmail:           'Zipmail',
+  kingston_delivery: 'Kingston Delivery'
+};
+
+exports.onOrderUpdated = onDocumentUpdated(
+  { document: 'orders/{orderId}', secrets: ['WHATSAPP_SYSTEM_TOKEN', 'WHATSAPP_PHONE_ID'] },
+  async (event) => {
+    const before  = event.data.before.data();
+    const after   = event.data.after.data();
+    const orderId = event.params.orderId;
+
+    const wasShipped = (before.status || '').toLowerCase() === 'shipped';
+    const isShipped  = (after.status  || '').toLowerCase() === 'shipped';
+    if (wasShipped || !isShipped) return; // only fire on transition INTO shipped
+
+    if (!after.whatsapp) {
+      console.log(`[onOrderUpdated] No whatsapp field on order ${orderId} — skipping`);
+      return;
+    }
+
+    const displayId   = after.id || after.orderId || orderId;
+    const firstName   = getClientName(after).split(' ')[0];
+    const shipDisplay = SHIPPING_METHOD_NAMES[after.shippingMethod] || after.shippingMethod || 'Knutsford Express';
+
+    try {
+      await sendWhatsApp(toIntlPhone(after.whatsapp), null, {
+        name: 'order_shipped_v2',
+        language: 'en_US',
+        params: [firstName, `NC-${displayId}`, shipDisplay]
+      });
+      console.log(`[onOrderUpdated] Shipped WhatsApp sent for ${displayId} via ${shipDisplay}`);
+    } catch (err) {
+      console.error(`[onOrderUpdated] Shipped WhatsApp failed for ${displayId}:`, err.message);
     }
   }
 );
