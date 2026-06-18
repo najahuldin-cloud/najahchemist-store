@@ -1202,8 +1202,9 @@ function inThisMonth(d){ return d && d.getFullYear()===NOW.getFullYear() && d.ge
 // Top products to push this week: frequency this month + which lead segment buys each
 // most + a suggested action, plus one headline AI-style recommendation.
 function computeProductPush(){
-  const ordersThisMonth = ORDERS.filter(o=> inThisMonth(parseOrderDate(o)) &&
-    ( String(o.paymentStatus||'').toLowerCase()==='paid' || String(o.status||'').toLowerCase()==='complete' ));
+  // Phase 4.3: product intelligence is paid-only — a refunded order may still be
+  // status 'Complete', so fulfilment status must NOT make it eligible.
+  const ordersThisMonth = ORDERS.filter(o=> inThisMonth(parseOrderDate(o)) && isPaid(o));
   // segment lookup for matching buyers back to a lead
   const leadSegByEmail = {};
   const leadSegCount = { feminine:0, haircare:0, mens:0, body:0, skincare:0 };
@@ -1255,8 +1256,9 @@ function computeContext(){
 
   // top products this month by FREQUENCY — count across this month's orders that are
   // paymentStatus "Paid" OR status "Complete" (the real fulfilled orders).
-  const ordersThisMonth = ORDERS.filter(o=> inThisMonth(parseOrderDate(o)) &&
-    ( String(o.paymentStatus||'').toLowerCase()==='paid' || String(o.status||'').toLowerCase()==='complete' ));
+  // Phase 4.3: product intelligence is paid-only — a refunded order may still be
+  // status 'Complete', so fulfilment status must NOT make it eligible.
+  const ordersThisMonth = ORDERS.filter(o=> inThisMonth(parseOrderDate(o)) && isPaid(o));
   const prodFreq = {};
   let monthOrdersWithProducts = 0;
   ordersThisMonth.forEach(o=>{

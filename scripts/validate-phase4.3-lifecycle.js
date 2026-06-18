@@ -124,5 +124,15 @@ chk("classify paid+cancelled=closed (closed wins)", orderLifecycle(O.paidThenCan
   chk("S9 money-left excludes all closed (=10000 from pending only)", moneyLeft===10000);
 }
 
+// Scenario 10: Product intelligence eligibility = isPaid only (refunded-but-Complete excluded)
+{
+  const refundedButComplete = { id:"RC", total:90000, status:"Complete", paymentStatus:"Refunded", email:"g@x.com" };
+  const completeUnpaid      = { id:"CU", total:15000, status:"Complete", paymentStatus:"Unpaid",   email:"h@x.com" };
+  const orders=[O.paid, refundedButComplete, completeUnpaid];
+  const eligible=orders.filter(o=>isPaid(o));   // product-frequency eligibility
+  chk("S10 product intel eligibility = paid only (refunded/unpaid 'Complete' excluded)",
+      eligible.length===1 && eligible[0].id==="PD");
+}
+
 console.log("\n" + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
