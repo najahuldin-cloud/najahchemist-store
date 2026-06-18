@@ -301,6 +301,7 @@
   <!-- PHASE 4: decision-first dashboard (refined visual priority) -->
   <div id="inflation-banner"></div>
   <section id="sec-founder-focus" style="margin-top:1.2rem;"></section>
+  <section id="sec-pending-alert" style="margin-top:1.2rem;"></section>
   <section id="sec-today-money" style="margin-top:1.6rem;"></section>
   <section id="sec-top-actions" style="margin-top:1.6rem;"></section>
   <section id="sec-next15" style="margin-top:1.6rem;"></section>
@@ -504,6 +505,8 @@ function pipelineStats(){
 const ACTION_MIN = { whatsapp:5, moqQuote:10, call:10, email:7, campaignReview:15, campaignLaunch:30, research:15, checkin:5 };
 // Founder-set daily revenue goal (presentation only — drives gap / progress / influence).
 let DAILY_REVENUE_GOAL = 300000;
+// A pending outcome older than this many days is flagged "follow-up overdue" (display only).
+const PENDING_STALE_DAYS = 3;
 const LEAD_BY_ID = {};   // leadId -> lead doc, for display names (built in loadData)
 
 const pctOf = p => Math.round((Number(p)||0)*100) + '%';
@@ -529,18 +532,56 @@ function whyFor(i){
 // Honest leads joined with name + derived action, ranked by ROI = expectedValue ÷ minutes.
 // NOTE: stored expectedValue already = potentialValue × closeProbability, so EV÷time IS the
 // "(Expected Value × Close Probability) ÷ Time" formula — closeProbability applied once.
+// Index leadId -> its dominant jarvis_outcomes record. Resolved (converted/lost)
+// dominates pending; within a tier the most-recent wins. Skips are ignored.
+// Used to make every recommendation surface outcome-aware (validation Fix A).
+function buildOutcomeIndex(){
+  const rank = s => s==='converted'?3 : s==='lost'?2 : s==='pending'?1 : 0;
+  const m = {};
+  for(const o of OUTCOMES){
+    if(!o || !o.leadId || o.status==='skipped') continue;
+    const cur = m[o.leadId];
+    if(!cur){ m[o.leadId]=o; continue; }
+    const ro=rank(o.status), rc=rank(cur.status);
+    if(ro>rc){ m[o.leadId]=o; }
+    else if(ro===rc){
+      const ta=o.resolvedAt||o.actionedAt||o.recommendedAt||'';
+      const tb=cur.resolvedAt||cur.actionedAt||cur.recommendedAt||'';
+      if(ta>tb) m[o.leadId]=o;
+    }
+  }
+  return m;
+}
+// Age (in days) of a pending outcome, from actionedAt (ISO datetime) or recommendedAt (date).
+function pendingAge(o){
+  if(!o) return null;
+  const d = daysSinceISO(o.actionedAt);
+  if(d!=null) return d;
+  if(o.recommendedAt) return daysSinceISO(o.recommendedAt+'T00:00:00');
+  return null;
+}
 function honestRanked(){
+  const ocIdx = buildOutcomeIndex();
   return leadFilters.honest(INTEL).map(i=>{
     const name = leadName(i.leadId);
     const act  = actionForLead(i, name);
     const ev   = Number(i.expectedValue)||0;
+    const oc   = ocIdx[i.leadId] || null;
     return { leadId:i.leadId, name, ev, conf:Number(i.closeProbability)||0, score:Number(i.score)||0,
              minutes:act.minutes, action:act.label, roi: act.minutes>0 ? ev/act.minutes : ev,
              label:i.scoreLabel, offer:i.recommendedOffer, src:i.opportunitySource,
              replied:(Array.isArray(i.intentSignals)&&i.intentSignals.some(s=>/repl/i.test(String(s)))),
              why:(Array.isArray(i.whyRecommended)&&i.whyRecommended.length)?i.whyRecommended:whyFor(i),
-             ageDays: daysSinceISO(i.lastMeaningfulActivity) };
+             ageDays: daysSinceISO(i.lastMeaningfulActivity),
+             // outcome attribution (validation loop)
+             ocStatus: oc?oc.status:null, ocId: oc?oc.id:null,
+             ocActionedAt: oc?(oc.actionedAt||(oc.recommendedAt?oc.recommendedAt+'T00:00:00':null)):null };
   });
+}
+// Recommendation-ready set: drops leads already resolved (converted/lost) so they
+// never re-surface; keeps pending leads (they get a badge + inline Won/Lost). Fix A.
+function honestActive(){
+  return honestRanked().filter(r => r.ocStatus!=='converted' && r.ocStatus!=='lost');
 }
 
 // ── Phase 4 attribution: WhatsApp action → record outcome (existing jarvis_outcomes) ──
@@ -555,6 +596,41 @@ function waActionLink(r){
   const link = waLink(lead.whatsapp, msgIntel(r));
   if(!link) return `<span>${esc(r.action)}</span>`;
   return `<a href="${esc(link)}" target="_blank" rel="noopener" onclick="jActIntel('${esc(r.leadId)}')" style="color:var(--gold);text-decoration:none;font-weight:inherit;">📱 ${esc(r.action)}</a>`;
+}
+// Pending badge + inline Won/Lost (reuses jConverted/jLost — no duplicate logic). Fix B + E.
+function pendingBadgeHTML(outcomeId, leadId, expected, actionedAt){
+  const days = daysSinceISO(actionedAt);
+  const ageTxt = days==null ? 'just now' : (days===0 ? 'today' : `${days} day${days===1?'':'s'} ago`);
+  const overdue = days!=null && days>=PENDING_STALE_DAYS;
+  const exp = Math.round(expected||0);
+  return `<span class="lead-pend" style="display:inline-block;color:var(--mid,#888);font-size:.8rem;margin-right:.5rem;">`
+    + `⏳ Actioned ${ageTxt} · awaiting outcome`
+    + (overdue?` · <b style="color:var(--danger,#C0392B);">⚠ follow-up overdue</b>`:'') + `</span>`
+    + `<button class="btn btn-done btn-sm" onclick="jConverted('${esc(outcomeId)}','',${exp})">Won</button> `
+    + `<button class="btn btn-lost btn-sm" onclick="jLost('${esc(outcomeId)}','')">Lost</button>`;
+}
+// The action control for a recommendation row: WhatsApp link (untouched) or
+// pending badge + Won/Lost (already actioned). Wrapped so jActIntel can swap it in place.
+function waActionCell(r){
+  const inner = (r.ocStatus==='pending' && r.ocId)
+    ? pendingBadgeHTML(r.ocId, r.leadId, r.ev, r.ocActionedAt)
+    : waActionLink(r);
+  return `<span data-leadoc="${esc(r.leadId)}">${inner}</span>`;
+}
+// Swap every rendered instance of a lead's action control (across all surfaces).
+function setLeadOcHTML(leadId, html){
+  if(!leadId) return;
+  document.querySelectorAll(`[data-leadoc="${leadId}"]`).forEach(el=>{ el.innerHTML = html; });
+}
+// Re-render only the outcome-dependent surfaces (after a resolution) so resolved
+// leads drop off recommendations without disturbing legacy inline summaries. Fix A.
+function refreshOutcomeSurfaces(){
+  try{
+    renderFounderFocus(); renderTodayMoney(); renderTopActions(); renderNext15();
+    renderRevenueTarget(); renderRevenueRisk(); renderMoneyMissed();
+    renderTopOpps(); renderLeadCommand();
+    renderLeaderboard(); renderPending(); renderPendingAlert(); renderInsights();
+  }catch(e){ console.warn('[Jarvis] refreshOutcomeSurfaces failed', e); }
 }
 // Records "recommendation actioned" in jarvis_outcomes. Fire-and-forget — never await
 // before the <a> opens WhatsApp (same synchronous pattern as the legacy jDone link).
@@ -571,6 +647,7 @@ window.jActIntel = function(leadId){
     expectedRevenue: Math.round(Number(i.expectedValue)||0),
     actualRevenue: null,
     status: 'pending',
+    executionStatus: 'actioned',                    // Fix C — accountability field
     source: 'jarvis-dashboard',
     actionedBy: actorUid(),
     recommendedAt: todayISO(),
@@ -581,7 +658,14 @@ window.jActIntel = function(leadId){
     campaignId: null
   };
   addDoc(collection(db,'jarvis_outcomes'), outcome)
-    .then(ref=>{ outcome.id = ref.id; OUTCOMES.push(outcome); try{ toast('✓ Actioned — '+(outcome.name||'lead')); }catch(_){} })
+    .then(ref=>{
+      outcome.id = ref.id; OUTCOMES.push(outcome);
+      // Swap the action link for an inline pending badge + Won/Lost (Fix B), and
+      // refresh the pending alert / list so the new outcome is visible immediately.
+      setLeadOcHTML(leadId, pendingBadgeHTML(ref.id, leadId, outcome.expectedRevenue, outcome.actionedAt));
+      try{ renderPendingAlert(); renderPending(); }catch(_){}
+      try{ toast('✓ Actioned — '+(outcome.name||'lead')); }catch(_){}
+    })
     .catch(e=>{ console.error('[Jarvis] intel outcome save failed', e); ACTIONED_INTEL[leadId] = false; });
 };
 
@@ -835,6 +919,7 @@ window.jDone = async function(id){
       expectedRevenue: o ? Math.round(o.value||0) : 0,
       actualRevenue: null,
       status: 'pending',
+      executionStatus: 'actioned',       // Fix C — accountability field
       actionedBy: actorUid(),
       recommendedAt: todayISO(),
       actionedAt: new Date().toISOString(),
@@ -865,15 +950,16 @@ window.jConverted = async function(outcomeId, oppId, expected){
   const accuracy = exp>0 ? Math.max(0, Math.round((1 - Math.abs(variance)/exp) * 100)) : null;
   try{
     await updateDoc(doc(db,'jarvis_outcomes',outcomeId), {
-      status:'converted', actualRevenue:actual, wonReason:res.reason,
+      status:'converted', outcome:'won', executionStatus:'resolved',
+      actualRevenue:actual, wonReason:res.reason,
       revenueVariance:variance, accuracyScore:accuracy,
       actionedBy:actorUid(), resolvedAt:todayISO()
     });
     const oc = OUTCOMES.find(x=>x.id===outcomeId);
-    if(oc){ oc.status='converted'; oc.actualRevenue=actual; oc.wonReason=res.reason; oc.revenueVariance=variance; oc.accuracyScore=accuracy; oc.resolvedAt=todayISO(); }
+    if(oc){ oc.status='converted'; oc.outcome='won'; oc.executionStatus='resolved'; oc.actualRevenue=actual; oc.wonReason=res.reason; oc.revenueVariance=variance; oc.accuracyScore=accuracy; oc.resolvedAt=todayISO(); }
     setOcHTML(oppId, ocSummaryHTML(exp, actual, variance, accuracy));
     toast(`🎉 ${fmt(actual)} recorded`);
-    renderLeaderboard(); renderPending(); renderInsights();
+    refreshOutcomeSurfaces();   // resolved lead drops off recommendations (Fix A)
   }catch(e){ console.error('[Jarvis] convert failed', e); toast('⚠ Could not save'); }
 };
 
@@ -886,14 +972,15 @@ window.jLost = async function(outcomeId, oppId){
   if(res===null) return; // cancelled — keep buttons
   try{
     await updateDoc(doc(db,'jarvis_outcomes',outcomeId), {
-      status:'lost', actualRevenue:0, lostReason:res.reason,
+      status:'lost', outcome:'lost', executionStatus:'resolved',
+      actualRevenue:0, lostReason:res.reason,
       actionedBy:actorUid(), resolvedAt:todayISO()
     });
     const oc = OUTCOMES.find(x=>x.id===outcomeId);
-    if(oc){ oc.status='lost'; oc.actualRevenue=0; oc.lostReason=res.reason; oc.resolvedAt=todayISO(); }
+    if(oc){ oc.status='lost'; oc.outcome='lost'; oc.executionStatus='resolved'; oc.actualRevenue=0; oc.lostReason=res.reason; oc.resolvedAt=todayISO(); }
     setOcHTML(oppId, `<span class="oc-msg oc-bad">❌ Lost — ${esc(res.reason)}</span>`);
     toast('❌ Marked as lost');
-    renderLeaderboard(); renderPending(); renderInsights();
+    refreshOutcomeSurfaces();   // resolved lead drops off recommendations (Fix A)
   }catch(e){ console.error('[Jarvis] lost failed', e); toast('⚠ Could not save'); }
 };
 
@@ -1659,6 +1746,26 @@ function renderLeaderboard(){
     </tbody></table></div>`;
 }
 
+// Fix D — dashboard visibility into unresolved outcomes so they don't pile up.
+function renderPendingAlert(){
+  const el = document.getElementById('sec-pending-alert'); if(!el) return;
+  const pend = OUTCOMES.filter(o=>o.status==='pending');
+  if(!pend.length){ el.innerHTML=''; return; }
+  const ages = pend.map(pendingAge).filter(a=>a!=null);
+  const oldest = ages.length ? Math.max(...ages) : 0;
+  const overdue = pend.filter(o=>{ const a=pendingAge(o); return a!=null && a>=PENDING_STALE_DAYS; }).length;
+  const awaiting = pend.reduce((s,o)=>s+(Number(o.expectedRevenue)||0),0);
+  const SUB='font-size:0.72rem;color:var(--mid,#888);letter-spacing:.4px;';
+  el.innerHTML = `<div style="background:var(--card);border:1.5px solid var(--gold);border-radius:13px;padding:1rem 1.1rem;">`
+    + `<div style="font-weight:800;font-size:1.05rem;">⚠ ${pend.length} unresolved outcome${pend.length===1?'':'s'}</div>`
+    + `<div class="p4grid" style="margin-top:.55rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.7rem;">`
+    + `<div><div style="${SUB}">OLDEST UNRESOLVED</div><b>${oldest} day${oldest===1?'':'s'}</b></div>`
+    + `<div><div style="${SUB}">FOLLOW-UP OVERDUE</div><b style="${overdue?'color:var(--danger,#C0392B);':''}">${overdue}</b></div>`
+    + `<div><div style="${SUB}">REVENUE AWAITING RESOLUTION</div><b class="money">${fmt(awaiting)}</b></div>`
+    + `</div>`
+    + `<div style="${SUB}margin-top:.6rem;">Resolve these as Won or Lost so recommendations adapt — see Pending Outcomes below.</div>`
+    + `</div>`;
+}
 function renderPending(){
   const el = document.getElementById('pending-list');
   const pend = OUTCOMES.filter(o=>o.status==='pending')
@@ -1667,13 +1774,16 @@ function renderPending(){
     el.innerHTML = `<div class="empty" style="padding:0.6rem 0;">No pending outcomes — every actioned opportunity has been resolved. 🎉</div>`;
     return;
   }
+  // Oldest first so stale follow-ups bubble to the top (Fix E).
+  pend.sort((a,b)=>(pendingAge(b)||0)-(pendingAge(a)||0));
   el.innerHTML = `<div class="bucket-grid">` + pend.map(o=>{
     const exp = Math.round(o.expectedRevenue||0);
-    const since = o.recommendedAt ? daysAgo(new Date(o.recommendedAt+'T00:00:00')) : null;
-    const sinceTxt = since==null ? '' : (since===0 ? 'today' : `${since} day${since===1?'':'s'} ago`);
-    return `<div class="pend-card">
+    const since = pendingAge(o);
+    const sinceTxt = since==null ? 'just now' : (since===0 ? 'today' : `${since} day${since===1?'':'s'} ago`);
+    const overdue = since!=null && since>=PENDING_STALE_DAYS;
+    return `<div class="pend-card"${overdue?' style="border-color:var(--danger,#C0392B);"':''}>
       <div class="pend-h"><span class="pend-n">${esc(o.name||'—')}</span><span class="pend-ty">${esc(o.opportunityType||'')}</span></div>
-      <div class="pend-meta">Expected <b class="money">${fmt(exp)}</b> · actioned ${esc(o.recommendedAt||'—')}${sinceTxt?` · ${sinceTxt}`:''}</div>
+      <div class="pend-meta">Expected <b class="money">${fmt(exp)}</b> · actioned ${sinceTxt}${overdue?` · <b style="color:var(--danger,#C0392B);">⚠ follow-up overdue</b>`:''}</div>
       <div class="pend-acts">
         <button class="btn btn-done btn-sm" onclick="jConverted('${o.id}','',${exp})">Won</button>
         <button class="btn btn-lost btn-sm" onclick="jLost('${o.id}','')">Lost</button>
@@ -2257,7 +2367,7 @@ function p4tile(title,name,ev,conf,mins,extra){
 }
 function renderTodayMoney(){
   const el=document.getElementById('sec-today-money'); if(!el) return;
-  const ranked=honestRanked();
+  const ranked=honestActive();
   if(!ranked.length){ el.innerHTML=`<div class="sec-head"><h2>💰 Today's Money</h2></div><p class="sub" style="color:var(--mid,#888);">Lead intelligence not loaded — run the backfill / check Firestore rules.</p>`; return; }
   const byEV=ranked.slice().sort((a,b)=>b.ev-a.ev);
   const byROI=ranked.slice().sort((a,b)=>b.roi-a.roi);
@@ -2280,30 +2390,30 @@ function renderTodayMoney(){
 }
 function p4actionRow(r,idx){
   return `<div style="${P4CARD}display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;">`
-    +`<div><div style="font-weight:800;">${idx!=null?`${idx}. `:''}${waActionLink(r)}</div>`
+    +`<div><div style="font-weight:800;">${idx!=null?`${idx}. `:''}${waActionCell(r)}</div>`
     +`<div style="${P4SUB}margin-top:.25rem;">${(r.why||[]).slice(0,2).map(esc).join(' · ')}</div></div>`
     +`<div style="text-align:right;white-space:nowrap;"><div class="money" style="font-weight:800;">${fmt(r.ev)}</div><div style="${P4SUB}">${pctOf(r.conf)} · ${r.minutes} min</div><div style="${P4SUB}">${revInflPct(r.ev)} of goal</div></div></div>`;
 }
 function renderTopActions(){
   const el=document.getElementById('sec-top-actions'); if(!el) return;
-  const top=honestRanked().sort((a,b)=>b.roi-a.roi).slice(0,8);
+  const top=honestActive().sort((a,b)=>b.roi-a.roi).slice(0,8);
   if(!top.length){ el.innerHTML=`<div class="sec-head"><h2>⚡ Today's Top Actions</h2></div><p class="sub" style="color:var(--mid,#888);">No actions available.</p>`; return; }
   el.innerHTML=`<div class="sec-head"><h2>⚡ Today's Top Actions</h2><span class="sub">Ranked by expected revenue ÷ time — highest leverage first</span></div>`
     +`<div style="display:flex;flex-direction:column;gap:0.6rem;">${top.map((r,i)=>p4actionRow(r,i+1)).join('')}</div>`;
 }
 function renderNext15(){
   const el=document.getElementById('sec-next15'); if(!el) return;
-  const top3=honestRanked().sort((a,b)=>b.roi-a.roi).slice(0,3);
+  const top3=honestActive().sort((a,b)=>b.roi-a.roi).slice(0,3);
   if(!top3.length){ el.innerHTML=''; return; }
   const infl=top3.reduce((s,r)=>s+r.ev,0), mins=top3.reduce((s,r)=>s+r.minutes,0), conf=top3.reduce((s,r)=>s+r.conf,0)/top3.length;
   el.innerHTML=`<div class="sec-head"><h2>⏱ Next 15 Minutes</h2><span class="sub">Highest-ROI actions you can do right now</span></div>`
     +`<div style="${P4CARD}border-color:var(--gold);">`
-    +top3.map((r,i)=>`<div style="display:flex;justify-content:space-between;gap:1rem;padding:.35rem 0;border-bottom:1px solid var(--border);"><span><b>${i+1}.</b> ${waActionLink(r)}</span><span style="${P4SUB}">${pctOf(r.conf)} · ${r.minutes}m</span></div>`).join('')
+    +top3.map((r,i)=>`<div style="display:flex;justify-content:space-between;gap:1rem;padding:.35rem 0;border-bottom:1px solid var(--border);"><span><b>${i+1}.</b> ${waActionCell(r)}</span><span style="${P4SUB}">${pctOf(r.conf)} · ${r.minutes}m</span></div>`).join('')
     +`<div style="margin-top:.6rem;font-size:.95rem;">Expected revenue influence: <b class="money">${fmt(infl)}</b> · Confidence <b>${pctOf(conf)}</b> · ~${mins} min total</div></div>`;
 }
 function renderRevenueTarget(){
   const el=document.getElementById('sec-revenue-target'); if(!el) return;
-  const top3=honestRanked().sort((a,b)=>b.roi-a.roi).slice(0,3);
+  const top3=honestActive().sort((a,b)=>b.roi-a.roi).slice(0,3);
   const todayRev=(ORDERS||[]).filter(o=>isPaid(o)&&sameDay(parseOrderDate(o),NOW)).reduce((s,o)=>s+orderTotal(o),0);
   const forecast=todayRev+top3.reduce((s,r)=>s+r.ev,0);
   const gap=Math.max(0,DAILY_REVENUE_GOAL-forecast);
@@ -2321,7 +2431,7 @@ function renderRevenueTarget(){
 }
 function renderRevenueRisk(){
   const el=document.getElementById('sec-revenue-risk'); if(!el) return;
-  const ranked=honestRanked();
+  const ranked=honestActive();
   if(!ranked.length){ el.innerHTML=''; return; }
   const agingHot=ranked.filter(r=>(r.label==='Hot'||r.label==='Ready')&&r.ageDays!=null&&r.ageDays>14);
   const agingAll=ranked.filter(r=>r.ageDays!=null&&r.ageDays>14);
@@ -2335,23 +2445,23 @@ function renderRevenueRisk(){
 }
 function renderTopOpps(){
   const el=document.getElementById('sec-top-opps'); if(!el) return;
-  const top=honestRanked().sort((a,b)=>b.ev-a.ev).slice(0,10);
+  const top=honestActive().sort((a,b)=>b.ev-a.ev).slice(0,10);
   if(!top.length){ el.innerHTML=`<div class="sec-head"><h2>🎯 Top Opportunities</h2></div><p class="sub" style="color:var(--mid,#888);">No opportunities.</p>`; return; }
   el.innerHTML=`<div class="sec-head"><h2>🎯 Top Opportunities</h2><span class="sub">Real & primary only — with why each ranks</span></div>`
     +`<div style="display:flex;flex-direction:column;gap:0.6rem;">`
     +top.map((r,i)=>`<div style="${P4CARD}"><div style="display:flex;justify-content:space-between;gap:1rem;"><div><b>${i+1}. ${esc(r.name)}</b> <span style="${P4SUB}">${esc(r.label)} · ${esc(r.offer)}</span></div><div style="text-align:right;white-space:nowrap;"><span class="money" style="font-weight:800;">${fmt(r.ev)}</span> <span style="${P4SUB}">${pctOf(r.conf)} · ${r.minutes}m · ${revInflPct(r.ev)} of goal</span></div></div>`
       +`<div style="${P4SUB}margin-top:.35rem;">WHY: ${(r.why||[]).slice(0,3).map(esc).join(' · ')}</div>`
-      +`<div style="margin-top:.45rem;">${waActionLink(r)}</div></div>`).join('')+`</div>`;
+      +`<div style="margin-top:.45rem;">${waActionCell(r)}</div></div>`).join('')+`</div>`;
 }
 
 function renderFounderFocus(){
   const el=document.getElementById('sec-founder-focus'); if(!el) return;
-  const top=honestRanked().sort((a,b)=>b.roi-a.roi)[0];
+  const top=honestActive().sort((a,b)=>b.roi-a.roi)[0];
   if(!top){ el.innerHTML=''; return; }
   const cell=`<div><div style="${P4SUB}">`;
   el.innerHTML=`<div class="sec-head"><h2>🔥 Founder Focus</h2><span class="sub">If Najah only does ONE thing today</span></div>`
     +`<div style="${P4CARD}border:1.5px solid var(--gold);background:linear-gradient(135deg,rgba(200,151,58,0.16),var(--card));">`
-    +`<div class="p4big" style="font-size:1.35rem;font-weight:800;color:var(--gold);">${waActionLink(top)}</div>`
+    +`<div class="p4big" style="font-size:1.35rem;font-weight:800;color:var(--gold);">${waActionCell(top)}</div>`
     +`<div class="p4grid" style="margin-top:.55rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.6rem;font-size:.95rem;">`
     +`${cell}EXPECTED VALUE</div><b class="money">${fmt(top.ev)}</b></div>`
     +`${cell}CONFIDENCE</div><b>${pctOf(top.conf)}</b></div>`
@@ -2371,7 +2481,7 @@ function causeFor(r){
 }
 function renderMoneyMissed(){
   const el=document.getElementById('sec-money-missed'); if(!el) return;
-  const aging=honestRanked().filter(r=>r.ageDays!=null && r.ageDays>14);
+  const aging=honestActive().filter(r=>r.ageDays!=null && r.ageDays>14);
   if(!aging.length){ el.innerHTML=''; return; }
   const atRisk=aging.filter(r=>r.label==='Hot'||r.label==='Ready').reduce((s,r)=>s+r.ev,0);
   const tally={}; aging.forEach(r=>{ const c=causeFor(r); tally[c]=(tally[c]||0)+1; });
@@ -2399,7 +2509,7 @@ function renderRevenueByOffer(){
 }
 function renderLeadCommand(){
   const el=document.getElementById('sec-lead-command'); if(!el) return;
-  const rows=honestRanked().sort((a,b)=>b.ev-a.ev);
+  const rows=honestActive().sort((a,b)=>b.ev-a.ev);
   if(!rows.length){ el.innerHTML=`<div class="sec-head"><h2>💼 Lead Command Center</h2></div><p class="sub" style="color:var(--mid,#888);">No intelligence loaded.</p>`; return; }
   const show=rows.slice(0,50);
   const th='text-align:left;padding:.5rem .6rem;color:var(--mid,#888);font-size:.64rem;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap;';
@@ -2409,7 +2519,7 @@ function renderLeadCommand(){
     +`<table style="width:100%;border-collapse:collapse;"><thead><tr>`
     +['#','Lead','Score','Label','Offer','Close','Expected','Age','Next Action'].map(h=>`<th style="${th}">${h}</th>`).join('')
     +`</tr></thead><tbody>`
-    +show.map((r,i)=>`<tr><td style="${td}">${i+1}</td><td style="${td}">${esc(r.name)}</td><td style="${td}">${r.score}</td><td style="${td}">${esc(r.label)}</td><td style="${td}">${esc(r.offer)}</td><td style="${td}">${pctOf(r.conf)}</td><td style="${td}" class="money">${fmt(r.ev)}</td><td style="${td}">${r.ageDays!=null?r.ageDays+'d':'—'}</td><td style="${td}white-space:normal;">${waActionLink(r)}</td></tr>`).join('')
+    +show.map((r,i)=>`<tr><td style="${td}">${i+1}</td><td style="${td}">${esc(r.name)}</td><td style="${td}">${r.score}</td><td style="${td}">${esc(r.label)}</td><td style="${td}">${esc(r.offer)}</td><td style="${td}">${pctOf(r.conf)}</td><td style="${td}" class="money">${fmt(r.ev)}</td><td style="${td}">${r.ageDays!=null?r.ageDays+'d':'—'}</td><td style="${td}white-space:normal;">${waActionCell(r)}</td></tr>`).join('')
     +`</tbody></table></div>`;
 }
 
@@ -2418,6 +2528,7 @@ function rebuild(){
   CONTEXT = computeContext();
   // Phase 4 decision-first cards (refined visual priority order)
   renderFounderFocus();
+  renderPendingAlert();
   renderTodayMoney();
   renderTopActions();
   renderNext15();
