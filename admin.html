@@ -1718,7 +1718,7 @@ function renderOrdersTable(){
     });
   }
   if(!list.length){ tbody.innerHTML='<tr><td colspan="10" class="empty-state">No orders found</td></tr>'; return; }
-  const payStatuses=['Unpaid','Awaiting Payment','Paid','Refunded'];
+  const payStatuses=['Unpaid','Awaiting Payment','Paid','Refunded','Abandoned','Cancelled'];
   tbody.innerHTML = list.map(o=>`<tr>
     <td style="padding:0.65rem 0.5rem;"><input type="checkbox" class="order-cb" data-id="${o.id||o.orderId||''}" onchange="updateOrderSelection()" style="cursor:pointer;width:14px;height:14px;"></td>
     <td><strong>${o.id||o.orderId||'—'}</strong>${o.labelPrinted?'<span title="Label printed" style="color:#16a34a;margin-left:4px;font-size:0.65rem;">🏷✓</span>':''}${o.receiptPrinted?'<span title="Receipt printed" style="color:#16a34a;margin-left:2px;font-size:0.65rem;">🧾✓</span>':''}</td>
