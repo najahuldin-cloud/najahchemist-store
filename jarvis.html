@@ -692,8 +692,20 @@ function leadDate(l){
   if(typeof l.createdAt==='string'){ const d=new Date(l.createdAt); if(!isNaN(d)) return d; }
   return null;
 }
-function isPaid(o){ return (o.paymentStatus||o.payStatus||o.payment||'').toString().trim().toLowerCase()==='paid'; }
-function isCancelled(o){ return (o.status||'').toString().trim().toLowerCase()==='cancelled'; }
+// ── Order lifecycle model (Phase 4.3) ───────────────────────────────────────
+// Cancelled = Abandoned = Refunded → CLOSED (historical only, never an opportunity).
+// Checked on BOTH paymentStatus and status, since "Cancelled" can be set on either.
+const ORDER_CLOSED = ['cancelled','abandoned','refunded'];
+function orderLifecycle(o){
+  const ps = (o.paymentStatus||o.payStatus||o.payment||'').toString().trim().toLowerCase();
+  const st = (o.status||'').toString().trim().toLowerCase();
+  if(ORDER_CLOSED.includes(ps) || ORDER_CLOSED.includes(st)) return 'closed';
+  if(ps==='paid') return 'success';   // revenue recognition = paid only (never fulfilment status)
+  return 'open';                      // Pending / Awaiting Payment / unset
+}
+function isClosed(o){ return orderLifecycle(o)==='closed'; }
+function isPaid(o){   return orderLifecycle(o)==='success'; }
+function isOpen(o){   return orderLifecycle(o)==='open'; }
 function orderTotal(o){ return parseFloat(o.total)||0; }
 function orderName(o){ return (o.client||o.customerName||o.clientName||'').trim() || 'Customer'; }
 function orderPhone(o){ return o.customerWhatsApp||o.phone||o.whatsapp||o.wa||''; }
@@ -1080,7 +1092,9 @@ function buildOpportunities(){
 
   // BUCKET 2 — CLIENTS DUE FOR REORDER
   Object.values(byEmail).forEach(list=>{
-    const dated = list.map(o=>({o,d:parseOrderDate(o)})).filter(x=>x.d).sort((a,b)=>a.d-b.d);
+    // Phase 4.3: reorder is a SUCCESS-only signal — ignore closed (cancelled/abandoned/
+    // refunded) and open/unpaid orders. Customers with no paid order never enter reorder.
+    const dated = list.filter(isPaid).map(o=>({o,d:parseOrderDate(o)})).filter(x=>x.d).sort((a,b)=>a.d-b.d);
     if(!dated.length) return;
     // Interval: need 2+ orders to compute an average; ignore implausibly short
     // averages (<7 days) and fall back to a 30-day default.
@@ -1090,7 +1104,7 @@ function buildOpportunities(){
       const avg = sum/(dated.length-1);
       interval = avg < 7 ? 30 : avg;
     }
-    const last = dated[dated.length-1];
+    const last = dated[dated.length-1];   // most recent PAID order
     const since = daysAgo(last.d) ?? 0;
     if(since <= interval) return;
     const value = orderTotal(last.o);
@@ -1110,7 +1124,7 @@ function buildOpportunities(){
 
   // BUCKET 3 — UNPAID ORDERS
   ORDERS.forEach(o=>{
-    if(isCancelled(o)) return;
+    if(isClosed(o)) return;
     if(isPaid(o)) return;
     const value = orderTotal(o);
     if(value<=0) return;
@@ -1233,7 +1247,7 @@ function computeContext(){
   const paidThisMonth = ORDERS.filter(o=>isPaid(o) && inThisMonth(parseOrderDate(o)));
   const revenueThisMonth = paidThisMonth.reduce((s,o)=>s+orderTotal(o),0);
 
-  const unpaidOrders = ORDERS.filter(o=>!isPaid(o) && !isCancelled(o));
+  const unpaidOrders = ORDERS.filter(o=>isOpen(o));   // open only — excludes paid + closed (cancelled/abandoned/refunded)
   const unpaidTotal = unpaidOrders.reduce((s,o)=>s+orderTotal(o),0);
 
   const openPipeline = OPPS.reduce((s,o)=>s+o.value,0);
@@ -1267,8 +1281,9 @@ function computeContext(){
   const d7 = new Date(NOW.getTime()-7*86400000), d14 = new Date(NOW.getTime()-14*86400000);
   const thisWeekLeads = wk(d7,NOW), lastWeekLeads = wk(d14,d7);
 
-  // conversion — match lead emails against order emails (status tags are unreliable)
-  const orderEmailSet = new Set(ORDERS.map(orderEmail).filter(Boolean));
+  // conversion — match lead emails against PAID (success) order emails only.
+  // Closed (cancelled/abandoned/refunded) and open/unpaid orders are NOT conversions.
+  const orderEmailSet = new Set(ORDERS.filter(isPaid).map(orderEmail).filter(Boolean));
   let leadsWithEmail = 0, convertedLeads = 0;
   LEADS.forEach(l=>{
     const e = (l.email||'').trim().toLowerCase();
@@ -1284,7 +1299,7 @@ function computeContext(){
   const cutoff60 = new Date(NOW.getTime() - 60*86400000);
   const lastOrderByClient = {};
   ORDERS.forEach(o=>{
-    if(isCancelled(o)) return;
+    if(isClosed(o)) return;
     const key = orderEmail(o) || orderName(o).toLowerCase();
     if(!key || key==='customer') return;
     const d = parseOrderDate(o);
