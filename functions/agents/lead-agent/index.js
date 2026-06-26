@@ -2,9 +2,14 @@
 // Owned collections: lead_intelligence, lead_recommendation_outcomes.
 //
 // Exports two Cloud Functions:
-//   scoreLeadsDaily    — scheduled (07:00 Jamaica). Phase 2 ships in DRY-RUN
-//                        (computes + logs, does NOT write). Phase 3 flips
-//                        DAILY_WRITE_ENABLED to true after a backup snapshot.
+//   scoreLeadsDaily    — scheduled FULL-BASE rescore (every 2h, Jamaica time).
+//                        Phase 4.3: DAILY_WRITE_ENABLED is now true, so each run
+//                        keeps lead_intelligence current (a full rescore is required
+//                        because duplicate clustering + shared-contact test flagging
+//                        are GLOBAL — see scoreAll). This is what makes the Honest
+//                        Pipeline metrics track live data without a manual backfill.
+//                        (Function id intentionally unchanged to avoid orphaning the
+//                        already-deployed Cloud Scheduler job; only its cron changed.)
 //   scoreLeadsBackfill — admin-only onCall; defaults to dry-run. Writes only when
 //                        called with { dryRun: false }. Used for the gated backfill.
 //
@@ -25,8 +30,12 @@ const { logAction } = require('../_shared/audit');
 const AGENT = 'lead-agent';
 const ADMIN_EMAIL = 'start@najahchemist.com';
 
-// Phase 2: dry-run. Phase 3 flips this to true (after a backup snapshot exists).
-const DAILY_WRITE_ENABLED = false;
+// Phase 4.3: enabled. The scheduled full-base rescore now WRITES lead_intelligence
+// so the Honest Pipeline stays live (was dry-run through Phases 2–3). Deterministic +
+// idempotent (merge by leadId) — safe to re-run. DEPLOY GATE: take a fresh snapshot
+// with scripts/backup-lead-intelligence.js before the first enabled deploy; rollback
+// via scripts/rollback-lead-intelligence.js. Set false to revert to dry-run.
+const DAILY_WRITE_ENABLED = true;
 
 async function loadPrevIntel(db) {
   const snap = await db.collection('lead_intelligence').get();
@@ -93,8 +102,13 @@ async function scoreAll(db, { write, limit }) {
   return { killed: false, scored: docs.length, written, dryRun: !write, sample };
 }
 
+// Every 6 hours (Jamaica → runs at 00:00, 06:00, 12:00, 18:00). Score decay and
+// lifecycle transitions are day-granular (scoring.js daysSince/decayPoints), so 6h
+// loses no correctness vs anything faster; it gives a fresh morning CEO briefing and
+// surfaces new/edited leads within ≤6h, matching founder usage and low lead velocity
+// without over-running the full-base rescore. Tune the cron if lead volume rises.
 exports.scoreLeadsDaily = onSchedule(
-  { schedule: '0 7 * * *', timeZone: 'America/Jamaica' },
+  { schedule: '0 */6 * * *', timeZone: 'America/Jamaica' },
   async () => {
     const db = getFirestore();
     const res = await scoreAll(db, { write: DAILY_WRITE_ENABLED, limit: 0 });
