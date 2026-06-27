@@ -110,6 +110,19 @@ assert('explicit "After you act, Jarvis"', h.includes('After you act, Jarvis'));
 assert('Customer Record expands inline (details)', h.includes('CUSTOMER RECORD') && h.includes('lead · email'));
 assert('NO /admin.html redirect anywhere', !h.includes('/admin.html'));
 assert('automation = none yet (no emails)', h.includes('No automation performed yet'));
+// ── Phase 4.8 ──
+assert('4.8 temperature badge (Hot)', h.includes('🔥 Hot'));
+assert('4.8 opportunity health shown', h.includes('Health: Healthy'));
+assert('4.8 EV labelled rule-based estimate', h.includes('rule-based offer-level estimates'));
+assert('4.8 confidence breakdown drawer', h.includes('Confidence breakdown') && h.includes('Opportunity type (newlead)'));
+assert('4.8 confidence inline factors', /Confidence <b>\d+%<\/b> —/.test(h));
+assert('4.8 recommended message editable', h.includes('RECOMMENDED MESSAGE') && h.includes('id="ff-msg-wa"') && h.includes("jFFSendWA('lead001abc')"));
+assert('4.8 intent stars', h.includes('Intent:') && h.includes('★'));
+assert('4.8 business memory drawer', h.includes('Business memory'));
+assert('4.8 why-this-recommendation drawer', h.includes('Why this recommendation (full reasoning)'));
+assert('4.8 lifetime view (first-time prospect)', h.includes('First-time prospect'));
+assert('4.8 relationship = new prospect', h.includes('new prospect'));
+assert('4.8 jarvis executive take', h.includes('JARVIS’S TAKE'));
 
 // ── Scenario 2: pending outcome + timeline (orders, emails) + awaiting state ──
 console.log('\nScenario 2 — Hot lead, actioned & awaiting, with order history + learning data');
@@ -154,6 +167,13 @@ assert('avg follow-ups shown', /follow-ups/.test(h));
 assert('automation = Completed manually (you)', h.includes('Completed manually (you)'));
 assert('automation = Waiting on customer', h.includes('Waiting on customer'));
 assert('briefing assessment cites 67% evidence', h.includes('Historical evidence'));
+// ── Phase 4.8 on the awaiting + buyer scenario ──
+assert('4.8 awaiting-customer continuity block', h.includes('AWAITING CUSTOMER') && h.includes('Open WhatsApp Again') && h.includes('Next review'));
+assert('4.8 health = Excellent (proven buyer)', h.includes('Health: Excellent'));
+assert('4.8 lifetime view populated', h.includes('Lifetime customer view') && h.includes('Lifetime orders'));
+assert('4.8 relationship has stars (buyer)', h.includes('Relationship: <span style="color:var(--gold);">★'));
+assert('4.8 everyone-awaiting drawer', h.includes('Everyone awaiting a reply (1)'));
+assert('4.8 temperature reason cites paid orders', h.includes('Has paid orders'));
 
 // ── Scenario 5: full risk surface (cold + unsubscribed + other staff + reply conflict) ──
 console.log('\nScenario 5 — risk scan surfaces every data-supported risk');
