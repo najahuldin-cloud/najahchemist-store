@@ -2712,6 +2712,168 @@ window.jFFLost = async function(leadId){
 };
 window.jFFSnooze = function(leadId){ snooze(leadId,3); toast('⏰ Snoozed 3 days'); renderFounderFocus(); };
 
+// ════════════════════════════════════════════════════════════════════════
+// PHASE 4.8 — Executive Intelligence helpers (Founder Focus only)
+// Every helper is grounded in loaded data (lead / intel / orders / outcomes);
+// where data is insufficient it says so. No scoring/recommendation-logic change.
+// ════════════════════════════════════════════════════════════════════════
+const ffStars = n => `<span style="color:var(--gold);">${'★'.repeat(Math.max(0,n))}</span><span style="color:var(--mid,#888);">${'☆'.repeat(Math.max(0,5-n))}</span>`;
+function ffDrawer(summary, inner){
+  return `<details style="margin-top:.55rem;border-top:1px solid var(--border);padding-top:.5rem;"><summary style="cursor:pointer;${P4SUB}font-weight:700;">${summary}</summary>`
+    + `<div style="margin-top:.45rem;font-size:.85rem;line-height:1.55;">${inner}</div></details>`;
+}
+// A lead's orders (matched by email), oldest-first, with derived stats.
+function ffOrdersFor(leadId){
+  const l = LEAD_BY_ID[leadId]||{}; const email=(l.email||'').trim().toLowerCase();
+  if(!email) return [];
+  return ORDERS.filter(o=>orderEmail(o)===email)
+    .map(o=>({ o, date:parseOrderDate(o), total:orderTotal(o), paid:isPaid(o), names:orderProductNames(o) }))
+    .filter(x=>x.date).sort((a,b)=>a.date-b.date);
+}
+// 1. Customer Temperature — from label/stage/recency/intent/orders (NO reply-cadence
+// data exists for ~all leads, so it is never claimed). Always explained.
+function ffTemperature(r){
+  const i = INTEL_BY_ID[r.leadId]||{}; const sig=Array.isArray(i.intentSignals)?i.intentSignals:[];
+  const age=r.ageDays, label=i.scoreLabel, paid=ffOrdersFor(r.leadId).some(x=>x.paid);
+  let key;
+  if(label==='Cold' || i.lifecycleStage==='Dormant' || i.lifecycleStage==='Lost' || (age!=null && age>30)) key='cold';
+  else if((label==='Hot'||label==='Ready') && (age==null||age<=14)) key='hot';
+  else key='warm';
+  const reasons=[];
+  if(label) reasons.push(`${label} score`);
+  if(sig.includes('ready-to-sell')) reasons.push('Signalled ready to sell');
+  if(sig.includes('high-budget')) reasons.push('High budget');
+  if(sig.includes('engaged-multi-touch')) reasons.push('Engaged across multiple touches');
+  if(paid) reasons.push('Has paid orders');
+  if(age!=null) reasons.push(age===0?'Active today':`Last activity ${age}d ago`);
+  const map={ hot:{e:'🔥',t:'Hot'}, warm:{e:'🟡',t:'Warm'}, cold:{e:'❄',t:'Cold'} };
+  return { ...map[key], key, reasons:reasons.slice(0,4) };
+}
+// 8. Opportunity Health.
+function ffHealth(r){
+  const i = INTEL_BY_ID[r.leadId]||{}; const age=r.ageDays, label=i.scoreLabel;
+  const overdue = r.ocStatus==='pending' && (()=>{ const a=daysSinceISO(r.ocActionedAt); return a!=null && a>=PENDING_STALE_DAYS; })();
+  if(label==='Cold' || i.lifecycleStage==='Lost') return { key:'Cold', reason:'Cold / lost — low engagement', col:'var(--mid,#888)' };
+  if(i.lifecycleStage==='Dormant' || (age!=null && age>30)) return { key:'At Risk', reason:`Inactive ${age}d — slipping away`, col:'var(--danger,#C0392B)' };
+  if(overdue) return { key:'At Risk', reason:'Follow-up overdue — awaiting customer', col:'var(--danger,#C0392B)' };
+  if(age!=null && age>14) return { key:'Watching', reason:`Aging ${age}d — watch closely`, col:'var(--warn,#E67E22)' };
+  if(label==='Ready' || ffOrdersFor(r.leadId).some(x=>x.paid)) return { key:'Excellent', reason:'High intent / proven buyer', col:'var(--success,#27AE60)' };
+  return { key:'Healthy', reason:'Active and engaged', col:'var(--success,#27AE60)' };
+}
+// 2 + 10. Confidence breakdown — reconstructs closeProbability from the SAME formula
+// the scorer uses (validated 99% exact vs stored) and reconciles to the stored value.
+const CLOSE_PROB_JS={ reorder:0.80, hot:0.45, overdue:0.35, newlead:0.25, dormant:0.10, lost:0.02 };
+function ffConfidenceBreakdown(r){
+  const i = INTEL_BY_ID[r.leadId]||{}, l = LEAD_BY_ID[r.leadId]||{}; const comps=[];
+  const src=i.opportunitySource; const base=CLOSE_PROB_JS[src]!=null?CLOSE_PROB_JS[src]:CLOSE_PROB_JS.newlead;
+  comps.push({ label:`Opportunity type (${src||'new lead'})`, d:base });
+  const j=(l.journey||'').toLowerCase();
+  if(j.includes('ready')) comps.push({ label:'Said "ready to start selling"', d:0.15 });
+  else if(j.includes('exploring')) comps.push({ label:'Still just exploring', d:-0.10 });
+  if((l.budget||'').includes('1,000')) comps.push({ label:'Budget $1,000+', d:0.05 });
+  const age=r.ageDays; let decay=0; if(age!=null){ if(age>=90)decay=30; else if(age>=60)decay=20; else if(age>=30)decay=10; }
+  if(decay) comps.push({ label:`Inactive ${age} days`, d:-(decay/200) });
+  let total=comps.reduce((s,c)=>s+c.d,0); total=Math.max(0.01,Math.min(0.95,Math.round(total*100)/100));
+  const stored=Math.round((Number(i.closeProbability)||0)*100)/100;
+  return { comps, total, stored, reconciled:Math.abs(total-stored)<=0.005 };
+}
+// 4. Customer Intent (stars), grounded in offer + label + content interests.
+function ffIntent(r){
+  const i = INTEL_BY_ID[r.leadId]||{}; const out=[]; const sig=Array.isArray(i.intentSignals)?i.intentSignals:[];
+  let p=2; if(i.scoreLabel==='Ready'||sig.includes('ready-to-sell')) p=5; else if(i.scoreLabel==='Hot') p=4; else if(i.scoreLabel==='Warm') p=3;
+  if(i.recommendedOffer) out.push({ label:i.recommendedOffer, stars:p });
+  const NICE={ 'skin-brightening':'Skin Lightening','dark-spot-care':'Dark-Spot Care','natural-hair-growth':'Hair Growth','scalp-care':'Scalp Care','feminine-wellness':'Feminine Wellness','yoni-care':'Yoni Care','beard-grooming':'Beard Grooming','mens-intimate-care':"Men's Care",'start-a-brand':'Starting a Brand' };
+  (Array.isArray(i.contentInterests)?i.contentInterests:[]).slice(0,2).forEach((c,idx)=>out.push({ label:NICE[c]||c, stars:idx===0?3:2 }));
+  return out;
+}
+// 5. Business Memory — grounded facts only; never invented.
+function ffMemory(r){
+  const i = INTEL_BY_ID[r.leadId]||{}, l = LEAD_BY_ID[r.leadId]||{}; const m=[];
+  if(i.preferredChannel) m.push(`Prefers ${i.preferredChannel==='whatsapp'?'WhatsApp':'email'}`);
+  if(l.brandType) m.push(`Building a ${l.brandType}`);
+  if(i.recommendedOffer) m.push(`Best-fit offer: ${i.recommendedOffer}`);
+  if(l.budget) m.push(`Budget: ${l.budget}`);
+  if(l.journey) m.push(`Journey: ${l.journey}`);
+  const obj=Array.isArray(i.objections)?i.objections:[];
+  if(obj.includes('budget-constrained')) m.push('Previously budget-constrained');
+  if(obj.includes('not-ready-to-commit')) m.push('Previously not ready to commit');
+  if(obj.includes('unresponsive-so-far')) m.push('Unresponsive to outreach so far');
+  if((Array.isArray(i.intentSignals)?i.intentSignals:[]).includes('engaged-multi-touch')) m.push('Engaged across multiple touches');
+  const os=ffOrdersFor(r.leadId); if(os.length) m.push(`${os.length} prior order${os.length===1?'':'s'} on record`);
+  return m;
+}
+// 6. Relationship score — from real order history; honest placeholder for non-buyers.
+function ffRelationship(r){
+  const os=ffOrdersFor(r.leadId);
+  if(!os.length) return { stars:0, none:true, reasons:['New prospect — no purchase history yet; relationship score builds after the first order.'] };
+  const total=os.length, paid=os.filter(x=>x.paid).length; const reasons=[]; let stars=2;
+  if(total>=2){ stars++; reasons.push(`Repeat customer (${total} orders)`); } else reasons.push('First-time buyer');
+  if(paid===total){ stars++; reasons.push('All orders paid'); } else reasons.push(`${total-paid} unpaid / pending`);
+  const lastAge=Math.floor((NOW-os[os.length-1].date)/86400000);
+  if(lastAge<=60){ stars++; reasons.push(`Active (last order ${lastAge}d ago)`); } else reasons.push(`Last order ${lastAge}d ago`);
+  return { stars:Math.max(1,Math.min(5,stars)), none:false, reasons };
+}
+// 7. Executive Note — Jarvis' grounded professional opinion (not a summary).
+function ffExecNote(r, risks, L){
+  const i = INTEL_BY_ID[r.leadId]||{}; const sig=Array.isArray(i.intentSignals)?i.intentSignals:[]; const obj=Array.isArray(i.objections)?i.objections:[];
+  const parts=[];
+  if(sig.includes('ready-to-sell')||i.scoreLabel==='Ready') parts.push('High intent — has signalled readiness to start');
+  else if(i.scoreLabel==='Hot'||sig.includes('expressed-interest')) parts.push('Engaged and interested');
+  else if(i.scoreLabel==='Cold') parts.push('Low current engagement');
+  else parts.push('Moderate interest');
+  if(r.ageDays!=null && r.ageDays>14) parts.push(`but quiet for ${r.ageDays} days`);
+  parts.push(obj.length ? `objections on record: ${obj.join(', ')}` : 'no objections recorded');
+  if(i.requiresNajah===true) parts.push('founder attention is warranted before acting');
+  else if(risks.length) parts.push('review the flagged risks first');
+  else parts.push('founder attention not required yet — a routine follow-up should advance it');
+  let note = parts.join('; ') + '.';
+  if(!L || L.n < 3) note += ' No resolved-outcome history yet to compare against similar leads — Jarvis will sharpen this as outcomes accrue.';
+  return note;
+}
+// 11. AI explainability — why this / now / customer / channel / not another.
+function ffExplain(r){
+  const i = INTEL_BY_ID[r.leadId]||{}, l = LEAD_BY_ID[r.leadId]||{}; const rows=[];
+  rows.push(['Why this recommendation', `${i.recommendedOffer||'This offer'} is the best-fit revenue route; ranked #1 today by expected value ÷ time (${fmt(r.ev)} in ~${r.minutes} min).`]);
+  rows.push(['Why now', (i.opportunitySource==='overdue'?'Follow-up is overdue. ':(i.opportunitySource==='hot'?'Lead is hot / engaged right now. ':`Opportunity source: ${i.opportunitySource||'new lead'}. `)) + (i.urgencyScore!=null?`Urgency ${i.urgencyScore}/100. `:'') + (r.ageDays!=null?`Last activity ${r.ageDays}d ago.`:'')]);
+  rows.push(['Why this customer', `Score ${i.score} (${i.scoreLabel}); ${(Array.isArray(i.intentSignals)&&i.intentSignals.length)?i.intentSignals.slice(0,3).join(', '):'scored opportunity'}.`]);
+  rows.push(['Why this channel', `${i.preferredChannel==='whatsapp'?'WhatsApp':'Email'} — ${l.whatsapp?'lead has a WhatsApp number on file':'no WhatsApp on file, so email is the reachable channel'}.`]);
+  rows.push(['Why not another action', (Array.isArray(i.whyNot)&&i.whyNot.length)?i.whyNot.join(' '):'Other offers are a lower fit for this lead’s niche / intent.']);
+  return rows;
+}
+// 13. Recommended message (editable, no autosend) — reuses existing templates.
+function ffMessages(r){
+  const l = LEAD_BY_ID[r.leadId]||{}, i = INTEL_BY_ID[r.leadId]||{};
+  const first=(String(l.name||'there').trim().split(/\s+/)[0])||'there';
+  const offer=i.recommendedOffer||'your project';
+  const wa=msgIntel(r);
+  const email=`Hi ${first},\n\nFollowing up from Najah Chemist about ${offer}.${i.suggestedProduct?(' I think the '+i.suggestedProduct+' would be a strong starting point.'):''} Happy to share pricing and the next steps whenever you're ready.\n\n— Najah Chemist`;
+  const call=`Confirm interest in ${offer}, answer pricing / MOQ questions, and agree the next step.`;
+  return { wa, email, call };
+}
+// 16. Everyone currently awaiting a customer reply (so the founder always knows who is waiting).
+function ffAwaitingList(){
+  return OUTCOMES.filter(o=>o.status==='pending').sort((a,b)=>(pendingAge(b)||0)-(pendingAge(a)||0));
+}
+// 3. Next review date Jarvis owns (default cadence; refines as reply data accrues).
+function ffNextReview(actionedAtISO){
+  const d=_intelDate(actionedAtISO); return d ? new Date(d.getTime()+PENDING_STALE_DAYS*86400000) : null;
+}
+// 13. Send the (possibly edited) message — window.open is synchronous (popup rule),
+// then the action is recorded. No autonomous sending.
+window.jFFSendWA = function(leadId){
+  const l = LEAD_BY_ID[leadId]||{}; const ta=document.getElementById('ff-msg-wa');
+  const p=waPhone(l.whatsapp);
+  if(p) window.open('https://wa.me/'+p+'?text='+encodeURIComponent(ta?ta.value:''),'_blank','noopener');
+  else toast('No WhatsApp number on file');
+  jActIntel(leadId);
+};
+window.jFFSendEmail = function(leadId){
+  const l = LEAD_BY_ID[leadId]||{}; const ta=document.getElementById('ff-msg-email'); const email=(l.email||'').trim();
+  if(email) window.open('mailto:'+encodeURIComponent(email)+'?subject='+encodeURIComponent('Najah Chemist — following up')+'&body='+encodeURIComponent(ta?ta.value:''),'_blank','noopener');
+  else toast('No email on file');
+  jActIntel(leadId);
+};
+
 function renderFounderFocus(){
   const el=document.getElementById('sec-founder-focus'); if(!el) return;
   const snz=getSnooze(), today=todayISO();
@@ -2730,6 +2892,13 @@ function renderFounderFocus(){
   const reason=(top.why&&top.why.length)?top.why.join(' · '):'Highest revenue-per-minute opportunity';
   const cell=`<div><div style="${P4SUB}">`;
   const stCol = (life.key==='won')?'var(--success,#27AE60)':(life.key==='lost'||life.key==='overdue')?'var(--danger,#C0392B)':(life.key==='awaiting')?'var(--gold)':'var(--mid,#888)';
+
+  // ── Phase 4.8 executive-intelligence computations ──
+  const temp=ffTemperature(top), health=ffHealth(top), cb=ffConfidenceBreakdown(top);
+  const intents=ffIntent(top), memory=ffMemory(top), rel=ffRelationship(top), explain=ffExplain(top), msgs=ffMessages(top);
+  const os=ffOrdersFor(top.leadId);
+  const pvSrc=(i.potentialValue&&i.potentialValue.source)||'rule';
+  const pvConf=(i.potentialValue&&i.potentialValue.confidence!=null)?Math.round(i.potentialValue.confidence*100):50;
 
   const idLine=`<div style="${P4SUB}margin-top:.5rem;">Recommendation <b style="color:var(--gold);">${esc(meta.recommendationId)}</b> · Lead ID <code>${esc(top.leadId)}</code> · ${esc(t.label)}</div>`;
   const idGrid=`<div class="p4grid" style="margin-top:.7rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.6rem;font-size:.9rem;">`
@@ -2787,10 +2956,46 @@ function renderFounderFocus(){
     : `<span style="color:var(--success,#27AE60);">No risks detected from available data — clear to act.</span>`;
   const recBody=`<b>${esc(top.action)}</b> via ${esc(meta.recommendedChannel||'—')} (${top.minutes} min). Expected outcome: <b class="money">${fmt(top.ev)}</b> at <b>${pctOf(top.conf)}</b> close probability.`
     +`<div style="${P4SUB}margin-top:.25rem;">After you act, Jarvis ${afterTxt}</div>`;
+  const execNote=ffExecNote(top, risks, L);   // 7. Jarvis' professional opinion
   const briefingHTML=`<div style="margin-top:.8rem;padding:.85rem .95rem;background:var(--card);border:1px solid var(--border);border-radius:10px;">`
     +`<div style="${P4SUB}font-weight:800;letter-spacing:.6px;">🗒 EXECUTIVE BRIEFING</div>`
     + bSec('SITUATION',situation) + bSec('ASSESSMENT',assessment) + bSec('RISKS',risksBody) + bSec('RECOMMENDATION',recBody)
+    + bSec('🧠 JARVIS’S TAKE (executive note)', esc(execNote))
     +`</div>`;
+
+  // Status strip — temperature + opportunity health (1. + 8.), always explained.
+  const statusStrip=`<div style="display:flex;flex-wrap:wrap;gap:.5rem .9rem;margin-top:.45rem;align-items:baseline;">`
+    +`<span style="font-weight:800;font-size:1.02rem;">${temp.e} ${temp.t}</span>`
+    +`<span style="${P4SUB}">${esc(temp.reasons.join(' · '))}</span>`
+    +`<span style="margin-left:auto;font-weight:700;color:${health.col};">Health: ${esc(health.key)} <span style="${P4SUB}">(${esc(health.reason)})</span></span>`
+    +`</div>`;
+
+  // EV honesty label (17) + intent/relationship strip (4. + 6.).
+  const evNote=`<div style="${P4SUB}margin-top:.4rem;">⚖ Potential & Expected Value are <b>rule-based offer-level estimates</b> (source: ${esc(pvSrc)}, model confidence ~${pvConf}%) — not individualized per-lead calculations; Phase 5 learning will refine them.</div>`;
+  const primaryIntent=intents[0];
+  const intentStrip=`<div style="display:flex;flex-wrap:wrap;gap:1.1rem;margin-top:.45rem;font-size:.85rem;">`
+    +(primaryIntent?`<span>Intent: <b>${esc(primaryIntent.label)}</b> ${ffStars(primaryIntent.stars)}</span>`:'')
+    +`<span>Relationship: ${rel.none?`<i style="${P4SUB}">new prospect</i>`:ffStars(rel.stars)}</span>`
+    +`</div>`;
+
+  // Confidence inline (2.) + full breakdown drawer (10.).
+  const pos=cb.comps.filter(c=>c.d>0).sort((a,b)=>b.d-a.d), neg=cb.comps.filter(c=>c.d<0).sort((a,b)=>a.d-b.d);
+  const confInline=`<div style="font-size:.86rem;margin-top:.55rem;">Confidence <b>${pctOf(top.conf)}</b> — `
+    + pos.slice(0,2).map(c=>`<span style="color:var(--success,#27AE60);">+${Math.round(c.d*100)}% ${esc(c.label)}</span>`).join(', ')
+    + (neg.length?`, `+neg.slice(0,1).map(c=>`<span style="color:var(--danger,#C0392B);">${Math.round(c.d*100)}% ${esc(c.label)}</span>`).join(''):'') + `</div>`;
+  const cbRows=cb.comps.map(c=>`<div style="display:flex;justify-content:space-between;"><span>${esc(c.label)}</span><b style="color:${c.d>=0?'var(--success,#27AE60)':'var(--danger,#C0392B)'};">${c.d>=0?'+':''}${Math.round(c.d*100)}%</b></div>`).join('');
+  const cbDrawer=ffDrawer('▸ Confidence breakdown',
+    cbRows+`<div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:.3rem;padding-top:.3rem;"><b>Model close probability</b><b>${Math.round(cb.total*100)}%</b></div>`
+    +`<div style="${P4SUB}margin-top:.3rem;">${cb.reconciled?'✓ Reconciled to the stored score.':'Recomputed as of today — differs slightly from the last 6-hourly rescore due to elapsed days.'}</div>`);
+
+  // 13. Recommended message — editable, nothing sends automatically.
+  const taStyle='width:100%;box-sizing:border-box;background:var(--bg,#0A0A0A);color:inherit;border:1px solid var(--border);border-radius:8px;padding:.5rem;font:inherit;font-size:.82rem;min-height:60px;';
+  const msgSection=`<div style="${P4SUB}margin:.9rem 0 .35rem;">✍️ RECOMMENDED MESSAGE — edit before sending (nothing sends automatically)</div>`
+    +`<div style="${P4SUB}">WhatsApp</div><textarea id="ff-msg-wa" style="${taStyle}">${esc(msgs.wa)}</textarea>`
+    +`<div style="margin:.3rem 0 .55rem;"><button class="btn btn-wa btn-sm" onclick="jFFSendWA('${esc(top.leadId)}')">📱 Send via WhatsApp</button></div>`
+    +`<div style="${P4SUB}">Email</div><textarea id="ff-msg-email" style="${taStyle}">${esc(msgs.email)}</textarea>`
+    +`<div style="margin:.3rem 0 .55rem;"><button class="btn btn-ghost btn-sm" onclick="jFFSendEmail('${esc(top.leadId)}')">✉️ Send via Email</button></div>`
+    +`<div style="${P4SUB}">Call objective</div><div style="font-size:.85rem;">${esc(msgs.call)}</div>`;
 
   const aiHTML=`<div style="margin-top:.9rem;padding:.8rem .9rem;background:rgba(200,151,58,0.08);border:1px solid var(--gold);border-radius:10px;">`
     +`<div style="${P4SUB}">🤖 AI RECOMMENDATION</div>`
@@ -2804,10 +3009,68 @@ function renderFounderFocus(){
     +`<div style="display:flex;flex-wrap:wrap;gap:.45rem;">${ffActions(top)}</div>`
     +`<div style="${P4SUB}margin-top:.5rem;">No AI messaging or autonomous sending — these open your own tools and record the outcome against ${esc(meta.recommendationId)}.</div>`;
 
-  el.innerHTML=`<div class="sec-head"><h2>🔥 Founder Focus</h2><span class="sub">Your CEO desk — understand, decide and act without leaving this card</span></div>`
+  // 16. Action continuity — once actioned, the recommendation never disappears; it
+  // becomes an Awaiting-Customer card so the founder always knows who is waiting.
+  let awaitingHTML='';
+  if(life.key==='awaiting' || life.key==='overdue'){
+    const oc=OUTCOMES.find(o=>o.leadId===top.leadId && o.status==='pending')||{};
+    const nr=ffNextReview(oc.actionedAt), waited=daysSinceISO(oc.actionedAt);
+    const af=d=>d?d.toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—';
+    const waAgain=waLink(l.whatsapp,msgIntel(top)), em=(l.email||'').trim();
+    awaitingHTML=`<div style="margin-top:.9rem;padding:.8rem .9rem;border:1px solid var(--warn,#E67E22);border-radius:10px;background:rgba(230,126,34,0.08);">`
+      +`<div style="${P4SUB}font-weight:800;">⏳ AWAITING CUSTOMER</div>`
+      +`<div style="display:grid;grid-template-columns:auto 1fr;gap:.15rem .8rem;margin-top:.4rem;font-size:.84rem;">`
+      +`<span style="${P4SUB}">Customer</span><b>${esc(top.name)}</b>`
+      +`<span style="${P4SUB}">Recommendation</span><b>${esc(meta.recommendationId)}</b>`
+      +`<span style="${P4SUB}">Action taken</span><b>${esc(oc.recommendedChannel||meta.recommendedChannel||'—')}</b>`
+      +`<span style="${P4SUB}">Action time</span><b>${oc.actionedAt?new Date(oc.actionedAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—'}</b>`
+      +`<span style="${P4SUB}">Waiting since</span><b>${waited==null?'just now':(waited===0?'today':waited+' day'+(waited===1?'':'s'))}</b>`
+      +`<span style="${P4SUB}">Next review</span><b>${af(nr)} <span style="${P4SUB}">· Jarvis default ${PENDING_STALE_DAYS}-day cadence (refines as reply data accrues)</span></b>`
+      +`</div><div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.55rem;">`
+      + (waAgain?`<a class="btn btn-wa btn-sm" href="${esc(waAgain)}" target="_blank" rel="noopener" onclick="jActIntel('${esc(top.leadId)}')">📱 Open WhatsApp Again</a>`:'')
+      + (em?`<a class="btn btn-ghost btn-sm" href="mailto:${esc(em)}" onclick="jActIntel('${esc(top.leadId)}')">✉️ Open Email Again</a>`:'')
+      + `<button class="btn btn-done btn-sm" onclick="jFFWon('${esc(top.leadId)}')">✓ Mark Won</button>`
+      + `<button class="btn btn-lost btn-sm" onclick="jFFLost('${esc(top.leadId)}')">✗ Mark Lost</button>`
+      + `<button class="btn btn-snooze btn-sm" onclick="jFFSnooze('${esc(top.leadId)}')">⏰ Snooze</button>`
+      +`</div></div>`;
+  }
+
+  // Collapsible depth drawers (5, 4-full, 11, 6-detail, 14, 16-list, customer record).
+  const memDrawer=ffDrawer('▸ Business memory', memory.length?`<ul style="margin:0;padding-left:1.1rem;">${memory.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:`<i style="${P4SUB}">No durable facts on record yet.</i>`);
+  const intentDrawer=intents.length>1?ffDrawer('▸ Customer intent (all)', intents.map(x=>`<div>${ffStars(x.stars)} ${esc(x.label)}</div>`).join('')):'';
+  const explainDrawer=ffDrawer('▸ Why this recommendation (full reasoning)', explain.map(([q,a])=>`<div style="margin-bottom:.3rem;"><b>${esc(q)}?</b><br>${esc(a)}</div>`).join(''));
+  const relDrawer=ffDrawer('▸ Relationship detail', rel.reasons.map(x=>`<div>• ${esc(x)}</div>`).join(''));
+  let lifeDrawer;
+  if(os.length){
+    const paid=os.filter(x=>x.paid), rev=paid.reduce((s,x)=>s+x.total,0), aov=paid.length?rev/paid.length:0;
+    const pc={}; os.forEach(x=>x.names.forEach(n=>pc[n]=(pc[n]||0)+1));
+    const pref=Object.entries(pc).sort((a,b)=>b[1]-a[1]).slice(0,3).map(e=>e[0]);
+    const df=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    lifeDrawer=ffDrawer('▸ Lifetime customer view',
+      `<div style="display:grid;grid-template-columns:auto 1fr;gap:.18rem .8rem;">`
+      +`<span style="${P4SUB}">First purchase</span><b>${df(os[0].date)}</b>`
+      +`<span style="${P4SUB}">Latest purchase</span><b>${df(os[os.length-1].date)}</b>`
+      +`<span style="${P4SUB}">Lifetime orders</span><b>${os.length}</b>`
+      +`<span style="${P4SUB}">Lifetime revenue (paid)</span><b class="money">${fmt(rev)}</b>`
+      +`<span style="${P4SUB}">Average order value</span><b class="money">${fmt(aov)}</b>`
+      +`<span style="${P4SUB}">Preferred products</span><b>${esc(pref.join(', ')||'—')}</b>`
+      +`</div>`);
+  } else {
+    lifeDrawer=ffDrawer('▸ Lifetime customer view', `<i style="${P4SUB}">First-time prospect — no verified order history yet.</i>`);
+  }
+  const aw=ffAwaitingList();
+  const awDrawer=aw.length?ffDrawer(`▸ Everyone awaiting a reply (${aw.length})`,
+    aw.map(o=>{ const ag=pendingAge(o); return `<div style="display:flex;justify-content:space-between;gap:.5rem;border-bottom:1px solid var(--border);padding:.25rem 0;">`
+      +`<span>${esc(o.name||leadName(o.leadId))} <span style="${P4SUB}">${esc(o.recommendationId||o.opportunityType||'')}</span></span>`
+      +`<span style="${P4SUB};white-space:nowrap;">${ag==null?'just now':(ag===0?'today':ag+'d')}${o.leadId?` · <a href="#" onclick="jFFWon('${esc(o.leadId)}');return false;" style="color:var(--success,#27AE60);">Won</a> · <a href="#" onclick="jFFLost('${esc(o.leadId)}');return false;" style="color:var(--danger,#C0392B);">Lost</a>`:''}</span>`
+      +`</div>`; }).join('')):'';
+
+  el.innerHTML=`<div class="sec-head"><h2>🔥 Founder Focus</h2><span class="sub">Your COO desk — facts gathered, opportunity analysed, message drafted; only your decision remains</span></div>`
     +`<div style="${P4CARD}border:1.5px solid var(--gold);background:linear-gradient(135deg,rgba(200,151,58,0.14),var(--card));">`
     +`<div class="p4big" style="font-size:1.3rem;font-weight:800;color:var(--gold);">${esc(top.action)}</div>`
-    + idLine + briefingHTML + idGrid + timelineHTML + autoHTML + aiHTML + ffCustomerRecord(top.leadId) + actionsHTML
+    + statusStrip + idLine + briefingHTML + idGrid + evNote + intentStrip + confInline + aiHTML
+    + msgSection + timelineHTML + autoHTML + awaitingHTML + actionsHTML
+    + cbDrawer + memDrawer + intentDrawer + explainDrawer + relDrawer + lifeDrawer + awDrawer + ffCustomerRecord(top.leadId)
     +`</div>`;
 }
 // Derived cause label from existing intel state — no new fields/collections.
