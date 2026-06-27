@@ -655,7 +655,8 @@ window.jActIntel = function(leadId){
     repliedAt: null,
     quotedAt: null,
     resolvedAt: null,
-    campaignId: null
+    campaignId: null,
+    ...recMetaForLead(leadId)                       // Phase 4.7: Rec ID + type/channel/product/source attribution
   };
   addDoc(collection(db,'jarvis_outcomes'), outcome)
     .then(ref=>{
@@ -663,7 +664,7 @@ window.jActIntel = function(leadId){
       // Swap the action link for an inline pending badge + Won/Lost (Fix B), and
       // refresh the pending alert / list so the new outcome is visible immediately.
       setLeadOcHTML(leadId, pendingBadgeHTML(ref.id, leadId, outcome.expectedRevenue, outcome.actionedAt));
-      try{ renderPendingAlert(); renderPending(); }catch(_){}
+      try{ renderPendingAlert(); renderPending(); renderFounderFocus(); }catch(_){}
       try{ toast('✓ Actioned — '+(outcome.name||'lead')); }catch(_){}
     })
     .catch(e=>{ console.error('[Jarvis] intel outcome save failed', e); ACTIONED_INTEL[leadId] = false; });
@@ -2496,21 +2497,317 @@ function renderTopOpps(){
       +`<div style="margin-top:.45rem;">${waActionCell(r)}</div></div>`).join('')+`</div>`;
 }
 
+// ════════════════════════════════════════════════════════════════════════
+// PHASE 4.7 — Founder Focus actionable work card + Recommendation Learning
+// Scope: Founder Focus only. No scoring/ranking/recommendation-logic change,
+// no new collection. Recommendation IDs are DERIVED (stable) for display +
+// traceability and persist into the EXISTING jarvis_outcomes ledger ONLY on a
+// founder action (write-on-action rule preserved — never written on render).
+// ════════════════════════════════════════════════════════════════════════
+
+// Stable recommendation TYPE for a ranked lead. Derived from the same offer /
+// source / channel the recommendation already uses — it does NOT change which
+// lead is recommended or its score. Drives the Rec ID and the learning groups.
+function recTypeFor(r){
+  const i = INTEL_BY_ID[r.leadId] || {};
+  if(i.recommendedOffer==='Manufacturing' && r.src==='newlead') return {key:'moq-quote',        label:'MOQ Quote',          channel:'whatsapp', tc:'MQ'};
+  if(r.src==='overdue')                  return {key:'followup-overdue', label:'Overdue Follow-up',  channel:i.preferredChannel||'whatsapp', tc:'FO'};
+  if(r.src==='hot')                      return {key:'hot-followup',     label:'Hot-Lead Follow-up', channel:i.preferredChannel||'whatsapp', tc:'HF'};
+  if(r.src==='dormant'||r.src==='lost')  return {key:'reactivation',     label:'Reactivation',       channel:i.preferredChannel||'whatsapp', tc:'RA'};
+  const ch = i.preferredChannel||'whatsapp';
+  return ch==='email' ? {key:'email-followup', label:'Email Follow-up', channel:'email', tc:'EM'}
+                      : {key:'wa-followup',    label:'WhatsApp Follow-up', channel:'whatsapp', tc:'WA'};
+}
+// Deterministic, human-readable Recommendation ID. Stable for a given lead + day
+// + type, so the SAME recommendation shows the SAME ID across renders (no write
+// to allocate). A new day or a different recommendation type yields a new ID —
+// matching the spec's "two weeks later = a different recommendation" model.
+function recIdFor(r){
+  const t = recTypeFor(r);
+  return `REC-${String(r.leadId).slice(0,6).toUpperCase()}-${todayISO().replace(/-/g,'')}-${t.tc}`;
+}
+// Recommendation metadata for a lead, reconstructed from intel + lead docs alone
+// (no ranked row needed) so it can be stamped onto an outcome at action time.
+function recMetaForLead(leadId){
+  const i = INTEL_BY_ID[leadId]||{}, l = LEAD_BY_ID[leadId]||{};
+  const t = recTypeFor({ leadId, src:i.opportunitySource });
+  return {
+    recommendationId:    recIdFor({ leadId, src:i.opportunitySource }),
+    recommendationType:  t.key,
+    recommendationLabel: t.label,
+    recommendedChannel:  t.channel,
+    product:             i.recommendedOffer || null,
+    leadSource:          l.source||l.leadSource||l.channel||i.opportunitySource||null,
+    customerId:          (l.email||'').trim().toLowerCase() || leadId,
+    opportunityId:       leadId,
+    confidence:          Number(i.closeProbability)||0
+  };
+}
+// Derived display lifecycle (Won/Lost are the only states actually STORED, via
+// jarvis_outcomes). honestActive() already drops resolved leads, so the Founder
+// Focus pick is normally "presented" or "awaiting".
+function recLifecycle(r){
+  if(r.ocStatus==='converted') return {key:'won',  label:'Won'};
+  if(r.ocStatus==='lost')      return {key:'lost', label:'Lost'};
+  if(r.ocStatus==='pending'){
+    const age = daysSinceISO(r.ocActionedAt);
+    return (age!=null && age>=PENDING_STALE_DAYS) ? {key:'overdue', label:'Awaiting outcome · overdue'} : {key:'awaiting', label:'Awaiting outcome'};
+  }
+  return {key:'presented', label:'Presented — not yet actioned'};
+}
+// ── Recommendation Learning Engine (display only) ──
+// Success rate & economics for a recommendation type, computed from REAL resolved
+// outcomes in jarvis_outcomes. Does NOT change scoring, ranking, or confidence —
+// history-driven confidence adjustment is a deliberately deferred later slice.
+function recLearning(typeKey){
+  const scoped = OUTCOMES.filter(o=>o.recommendationType===typeKey && (o.status==='converted'||o.status==='lost'));
+  const won = scoped.filter(o=>o.status==='converted'), lost = scoped.filter(o=>o.status==='lost');
+  const n = won.length+lost.length;
+  const rev = won.reduce((s,o)=>s+(Number(o.actualRevenue)||0),0);
+  const days = won.map(o=>{ const s=_intelDate(o.actionedAt)||_intelDate(o.recommendedAt), e=_intelDate(o.resolvedAt);
+    if(s&&e){ const d=Math.round((e-s)/86400000); return d>=0?d:null; } return null; }).filter(d=>d!=null);
+  // Avg follow-up count before a win — counts THIS lead's actioned outcomes up to
+  // its resolution (computed only from the ledger; no inferred / fabricated data).
+  const fc = won.map(o=>{ const end=_intelDate(o.resolvedAt); if(!end) return null;
+    const c = OUTCOMES.filter(x=>x.leadId===o.leadId && x.actionedAt && _intelDate(x.actionedAt) && _intelDate(x.actionedAt)<=end).length;
+    return c>0 ? c : null; }).filter(x=>x!=null);
+  return { n, rate:n?won.length/n:null, won:won.length, lost:lost.length,
+           avgRev:won.length?rev/won.length:0,
+           avgDays:days.length?Math.round(days.reduce((a,b)=>a+b,0)/days.length):null,
+           avgFollowUps:fc.length?(fc.reduce((a,b)=>a+b,0)/fc.length):null };
+}
+// ── Communication timeline (combines lead, orders, auto-responder & outcomes) ──
+function ffTimeline(leadId){
+  const ev = [], l = LEAD_BY_ID[leadId]||{};
+  const push=(d,icon,label)=>{ const dt=_intelDate(d); if(dt) ev.push({d:dt, icon, label}); };
+  push(leadDate(l), '🌱', 'Lead created');
+  const ec = Number(l.emailCount)||0;
+  if(ec>0) push(l.lastReplyAt||leadDate(l), '✉️', `${ec} email${ec===1?'':'s'} exchanged`);
+  if(l.followUpSent) push(l.lastReplyAt||leadDate(l), '🔔', 'Auto follow-up sent');
+  const email=(l.email||'').trim().toLowerCase();
+  if(email) ORDERS.filter(o=>orderEmail(o)===email).forEach(o=>{
+    push(parseOrderDate(o), '🧾', `Order${orderId(o)?(' NC-'+orderId(o)):''} created`);
+    if(isPaid(o)) push(parseOrderDate(o), '💵', 'Payment received');
+  });
+  OUTCOMES.filter(o=>o.leadId===leadId).forEach(o=>{
+    push(o.actionedAt, '⚡', `Recommendation actioned${o.recommendedChannel?(' · '+o.recommendedChannel):''}`);
+    if(o.status==='converted') push(o.resolvedAt, '🏆', `Won${o.actualRevenue?(' · '+fmt(o.actualRevenue)):''}`);
+    if(o.status==='lost')      push(o.resolvedAt, '✖️', `Lost${o.lostReason?(' · '+o.lostReason):''}`);
+  });
+  return ev.sort((a,b)=>a.d-b.d);
+}
+// ── Automation status — exactly what has already happened, using available data
+// only (no new automation). Distinguishes: completed-by-Jarvis, completed-manually,
+// waiting-on-customer, waiting-on-founder, scheduled, overdue, none-yet. ──
+function ffAutomation(leadId){
+  const l = LEAD_BY_ID[leadId]||{}, i = INTEL_BY_ID[leadId]||{}, out=[];
+  const ec = Number(l.emailCount)||0;
+  if(ec>0) out.push({ok:true, txt:`Completed by Jarvis — ${ec} email${ec===1?'':'s'} sent by auto-responder`});
+  if(l.followUpSent) out.push({ok:true, txt:'Completed by Jarvis — automated follow-up sent'});
+  const mine = OUTCOMES.filter(o=>o.leadId===leadId);
+  const acted = mine.find(o=>o.actionedAt);
+  if(acted){
+    const age = daysSinceISO(acted.actionedAt);
+    const manual = acted.source==='jarvis-dashboard';
+    out.push({ok:true, txt:`${manual?'Completed manually (you)':'Completed'} — recommendation actioned${acted.recommendedChannel?(' via '+acted.recommendedChannel):''}${age!=null?(' · '+(age===0?'today':age+'d ago')):''}`});
+    const pend = mine.find(o=>o.status==='pending');
+    if(pend){
+      const a = daysSinceISO(pend.actionedAt);
+      out.push((a!=null && a>=PENDING_STALE_DAYS) ? {warn:true, txt:'Overdue — follow-up past due, awaiting customer'} : {wait:true, txt:'Waiting on customer'});
+    }
+  }
+  // Waiting on founder — explicit founder attention flagged and not yet actioned.
+  if(i.requiresNajah===true && !acted) out.push({wait:true, txt:'Waiting on founder — your action required before Jarvis proceeds'});
+  // Scheduled — only if a concrete future automated step exists in the loaded data.
+  const sched = _intelDate(l.nextFollowUpAt||i.nextActionAt);
+  if(sched && sched>NOW) out.push({sched:true, txt:`Scheduled — next automated step ${sched.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`});
+  if(!out.length) out.push({none:true, txt:'No automation performed yet'});
+  return out;
+}
+// ── Risk scan — surfaces only risks supported by loaded data; else "none". ──
+function ffRisks(r){
+  const l = LEAD_BY_ID[r.leadId]||{}, i = INTEL_BY_ID[r.leadId]||{}, risks=[];
+  if(r.ageDays!=null && r.ageDays>14) risks.push(`Customer has gone cold — ${r.ageDays} days since last meaningful activity`);
+  if(l.unsubscribed===true) risks.push('Lead is UNSUBSCRIBED — do not contact (hard invariant)');
+  const mine = OUTCOMES.filter(o=>o.leadId===r.leadId);
+  const me = actorUid();
+  if(mine.some(o=>o.actionedBy && me && o.actionedBy!==me)) risks.push('Already contacted by another team member via Jarvis — coordinate before re-contacting');
+  const lastReply = _intelDate(l.lastReplyAt);
+  const lastAct = mine.map(o=>_intelDate(o.actionedAt)).filter(Boolean).sort((a,b)=>b-a)[0];
+  if(lastReply && lastAct && lastReply>lastAct) risks.push('Customer replied AFTER the last outreach — read the thread before re-contacting (possible conflicting communication)');
+  if(i.requiresNajah===true) risks.push('Founder attention required before acting');
+  return risks;
+}
+// ── Inline customer record — every loaded lead + intel field, expands in place,
+// no navigation. Missing values render as "—". ──
+function ffFmtVal(v){
+  if(v==null || v==='') return '—';
+  if(typeof v==='boolean') return v?'Yes':'No';
+  if(Array.isArray(v)) return v.length ? (v.length+' item'+(v.length===1?'':'s')) : '—';
+  if(typeof v==='object'){ const d=_intelDate(v); if(d) return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    try{ const s=JSON.stringify(v); return s.length>80?s.slice(0,80)+'…':s; }catch(_){ return '—'; } }
+  if(typeof v==='string'){ if(/^\d{4}-\d{2}-\d{2}/.test(v)){ const d=_intelDate(v); if(d) return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); } return v; }
+  if(typeof v==='number') return String(v);
+  return String(v);
+}
+function ffCustomerRecord(leadId){
+  const l = LEAD_BY_ID[leadId]||{}, i = INTEL_BY_ID[leadId]||{};
+  const skip = new Set(['_docId','leadId','emailConversation']);  // emailConversation summarised as a count
+  const rows=[];
+  const add=(k,v)=>rows.push(`<div style="${P4SUB}white-space:nowrap;">${esc(k)}</div><div style="font-size:.82rem;word-break:break-word;">${esc(ffFmtVal(v))}</div>`);
+  Object.keys(l).sort().forEach(k=>{ if(!skip.has(k)) add('lead · '+k, l[k]); });
+  if(Array.isArray(l.emailConversation)) add('lead · emailConversation', l.emailConversation);
+  Object.keys(i).sort().forEach(k=>{ if(!skip.has(k)) add('intel · '+k, i[k]); });
+  return `<details style="margin-top:.9rem;"><summary style="cursor:pointer;${P4SUB}font-weight:700;">👤 CUSTOMER RECORD — every loaded field (expands here · no navigation)</summary>`
+    + `<div style="margin-top:.5rem;display:grid;grid-template-columns:auto 1fr;gap:.2rem .8rem;align-items:baseline;">${rows.join('')}</div></details>`;
+}
+// ── One-click actions (open the founder's own tools; record outcome on action) ──
+function ffActions(r){
+  const l = LEAD_BY_ID[r.leadId]||{}, btns=[];
+  const wa = waLink(l.whatsapp, msgIntel(r));
+  const email = (l.email||'').trim(), phone = waPhone(l.whatsapp);
+  if(wa)    btns.push(`<a class="btn btn-wa btn-sm" href="${esc(wa)}" target="_blank" rel="noopener" onclick="jActIntel('${esc(r.leadId)}')">📱 Open WhatsApp</a>`);
+  if(email) btns.push(`<a class="btn btn-ghost btn-sm" href="mailto:${esc(email)}" onclick="jActIntel('${esc(r.leadId)}')">✉️ Open Email</a>`);
+  if(phone) btns.push(`<a class="btn btn-ghost btn-sm" href="tel:+${esc(phone)}" onclick="jActIntel('${esc(r.leadId)}')">📞 Call Customer</a>`);
+  btns.push(`<button class="btn btn-done btn-sm" onclick="jFFWon('${esc(r.leadId)}')">✓ Mark Won</button>`);
+  btns.push(`<button class="btn btn-lost btn-sm" onclick="jFFLost('${esc(r.leadId)}')">✗ Mark Lost</button>`);
+  btns.push(`<button class="btn btn-snooze btn-sm" onclick="jFFSnooze('${esc(r.leadId)}')">⏰ Snooze</button>`);
+  // Customer Record is NOT a button here — it expands inline (ffCustomerRecord), no navigation.
+  return btns.join(' ');
+}
+// Ensure a jarvis_outcomes record exists for a lead (reuses a pending one if
+// present), so Mark Won/Lost on the card always attaches to a Recommendation ID
+// even when WhatsApp/Email was never opened first. Write-on-action only.
+async function ensureLeadOutcome(leadId){
+  const existing = OUTCOMES.find(o=>o.leadId===leadId && o.status==='pending');
+  if(existing) return existing.id;
+  if(ACTIONED_INTEL[leadId]){ const e2 = OUTCOMES.find(o=>o.leadId===leadId); if(e2) return e2.id; }
+  const i = INTEL_BY_ID[leadId]||{}, lead = LEAD_BY_ID[leadId]||{};
+  ACTIONED_INTEL[leadId] = true;
+  const outcome = {
+    opportunityType: i.recommendedOffer ? ('Lead — '+i.recommendedOffer) : 'Lead',
+    name: String(lead.name||'').trim(), whatsapp: lead.whatsapp||'', leadId,
+    expectedRevenue: Math.round(Number(i.expectedValue)||0), actualRevenue:null,
+    status:'pending', executionStatus:'actioned', source:'jarvis-dashboard',
+    actionedBy: actorUid(), recommendedAt: todayISO(), actionedAt: new Date().toISOString(),
+    repliedAt:null, quotedAt:null, resolvedAt:null, campaignId:null,
+    ...recMetaForLead(leadId)
+  };
+  try{
+    const ref = await addDoc(collection(db,'jarvis_outcomes'), outcome);
+    outcome.id = ref.id; OUTCOMES.push(outcome);
+    return ref.id;
+  }catch(e){ console.error('[Jarvis] ensure outcome failed', e); ACTIONED_INTEL[leadId]=false; return null; }
+}
+window.jFFWon = async function(leadId){
+  const i = INTEL_BY_ID[leadId]||{};
+  const id = await ensureLeadOutcome(leadId);
+  if(!id){ toast('⚠ Could not record'); return; }
+  jConverted(id, '', Math.round(Number(i.expectedValue)||0));
+};
+window.jFFLost = async function(leadId){
+  const id = await ensureLeadOutcome(leadId);
+  if(!id){ toast('⚠ Could not record'); return; }
+  jLost(id, '');
+};
+window.jFFSnooze = function(leadId){ snooze(leadId,3); toast('⏰ Snoozed 3 days'); renderFounderFocus(); };
+
 function renderFounderFocus(){
   const el=document.getElementById('sec-founder-focus'); if(!el) return;
-  const top=honestActive().sort((a,b)=>b.roi-a.roi)[0];
-  if(!top){ el.innerHTML=''; return; }
+  const snz=getSnooze(), today=todayISO();
+  const ranked=honestActive().filter(r=>!(snz[r.leadId] && snz[r.leadId]>today)).sort((a,b)=>b.roi-a.roi);
+  const top=ranked[0];
+  if(!top){
+    el.innerHTML=`<div class="sec-head"><h2>🔥 Founder Focus</h2><span class="sub">If Najah only does ONE thing today</span></div>`
+      +`<div style="${P4CARD}"><p class="sub" style="color:var(--mid,#888);margin:0;">No open recommendations right now — every honest opportunity is actioned, resolved, or snoozed. 🎉</p></div>`;
+    return;
+  }
+  const i=INTEL_BY_ID[top.leadId]||{}, l=LEAD_BY_ID[top.leadId]||{};
+  const meta=recMetaForLead(top.leadId), t=recTypeFor(top), life=recLifecycle(top), L=recLearning(t.key);
+  const potential=(i.potentialValue&&Number(i.potentialValue.value))||0;
+  const company=(l.company||l.business||l.businessName||l.brandName||l.brandType||'').trim()||'—';
+  const owner=(l.owner||l.assignedTo||'').trim()||'Najah';
+  const reason=(top.why&&top.why.length)?top.why.join(' · '):'Highest revenue-per-minute opportunity';
   const cell=`<div><div style="${P4SUB}">`;
-  el.innerHTML=`<div class="sec-head"><h2>🔥 Founder Focus</h2><span class="sub">If Najah only does ONE thing today</span></div>`
-    +`<div style="${P4CARD}border:1.5px solid var(--gold);background:linear-gradient(135deg,rgba(200,151,58,0.16),var(--card));">`
-    +`<div class="p4big" style="font-size:1.35rem;font-weight:800;color:var(--gold);">${waActionCell(top)}</div>`
-    +`<div class="p4grid" style="margin-top:.55rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.6rem;font-size:.95rem;">`
+  const stCol = (life.key==='won')?'var(--success,#27AE60)':(life.key==='lost'||life.key==='overdue')?'var(--danger,#C0392B)':(life.key==='awaiting')?'var(--gold)':'var(--mid,#888)';
+
+  const idLine=`<div style="${P4SUB}margin-top:.5rem;">Recommendation <b style="color:var(--gold);">${esc(meta.recommendationId)}</b> · Lead ID <code>${esc(top.leadId)}</code> · ${esc(t.label)}</div>`;
+  const idGrid=`<div class="p4grid" style="margin-top:.7rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.6rem;font-size:.9rem;">`
+    +`${cell}LEAD</div><b>${esc(top.name)}</b></div>`
+    +`${cell}COMPANY / NICHE</div><b>${esc(company)}</b></div>`
+    +`${cell}SOURCE</div><b>${esc(meta.leadSource||'—')}</b></div>`
+    +`${cell}INTERESTED IN</div><b>${esc(top.offer||'—')}</b></div>`
+    +`${cell}POTENTIAL</div><b class="money">${fmt(potential)}</b></div>`
     +`${cell}EXPECTED VALUE</div><b class="money">${fmt(top.ev)}</b></div>`
     +`${cell}CONFIDENCE</div><b>${pctOf(top.conf)}</b></div>`
-    +`${cell}TIME</div><b>${top.minutes} min</b></div>`
     +`${cell}REVENUE INFLUENCE</div><b>${revInflPct(top.ev)} of goal</b></div>`
-    +`</div>`
-    +`<div style="${P4SUB}margin-top:.6rem;">Reason: Highest revenue-per-minute opportunity${top.why&&top.why.length?` — ${esc(top.why[0])}`:''}</div>`
+    +`${cell}STATUS</div><b style="color:${stCol};">${esc(life.label)}</b></div>`
+    +`${cell}DAYS SINCE CONTACT</div><b>${top.ageDays!=null?top.ageDays+'d':'—'}</b></div>`
+    +`${cell}LAST CHANNEL</div><b>${esc(meta.recommendedChannel||'—')}</b></div>`
+    +`${cell}OWNER</div><b>${esc(owner)}</b></div>`
+    +`</div>`;
+
+  const tl=ffTimeline(top.leadId);
+  const tdf=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const timelineHTML = tl.length
+    ? `<div style="${P4SUB}margin:.9rem 0 .35rem;">COMMUNICATION TIMELINE</div>`
+      +`<div style="display:flex;flex-wrap:wrap;gap:.35rem;align-items:center;font-size:.82rem;">`
+      + tl.map((e,idx)=>`<span style="white-space:nowrap;">${e.icon} ${esc(e.label)} <span style="${P4SUB}">${tdf(e.d)}</span></span>${idx<tl.length-1?'<span style="color:var(--mid,#888);">→</span>':''}`).join('')
+      +`</div>` : '';
+
+  const auto=ffAutomation(top.leadId);
+  const aRow=a=>{ const c=a.warn?'var(--danger,#C0392B)':a.ok?'var(--success,#27AE60)':(a.wait||a.sched)?'var(--gold)':'var(--mid,#888)';
+    const ic=a.ok?'✓':a.warn?'⚠':a.wait?'⏳':a.sched?'🗓':'•'; return `<div style="font-size:.85rem;color:${c};">${ic} ${esc(a.txt)}</div>`; };
+  const autoHTML=`<div style="${P4SUB}margin:.9rem 0 .35rem;">WHAT JARVIS HAS DONE</div>${auto.map(aRow).join('')}`;
+
+  // Learning readout — shown only when statistically supported; never fabricated.
+  let learnTxt;
+  if(L.n>=3){
+    learnTxt=`Historical evidence — <b>${Math.round(L.rate*100)}%</b> success over <b>${L.n}</b> resolved (${L.won} won / ${L.lost} lost)`
+      + (L.avgRev?`, avg <b class="money">${fmt(L.avgRev)}</b>`:'')
+      + (L.avgDays!=null?`, ~<b>${L.avgDays}</b>d to close`:'')
+      + (L.avgFollowUps!=null?`, ~<b>${L.avgFollowUps.toFixed(1)}</b> follow-ups`:'') + '.';
+  } else if(L.n>0){
+    learnTxt=`Limited history (${L.n} resolved) — not yet statistically reliable; recording outcomes to build evidence.`;
+  } else {
+    learnTxt=`No historical evidence yet for this recommendation type (explicitly none) — outcomes you record will train it.`;
+  }
+
+  const risks=ffRisks(top);
+  const afterTxt=`records it against ${esc(meta.recommendationId)} in jarvis_outcomes (status: awaiting outcome), drops it from your focus list, and tracks it under Pending Outcomes until you mark Won or Lost — which trains the learning engine.`;
+
+  // ── Executive Briefing — Situation → Assessment → Risks → Recommendation ──
+  const bSec=(title,body)=>`<div style="margin-top:.55rem;"><div style="${P4SUB}font-weight:700;color:var(--gold);">${title}</div><div style="font-size:.86rem;line-height:1.5;">${body}</div></div>`;
+  const situation=`<b>${esc(top.name)}</b>${company!=='—'?` (${esc(company)})`:''} wants <b>${esc(top.offer||'—')}</b>. Potential <b class="money">${fmt(potential)}</b> · expected value <b class="money">${fmt(top.ev)}</b> at <b>${pctOf(top.conf)}</b> confidence (${revInflPct(top.ev)} of daily goal).`;
+  const assessment=`Ranked #1 by revenue-per-minute. Why: ${esc(reason)}.`
+    + ((Array.isArray(i.intentSignals)&&i.intentSignals.length)?` Evidence: ${esc(i.intentSignals.slice(0,3).join('; '))}.`:'')
+    + ` ${learnTxt}`;
+  const risksBody=risks.length
+    ? `<ul style="margin:.2rem 0 0;padding-left:1.1rem;">`+risks.map(x=>`<li style="color:var(--danger,#C0392B);">${esc(x)}</li>`).join('')+`</ul>`
+    : `<span style="color:var(--success,#27AE60);">No risks detected from available data — clear to act.</span>`;
+  const recBody=`<b>${esc(top.action)}</b> via ${esc(meta.recommendedChannel||'—')} (${top.minutes} min). Expected outcome: <b class="money">${fmt(top.ev)}</b> at <b>${pctOf(top.conf)}</b> close probability.`
+    +`<div style="${P4SUB}margin-top:.25rem;">After you act, Jarvis ${afterTxt}</div>`;
+  const briefingHTML=`<div style="margin-top:.8rem;padding:.85rem .95rem;background:var(--card);border:1px solid var(--border);border-radius:10px;">`
+    +`<div style="${P4SUB}font-weight:800;letter-spacing:.6px;">🗒 EXECUTIVE BRIEFING</div>`
+    + bSec('SITUATION',situation) + bSec('ASSESSMENT',assessment) + bSec('RISKS',risksBody) + bSec('RECOMMENDATION',recBody)
+    +`</div>`;
+
+  const aiHTML=`<div style="margin-top:.9rem;padding:.8rem .9rem;background:rgba(200,151,58,0.08);border:1px solid var(--gold);border-radius:10px;">`
+    +`<div style="${P4SUB}">🤖 AI RECOMMENDATION</div>`
+    +`<div style="font-size:1.05rem;font-weight:800;color:var(--gold);margin-top:.2rem;">${esc(top.action)}</div>`
+    +`<div style="${P4SUB}margin-top:.3rem;">Why selected: ${esc(reason)}</div>`
+    +`<div style="font-size:.85rem;margin-top:.35rem;">Expected impact: <b class="money">${fmt(top.ev)}</b> · ${revInflPct(top.ev)} of daily goal · ${top.minutes} min</div>`
+    +`<div style="font-size:.85rem;margin-top:.35rem;">Confidence: <b>${pctOf(top.conf)}</b> (model). ${learnTxt}</div>`
+    +`</div>`;
+
+  const actionsHTML=`<div style="${P4SUB}margin:.9rem 0 .4rem;">ONE-CLICK ACTIONS</div>`
+    +`<div style="display:flex;flex-wrap:wrap;gap:.45rem;">${ffActions(top)}</div>`
+    +`<div style="${P4SUB}margin-top:.5rem;">No AI messaging or autonomous sending — these open your own tools and record the outcome against ${esc(meta.recommendationId)}.</div>`;
+
+  el.innerHTML=`<div class="sec-head"><h2>🔥 Founder Focus</h2><span class="sub">Your CEO desk — understand, decide and act without leaving this card</span></div>`
+    +`<div style="${P4CARD}border:1.5px solid var(--gold);background:linear-gradient(135deg,rgba(200,151,58,0.14),var(--card));">`
+    +`<div class="p4big" style="font-size:1.3rem;font-weight:800;color:var(--gold);">${esc(top.action)}</div>`
+    + idLine + briefingHTML + idGrid + timelineHTML + autoHTML + aiHTML + ffCustomerRecord(top.leadId) + actionsHTML
     +`</div>`;
 }
 // Derived cause label from existing intel state — no new fields/collections.

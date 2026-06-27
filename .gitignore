@@ -22,5 +22,7 @@ scripts/_snapshots/
 *lead-intelligence-snapshot-*.json
 # Generated render harness embeds live lead data — never commit
 scripts/.phase4-harness.html
+scripts/.phase47-harness.html
+scripts/.phase47-founder-focus*.png
 # Baseline benchmark embeds lead names (PII) — keep local, never commit
 JARVIS_BASELINE_*.md
