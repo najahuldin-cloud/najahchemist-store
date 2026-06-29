@@ -301,6 +301,7 @@
   <!-- PHASE 4: decision-first dashboard (refined visual priority) -->
   <div id="inflation-banner"></div>
   <section id="sec-founder-focus" style="margin-top:1.2rem;"></section>
+  <section id="sec-rec-command-center" style="margin-top:1.2rem;"></section>
   <section id="sec-pending-alert" style="margin-top:1.2rem;"></section>
   <section id="sec-today-money" style="margin-top:1.6rem;"></section>
   <section id="sec-top-actions" style="margin-top:1.6rem;"></section>
@@ -349,6 +350,8 @@
     <div class="sec-head"><h2>Pending Outcomes</h2><span class="sub">need a follow-up decision</span></div>
     <div id="pending-list"></div>
   </section>
+
+  <section id="sec-rec-replay" style="margin-top:1.6rem;"></section>
 
   <!-- SECTION 4 -->
   <section id="sec-ask">
@@ -401,7 +404,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, getDocs, query, orderBy, addDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, query, orderBy, addDoc, updateDoc, doc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
@@ -439,6 +442,16 @@ const NOW = new Date();
 let ORDERS = [], LEADS = [];
 let INTEL = [];             // lead_intelligence/{leadId} docs (v4 scorer output)
 const INTEL_BY_ID = {};     // leadId -> intelligence doc (join key = lead doc id)
+// Phase E: the Recommendation Platform is the single source of truth for recommendation
+// state/identity/lifecycle/queue placement. The dashboard READS these records and never
+// recomputes recommendation state when the platform is populated.
+let RECS = [];              // recommendations/{recommendationId} docs (canonical)
+const REC_BY_ID = {};       // recommendationId -> record
+const REC_BY_LEAD = {};     // leadId -> the dominant record (active preferred, else newest)
+let REC_INTEGRITY = null;   // latest recommendation_integrity_reports doc (watchdog)
+let REC_PROPOSALS = [];     // recommendation_resolution_proposals docs (shadow reconciliation)
+let REPLAY_REC = null;      // recommendationId selected in Replay Mode / Time Machine
+let REPLAY_CURSOR = null;   // event index for the Time Machine ("what Jarvis knew at T")
 let OPPS = [];
 let CONTEXT = {};
 let askHistory = []; // {role, content}
@@ -532,6 +545,124 @@ function whyFor(i){
 // Honest leads joined with name + derived action, ranked by ROI = expectedValue ÷ minutes.
 // NOTE: stored expectedValue already = potentialValue × closeProbability, so EV÷time IS the
 // "(Expected Value × Close Probability) ÷ Time" formula — closeProbability applied once.
+// ════════════════════════════════════════════════════════════════════════════
+// PHASE E — Recommendation Platform read-model. The dashboard READS these records;
+// it does not recompute recommendation state. Canonical state strings mirror the
+// backend _shared/recommendation-model.js STATE enum.
+// ════════════════════════════════════════════════════════════════════════════
+const REC_STATE = { GENERATED:'Generated', WAITING_FOR_FOUNDER:'WaitingForFounder', AUTOMATION_RUNNING:'AutomationRunning', WAITING_FOR_CUSTOMER:'WaitingForCustomer', CUSTOMER_RESPONDED:'CustomerResponded', WON:'Won', LOST:'Lost', SNOOZED:'Snoozed', EXPIRED:'Expired', SUPERSEDED:'Superseded', ARCHIVED:'Archived' };
+const ACTIVE_REC_STATES = [REC_STATE.GENERATED, REC_STATE.WAITING_FOR_FOUNDER, REC_STATE.AUTOMATION_RUNNING, REC_STATE.WAITING_FOR_CUSTOMER, REC_STATE.CUSTOMER_RESPONDED];
+const ACTIONED_ACTIVE_STATES = [REC_STATE.AUTOMATION_RUNNING, REC_STATE.WAITING_FOR_CUSTOMER, REC_STATE.CUSTOMER_RESPONDED];
+const isActiveRecState = s => ACTIVE_REC_STATES.includes(s);
+// Authoritative once the collection is populated. Until a backfill runs, the dashboard
+// falls back to the LEGACY compute path (clearly marked) so it never renders blank.
+const PLATFORM_READY = () => Array.isArray(RECS) && RECS.length > 0;
+
+function buildRecIndexes(){
+  Object.keys(REC_BY_ID).forEach(k=>delete REC_BY_ID[k]);
+  Object.keys(REC_BY_LEAD).forEach(k=>delete REC_BY_LEAD[k]);
+  const rank = r => isActiveRecState(r.state) ? 2 : 1; // active record dominates a terminal one
+  for(const r of RECS){
+    REC_BY_ID[r.recommendationId] = r;
+    const cur = REC_BY_LEAD[r.leadId];
+    if(!cur){ REC_BY_LEAD[r.leadId] = r; continue; }
+    const rs = rank(r), cs = rank(cur);
+    if(rs > cs){ REC_BY_LEAD[r.leadId] = r; }
+    else if(rs === cs){ const ta=r.lastStateChangeAt||r.generatedAt||'', tb=cur.lastStateChangeAt||cur.generatedAt||''; if(ta>tb) REC_BY_LEAD[r.leadId]=r; }
+  }
+}
+// Map a canonical state to the legacy ocStatus vocabulary the renderers already use,
+// so re-pointing the data source needs no per-renderer rewrite.
+function recStateToOcStatus(rec){
+  if(rec.state===REC_STATE.WON) return 'converted';
+  if(rec.state===REC_STATE.LOST) return 'lost';
+  if(ACTIONED_ACTIVE_STATES.includes(rec.state)) return 'pending';
+  return null;
+}
+function recAgeDays(rec){ return daysSinceISO(rec.lastMeaningfulActivity || rec.baselineActivityAt); }
+// Build the exact row shape the renderers expect — entirely from the record.
+function recToRow(rec){
+  const ev = Number(rec.expectedValue)||0;
+  return {
+    leadId: rec.leadId, name: rec.name || leadName(rec.leadId),
+    ev, conf: Number(rec.closeProbability)||0, score: Number(rec.score)||0,
+    minutes: Number(rec.minutes)||5, action: rec.action || ('Contact '+(rec.name||'lead')),
+    roi: (rec.roi!=null) ? Number(rec.roi) : ev,
+    label: rec.scoreLabel, offer: rec.recommendedOffer, src: rec.opportunitySource,
+    replied: !!rec.replied, why: Array.isArray(rec.why)?rec.why:[],
+    ageDays: recAgeDays(rec),
+    ocStatus: recStateToOcStatus(rec), ocId: rec.outcomeId || rec.recommendationId,
+    ocActionedAt: rec.lastStateChangeAt || null,
+    recId: rec.recommendationId, state: rec.state,   // permanent identity carried on the row
+  };
+}
+// Active recommendations (snooze hidden) — the single source for every work queue.
+function activeRecsRows(){
+  const snz = getSnooze(), today = todayISO();
+  return RECS.filter(r=>isActiveRecState(r.state))
+    .filter(r=>r.state!==REC_STATE.SNOOZED)
+    .filter(r=>!(snz[r.leadId] && snz[r.leadId]>today))
+    .map(recToRow)
+    .sort((a,b)=>b.roi-a.roi);
+}
+// Resolved records → Recommendation History + Learning Engine.
+function resolvedRecs(){ return RECS.filter(r=>r.state===REC_STATE.WON || r.state===REC_STATE.LOST); }
+
+// ── Platform write paths — the founder's decisions transition the RECORD (the UI
+// records state, it does not invent it). Each write mirrors to the jarvis_outcomes
+// ledger for continuity and appends to the record's history for full traceability. ──
+async function recTransition(recId, toState, reason, patch, meta){
+  const rec = REC_BY_ID[recId]; if(!recId) return;
+  const ts = new Date().toISOString();
+  // Self-describing event entry — Replay Mode / Time Machine read these directly.
+  const entry = { at:ts, from: rec?rec.state:null, to:toState, reason:reason||null, actor:actorUid(),
+    eventType:(meta&&meta.eventType)||null, source:(meta&&meta.source)||'founder-dashboard', data:(meta&&meta.data)||null };
+  await updateDoc(doc(db,'recommendations',recId), { state:toState, stateReason:reason||null, lastStateChangeAt:ts, history:arrayUnion(entry), ...(patch||{}) });
+  if(rec){ Object.assign(rec, {state:toState, stateReason:reason||null, lastStateChangeAt:ts}, patch||{}); rec.history=Array.isArray(rec.history)?rec.history:[]; rec.history.push(entry); buildRecIndexes(); }
+}
+async function recMirrorOutcome(rec, fields){
+  // Continuity ledger row so any residual jarvis_outcomes consumer stays consistent.
+  try{
+    const o = { leadId:rec.leadId, customerId:rec.customerId||null, recommendationId:rec.recommendationId,
+      recommendationType:rec.recommendationType, opportunityType:rec.recommendationLabel||'Lead',
+      name:rec.name||'', expectedRevenue:Number(rec.expectedValue)||0, source:'jarvis-dashboard',
+      actionedBy:actorUid(), recommendedAt:todayISO(), actionedAt:new Date().toISOString(), ...fields };
+    const ref = await addDoc(collection(db,'jarvis_outcomes'), o); o.id=ref.id; OUTCOMES.push(o);
+    return ref.id;
+  }catch(e){ console.warn('[Jarvis] outcome mirror failed', e); return null; }
+}
+window.jRecWon = async function(recId){
+  const rec = REC_BY_ID[recId]; if(!rec){ toast('⚠ Recommendation not found'); return; }
+  const expected = Number(rec.expectedValue)||0;
+  const res = await ocModal({ title:'Won — record the sale', sub:'How much revenue did this generate?', options:WON_REASONS, withRevenue:true, expected });
+  if(res===null) return;
+  const actual = res.revenue||0, variance = actual-expected;
+  const accuracyScore = expected>0 ? Math.max(0, Math.round((1-Math.abs(variance)/expected)*100)) : null;
+  const outcomeId = await recMirrorOutcome(rec, { status:'converted', outcome:'won', executionStatus:'resolved', actualRevenue:actual, revenueVariance:variance, accuracyScore, wonReason:res.reason, resolvedAt:todayISO() });
+  await recTransition(recId, REC_STATE.WON, `Founder marked Won — ${res.reason}`, { actualRevenue:actual, revenueVariance:variance, accuracyScore, resolvedAt:new Date().toISOString(), resolvedBy:'founder', outcomeId }, { eventType:'resolved-won', source:'founder-dashboard', data:{ actualRevenue:actual, reason:res.reason } });
+  toast(`🎉 ${fmt(actual)} recorded`); refreshOutcomeSurfaces();
+};
+window.jRecLost = async function(recId){
+  const rec = REC_BY_ID[recId]; if(!rec){ toast('⚠ Recommendation not found'); return; }
+  const res = await ocModal({ title:'Lost — what happened?', options:LOST_REASONS });
+  if(res===null) return;
+  const outcomeId = await recMirrorOutcome(rec, { status:'lost', outcome:'lost', executionStatus:'resolved', actualRevenue:0, lostReason:res.reason, resolvedAt:todayISO() });
+  await recTransition(recId, REC_STATE.LOST, `Founder marked Lost — ${res.reason}`, { actualRevenue:0, resolvedAt:new Date().toISOString(), resolvedBy:'founder', outcomeId }, { eventType:'resolved-lost', source:'founder-dashboard', data:{ reason:res.reason } });
+  toast('❌ Marked as lost'); refreshOutcomeSurfaces();
+};
+window.jRecSnooze = async function(recId){
+  const rec = REC_BY_ID[recId]; if(!rec) return;
+  snooze(rec.leadId,3);   // instant UI hide
+  try{ await recTransition(recId, REC_STATE.SNOOZED, 'Founder snoozed 3 days', { snoozeUntil: new Date(NOW.getTime()+3*86400000).toISOString().slice(0,10) }, { eventType:'snoozed', source:'founder-dashboard', data:{ days:3 } }); }catch(_){}
+  toast('⏰ Snoozed 3 days'); refreshOutcomeSurfaces();
+};
+// Founder opened an outreach tool → the recommendation is now actioned, awaiting reply.
+async function recMarkActioned(recId, channel){
+  const rec = REC_BY_ID[recId]; if(!rec) return;
+  if(!isActiveRecState(rec.state) || rec.state===REC_STATE.WAITING_FOR_CUSTOMER) return; // already actioned/terminal
+  try{ await recTransition(recId, REC_STATE.WAITING_FOR_CUSTOMER, `Actioned via ${channel||rec.recommendedChannel||'outreach'}`, {}, { eventType:'actioned', source:'founder-dashboard', data:{ channel: channel||rec.recommendedChannel||null } }); }catch(_){}
+}
+
 // Index leadId -> its dominant jarvis_outcomes record. Resolved (converted/lost)
 // dominates pending; within a tier the most-recent wins. Skips are ignored.
 // Used to make every recommendation surface outcome-aware (validation Fix A).
@@ -578,9 +709,16 @@ function honestRanked(){
              ocActionedAt: oc?(oc.actionedAt||(oc.recommendedAt?oc.recommendedAt+'T00:00:00':null)):null };
   });
 }
-// Recommendation-ready set: drops leads already resolved (converted/lost) so they
-// never re-surface; keeps pending leads (they get a badge + inline Won/Lost). Fix A.
+// Phase E: every work queue calls honestActive(); re-pointing this ONE adapter to the
+// Recommendation Platform migrates Today's Top Actions, Founder Focus, Next 15, Revenue
+// Target/Risk, Top Opportunities, Lead Command and Money Missed all at once. The UI no
+// longer computes which recommendations are active — it reads the records.
+// legacyHonestActive() is a transitional bootstrap, used ONLY before the platform is
+// backfilled (empty collection), and is retired once records exist in production.
 function honestActive(){
+  return PLATFORM_READY() ? activeRecsRows() : legacyHonestActive();
+}
+function legacyHonestActive(){
   return honestRanked().filter(r => r.ocStatus!=='converted' && r.ocStatus!=='lost');
 }
 
@@ -603,11 +741,15 @@ function pendingBadgeHTML(outcomeId, leadId, expected, actionedAt){
   const ageTxt = days==null ? 'just now' : (days===0 ? 'today' : `${days} day${days===1?'':'s'} ago`);
   const overdue = days!=null && days>=PENDING_STALE_DAYS;
   const exp = Math.round(expected||0);
+  // Phase E: in platform mode the id is a permanent Recommendation ID and the buttons
+  // transition the record; legacy mode resolves the jarvis_outcomes row directly.
+  const wonCall  = PLATFORM_READY() ? `jRecWon('${esc(outcomeId)}')`  : `jConverted('${esc(outcomeId)}','',${exp})`;
+  const lostCall = PLATFORM_READY() ? `jRecLost('${esc(outcomeId)}')` : `jLost('${esc(outcomeId)}','')`;
   return `<span class="lead-pend" style="display:inline-block;color:var(--mid,#888);font-size:.8rem;margin-right:.5rem;">`
     + `⏳ Actioned ${ageTxt} · awaiting outcome`
     + (overdue?` · <b style="color:var(--danger,#C0392B);">⚠ follow-up overdue</b>`:'') + `</span>`
-    + `<button class="btn btn-done btn-sm" onclick="jConverted('${esc(outcomeId)}','',${exp})">Won</button> `
-    + `<button class="btn btn-lost btn-sm" onclick="jLost('${esc(outcomeId)}','')">Lost</button>`;
+    + `<button class="btn btn-done btn-sm" onclick="${wonCall}">Won</button> `
+    + `<button class="btn btn-lost btn-sm" onclick="${lostCall}">Lost</button>`;
 }
 // The action control for a recommendation row: WhatsApp link (untouched) or
 // pending badge + Won/Lost (already actioned). Wrapped so jActIntel can swap it in place.
@@ -626,7 +768,7 @@ function setLeadOcHTML(leadId, html){
 // leads drop off recommendations without disturbing legacy inline summaries. Fix A.
 function refreshOutcomeSurfaces(){
   try{
-    renderFounderFocus(); renderTodayMoney(); renderTopActions(); renderNext15();
+    renderFounderFocus(); renderRecCommandCenter(); renderRecReplay(); renderTodayMoney(); renderTopActions(); renderNext15();
     renderRevenueTarget(); renderRevenueRisk(); renderMoneyMissed();
     renderTopOpps(); renderLeadCommand();
     renderLeaderboard(); renderPending(); renderPendingAlert(); renderInsights();
@@ -637,6 +779,19 @@ function refreshOutcomeSurfaces(){
 window.jActIntel = function(leadId){
   if(!leadId || ACTIONED_INTEL[leadId]) return;   // dedup: already recorded this session
   ACTIONED_INTEL[leadId] = true;
+  // Phase E: actioning transitions the canonical record (WaitingForCustomer). No
+  // duplicate jarvis_outcomes "pending" row — the record is the single source of state.
+  if(PLATFORM_READY() && REC_BY_LEAD[leadId]){
+    const rec = REC_BY_LEAD[leadId]; const ts = new Date().toISOString();
+    recMarkActioned(rec.recommendationId, rec.recommendedChannel)
+      .then(()=>{
+        setLeadOcHTML(leadId, pendingBadgeHTML(rec.recommendationId, leadId, rec.expectedValue, ts));
+        try{ renderPendingAlert(); renderPending(); renderFounderFocus(); }catch(_){}
+        try{ toast('✓ Actioned — '+(rec.name||'lead')); }catch(_){}
+      })
+      .catch(e=>{ console.error('[Jarvis] actioned transition failed', e); ACTIONED_INTEL[leadId] = false; });
+    return;
+  }
   const i = INTEL_BY_ID[leadId] || {};
   const lead = LEAD_BY_ID[leadId] || {};
   const outcome = {
@@ -1764,10 +1919,19 @@ function renderLeaderboard(){
     </tbody></table></div>`;
 }
 
+// Phase E: Pending Outcomes reads the Recommendation Platform (actioned-but-unresolved
+// records). Falls back to the jarvis_outcomes ledger only before backfill.
+function pendingItems(){
+  if(PLATFORM_READY()) return RECS.filter(r=>ACTIONED_ACTIVE_STATES.includes(r.state))
+    .map(r=>({ id:r.recommendationId, name:r.name||leadName(r.leadId), leadId:r.leadId,
+               opportunityType:r.recommendationLabel, expectedRevenue:Number(r.expectedValue)||0,
+               actionedAt:r.lastStateChangeAt, recommendedAt:(r.generatedAt||'').slice(0,10) }));
+  return OUTCOMES.filter(o=>o.status==='pending');
+}
 // Fix D — dashboard visibility into unresolved outcomes so they don't pile up.
 function renderPendingAlert(){
   const el = document.getElementById('sec-pending-alert'); if(!el) return;
-  const pend = OUTCOMES.filter(o=>o.status==='pending');
+  const pend = pendingItems();
   if(!pend.length){ el.innerHTML=''; return; }
   const ages = pend.map(pendingAge).filter(a=>a!=null);
   const oldest = ages.length ? Math.max(...ages) : 0;
@@ -1786,7 +1950,8 @@ function renderPendingAlert(){
 }
 function renderPending(){
   const el = document.getElementById('pending-list');
-  const pend = OUTCOMES.filter(o=>o.status==='pending')
+  const platform = PLATFORM_READY();
+  const pend = pendingItems().slice()
     .sort((a,b)=>(a.recommendedAt||'').localeCompare(b.recommendedAt||''));
   if(!pend.length){
     el.innerHTML = `<div class="empty" style="padding:0.6rem 0;">No pending outcomes — every actioned opportunity has been resolved. 🎉</div>`;
@@ -1799,12 +1964,15 @@ function renderPending(){
     const since = pendingAge(o);
     const sinceTxt = since==null ? 'just now' : (since===0 ? 'today' : `${since} day${since===1?'':'s'} ago`);
     const overdue = since!=null && since>=PENDING_STALE_DAYS;
+    // Phase E: in platform mode o.id is a permanent Recommendation ID → jRec* transitions.
+    const wonCall  = platform ? `jRecWon('${esc(o.id)}')`  : `jConverted('${o.id}','',${exp})`;
+    const lostCall = platform ? `jRecLost('${esc(o.id)}')` : `jLost('${o.id}','')`;
     return `<div class="pend-card"${overdue?' style="border-color:var(--danger,#C0392B);"':''}>
       <div class="pend-h"><span class="pend-n">${esc(o.name||'—')}</span><span class="pend-ty">${esc(o.opportunityType||'')}</span></div>
       <div class="pend-meta">Expected <b class="money">${fmt(exp)}</b> · actioned ${sinceTxt}${overdue?` · <b style="color:var(--danger,#C0392B);">⚠ follow-up overdue</b>`:''}</div>
       <div class="pend-acts">
-        <button class="btn btn-done btn-sm" onclick="jConverted('${o.id}','',${exp})">Won</button>
-        <button class="btn btn-lost btn-sm" onclick="jLost('${o.id}','')">Lost</button>
+        <button class="btn btn-done btn-sm" onclick="${wonCall}">Won</button>
+        <button class="btn btn-lost btn-sm" onclick="${lostCall}">Lost</button>
       </div>
     </div>`;
   }).join('') + `</div>`;
@@ -2509,6 +2677,8 @@ function renderTopOpps(){
 // source / channel the recommendation already uses — it does NOT change which
 // lead is recommended or its score. Drives the Rec ID and the learning groups.
 function recTypeFor(r){
+  const rec = r && (REC_BY_ID[r.recId] || REC_BY_LEAD[r.leadId]);   // Phase E: read the record
+  if(rec) return { key:rec.recommendationType, label:rec.recommendationLabel, channel:rec.recommendedChannel, tc:rec.typeCode };
   const i = INTEL_BY_ID[r.leadId] || {};
   if(i.recommendedOffer==='Manufacturing' && r.src==='newlead') return {key:'moq-quote',        label:'MOQ Quote',          channel:'whatsapp', tc:'MQ'};
   if(r.src==='overdue')                  return {key:'followup-overdue', label:'Overdue Follow-up',  channel:i.preferredChannel||'whatsapp', tc:'FO'};
@@ -2523,12 +2693,26 @@ function recTypeFor(r){
 // to allocate). A new day or a different recommendation type yields a new ID —
 // matching the spec's "two weeks later = a different recommendation" model.
 function recIdFor(r){
+  const rec = r && (REC_BY_ID[r.recId] || REC_BY_LEAD[r.leadId]);   // Phase E: permanent ID
+  if(rec) return rec.recommendationId;   // never regenerated — fixes the date-drift defect
   const t = recTypeFor(r);
   return `REC-${String(r.leadId).slice(0,6).toUpperCase()}-${todayISO().replace(/-/g,'')}-${t.tc}`;
 }
 // Recommendation metadata for a lead, reconstructed from intel + lead docs alone
 // (no ranked row needed) so it can be stamped onto an outcome at action time.
 function recMetaForLead(leadId){
+  const rec = REC_BY_LEAD[leadId];   // Phase E: read the canonical record
+  if(rec) return {
+    recommendationId:    rec.recommendationId,
+    recommendationType:  rec.recommendationType,
+    recommendationLabel: rec.recommendationLabel,
+    recommendedChannel:  rec.recommendedChannel,
+    product:             rec.recommendedOffer || null,
+    leadSource:          rec.leadSource || null,
+    customerId:          rec.customerId || ((LEAD_BY_ID[leadId]||{}).email||'').trim().toLowerCase() || leadId,
+    opportunityId:       leadId,
+    confidence:          Number(rec.closeProbability)||0,
+  };
   const i = INTEL_BY_ID[leadId]||{}, l = LEAD_BY_ID[leadId]||{};
   const t = recTypeFor({ leadId, src:i.opportunitySource });
   return {
@@ -2547,6 +2731,19 @@ function recMetaForLead(leadId){
 // jarvis_outcomes). honestActive() already drops resolved leads, so the Founder
 // Focus pick is normally "presented" or "awaiting".
 function recLifecycle(r){
+  const rec = r && (REC_BY_ID[r.recId] || REC_BY_LEAD[r.leadId]);   // Phase E: state from the record
+  if(rec){
+    if(rec.state===REC_STATE.WON)        return {key:'won',  label:'Won'};
+    if(rec.state===REC_STATE.LOST)       return {key:'lost', label:'Lost'};
+    if(rec.state===REC_STATE.EXPIRED)    return {key:'expired', label:'Expired'};
+    if(rec.state===REC_STATE.SUPERSEDED) return {key:'superseded', label:'Superseded'};
+    if(rec.state===REC_STATE.SNOOZED)    return {key:'snoozed', label:'Snoozed'};
+    if(ACTIONED_ACTIVE_STATES.includes(rec.state)){
+      const age = daysSinceISO(rec.lastStateChangeAt);
+      return (age!=null && age>=PENDING_STALE_DAYS) ? {key:'overdue', label:'Awaiting outcome · overdue'} : {key:'awaiting', label:'Awaiting outcome'};
+    }
+    return {key:'presented', label:'Presented — not yet actioned'};
+  }
   if(r.ocStatus==='converted') return {key:'won',  label:'Won'};
   if(r.ocStatus==='lost')      return {key:'lost', label:'Lost'};
   if(r.ocStatus==='pending'){
@@ -2556,18 +2753,31 @@ function recLifecycle(r){
   return {key:'presented', label:'Presented — not yet actioned'};
 }
 // ── Recommendation Learning Engine (display only) ──
-// Success rate & economics for a recommendation type, computed from REAL resolved
-// outcomes in jarvis_outcomes. Does NOT change scoring, ranking, or confidence —
-// history-driven confidence adjustment is a deliberately deferred later slice.
+// Phase E: success rate & economics for a recommendation type, computed from the
+// RESOLVED Recommendation records (the platform), not recomputed from the ledger.
+// Does NOT change scoring, ranking, or confidence. Falls back to the jarvis_outcomes
+// ledger only before the platform is backfilled.
 function recLearning(typeKey){
+  if(PLATFORM_READY()){
+    const scoped = resolvedRecs().filter(r=>r.recommendationType===typeKey);
+    const won = scoped.filter(r=>r.state===REC_STATE.WON), lost = scoped.filter(r=>r.state===REC_STATE.LOST);
+    const n = won.length+lost.length;
+    const rev = won.reduce((s,r)=>s+(Number(r.actualRevenue)||0),0);
+    const days = won.map(r=>{ const s=_intelDate(r.generatedAt), e=_intelDate(r.resolvedAt);
+      if(s&&e){ const d=Math.round((e-s)/86400000); return d>=0?d:null; } return null; }).filter(d=>d!=null);
+    // Avg founder/automation touches before a win — actioned transitions in the record's history.
+    const fc = won.map(r=>{ const h=Array.isArray(r.history)?r.history.filter(x=>x.to===REC_STATE.WAITING_FOR_CUSTOMER||x.to===REC_STATE.AUTOMATION_RUNNING).length:0; return h>0?h:null; }).filter(x=>x!=null);
+    return { n, rate:n?won.length/n:null, won:won.length, lost:lost.length,
+             avgRev:won.length?rev/won.length:0,
+             avgDays:days.length?Math.round(days.reduce((a,b)=>a+b,0)/days.length):null,
+             avgFollowUps:fc.length?(fc.reduce((a,b)=>a+b,0)/fc.length):null };
+  }
   const scoped = OUTCOMES.filter(o=>o.recommendationType===typeKey && (o.status==='converted'||o.status==='lost'));
   const won = scoped.filter(o=>o.status==='converted'), lost = scoped.filter(o=>o.status==='lost');
   const n = won.length+lost.length;
   const rev = won.reduce((s,o)=>s+(Number(o.actualRevenue)||0),0);
   const days = won.map(o=>{ const s=_intelDate(o.actionedAt)||_intelDate(o.recommendedAt), e=_intelDate(o.resolvedAt);
     if(s&&e){ const d=Math.round((e-s)/86400000); return d>=0?d:null; } return null; }).filter(d=>d!=null);
-  // Avg follow-up count before a win — counts THIS lead's actioned outcomes up to
-  // its resolution (computed only from the ledger; no inferred / fabricated data).
   const fc = won.map(o=>{ const end=_intelDate(o.resolvedAt); if(!end) return null;
     const c = OUTCOMES.filter(x=>x.leadId===o.leadId && x.actionedAt && _intelDate(x.actionedAt) && _intelDate(x.actionedAt)<=end).length;
     return c>0 ? c : null; }).filter(x=>x!=null);
@@ -2699,18 +2909,25 @@ async function ensureLeadOutcome(leadId){
     return ref.id;
   }catch(e){ console.error('[Jarvis] ensure outcome failed', e); ACTIONED_INTEL[leadId]=false; return null; }
 }
+// Phase E: in platform mode these transition the canonical record (jRec*). Legacy
+// path (ensureLeadOutcome + jConverted/jLost) is used only before backfill.
 window.jFFWon = async function(leadId){
+  if(PLATFORM_READY() && REC_BY_LEAD[leadId]) return jRecWon(REC_BY_LEAD[leadId].recommendationId);
   const i = INTEL_BY_ID[leadId]||{};
   const id = await ensureLeadOutcome(leadId);
   if(!id){ toast('⚠ Could not record'); return; }
   jConverted(id, '', Math.round(Number(i.expectedValue)||0));
 };
 window.jFFLost = async function(leadId){
+  if(PLATFORM_READY() && REC_BY_LEAD[leadId]) return jRecLost(REC_BY_LEAD[leadId].recommendationId);
   const id = await ensureLeadOutcome(leadId);
   if(!id){ toast('⚠ Could not record'); return; }
   jLost(id, '');
 };
-window.jFFSnooze = function(leadId){ snooze(leadId,3); toast('⏰ Snoozed 3 days'); renderFounderFocus(); };
+window.jFFSnooze = function(leadId){
+  if(PLATFORM_READY() && REC_BY_LEAD[leadId]) return jRecSnooze(REC_BY_LEAD[leadId].recommendationId);
+  snooze(leadId,3); toast('⏰ Snoozed 3 days'); renderFounderFocus();
+};
 
 // ════════════════════════════════════════════════════════════════════════
 // PHASE 4.8 — Executive Intelligence helpers (Founder Focus only)
@@ -2852,6 +3069,9 @@ function ffMessages(r){
 }
 // 16. Everyone currently awaiting a customer reply (so the founder always knows who is waiting).
 function ffAwaitingList(){
+  if(PLATFORM_READY()) return RECS.filter(r=>ACTIONED_ACTIVE_STATES.includes(r.state))
+    .map(r=>({ name:r.name, leadId:r.leadId, recommendationId:r.recommendationId, opportunityType:r.recommendationLabel, actionedAt:r.lastStateChangeAt }))
+    .sort((a,b)=>(pendingAge(b)||0)-(pendingAge(a)||0));
   return OUTCOMES.filter(o=>o.status==='pending').sort((a,b)=>(pendingAge(b)||0)-(pendingAge(a)||0));
 }
 // 3. Next review date Jarvis owns (default cadence; refines as reply data accrues).
@@ -3013,7 +3233,10 @@ function renderFounderFocus(){
   // becomes an Awaiting-Customer card so the founder always knows who is waiting.
   let awaitingHTML='';
   if(life.key==='awaiting' || life.key==='overdue'){
-    const oc=OUTCOMES.find(o=>o.leadId===top.leadId && o.status==='pending')||{};
+    // Phase E: read the actioned-record for the awaiting evidence (no pending ledger row in platform mode).
+    const _rec = PLATFORM_READY() ? REC_BY_LEAD[top.leadId] : null;
+    const oc = _rec ? { actionedAt:_rec.lastStateChangeAt, recommendedChannel:_rec.recommendedChannel }
+                    : (OUTCOMES.find(o=>o.leadId===top.leadId && o.status==='pending')||{});
     const nr=ffNextReview(oc.actionedAt), waited=daysSinceISO(oc.actionedAt);
     const af=d=>d?d.toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—';
     const waAgain=waLink(l.whatsapp,msgIntel(top)), em=(l.email||'').trim();
@@ -3125,11 +3348,197 @@ function renderLeadCommand(){
     +`</tbody></table></div>`;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// RECOMMENDATION REPLAY MODE + TIME MACHINE — read-only. Visualizes a recommendation's
+// complete lifecycle straight from its append-only history[]; reconstructs "what Jarvis
+// knew at moment T" using ONLY events at-or-before T (no future knowledge). Never writes.
+// Nothing is reconstructed from guesses — only recorded events are shown.
+// ════════════════════════════════════════════════════════════════════════════
+const REPLAY_ICON = { generated:'🌱', surfaced:'👁', automation:'🤖', actioned:'📤', 'customer-responded':'💬', 'resolved-won':'🏆', 'resolved-lost':'✖️', snoozed:'⏰', expired:'⌛', superseded:'♻️', archived:'📦', transition:'•' };
+function replayEventType(e){
+  if(e.eventType) return e.eventType;
+  const m={ [REC_STATE.GENERATED]:'generated',[REC_STATE.WAITING_FOR_FOUNDER]:'surfaced',[REC_STATE.AUTOMATION_RUNNING]:'automation',[REC_STATE.WAITING_FOR_CUSTOMER]:'actioned',[REC_STATE.CUSTOMER_RESPONDED]:'customer-responded',[REC_STATE.WON]:'resolved-won',[REC_STATE.LOST]:'resolved-lost',[REC_STATE.SNOOZED]:'snoozed',[REC_STATE.EXPIRED]:'expired',[REC_STATE.SUPERSEDED]:'superseded',[REC_STATE.ARCHIVED]:'archived' };
+  return m[e.to]||'transition';
+}
+function replayActor(e){
+  const s=e.source||'', a=e.actor||'';
+  if(s==='founder-dashboard') return 'Founder';
+  if(s==='backfill'||a==='backfill') return 'Jarvis (backfill)';
+  if(s==='reconciler') return 'Jarvis (reconciler)';
+  if(s==='sync'||s==='scorer'||a==='recommendation-agent'||a==='system'||a==='scheduler') return 'Jarvis';
+  return a || '—';
+}
+function replayData(d){
+  if(!d || typeof d!=='object') return '';
+  const parts=[]; for(const k in d){ let v=d[k]; if(v==null||v==='') continue; if(/revenue/i.test(k)&&typeof v==='number') v=fmt(v); parts.push(`${esc(k)}: ${esc(String(v))}`); }
+  return parts.join(' · ');
+}
+window.jReplayPick = function(recId){ REPLAY_REC = recId || null; REPLAY_CURSOR = null; renderRecReplay(); };
+window.jReplayCursor = function(i){ REPLAY_CURSOR = parseInt(i,10); if(isNaN(REPLAY_CURSOR)) REPLAY_CURSOR=null; renderRecReplay(); };
+function renderRecReplay(){
+  const el=document.getElementById('sec-rec-replay'); if(!el) return;
+  const head=`<div class="sec-head"><h2>🎬 Recommendation Replay &amp; Time Machine</h2><span class="sub">Read-only · reconstructed only from stored event history</span></div>`;
+  if(!PLATFORM_READY()){ el.innerHTML=head+`<div style="${P4CARD}"><p class="sub" style="color:var(--mid,#888);margin:0;">Platform not yet populated — run the backfill to record recommendation event history.</p></div>`; return; }
+  // Default selection = today's Founder Focus pick, else the most-recent record.
+  if(!REPLAY_REC || !REC_BY_ID[REPLAY_REC]){ const t=activeRecsRows()[0]; REPLAY_REC = t ? t.recId : (RECS[0]&&RECS[0].recommendationId) || null; }
+  const rec = REPLAY_REC && REC_BY_ID[REPLAY_REC];
+  const opts = RECS.slice()
+    .sort((a,b)=> (isActiveRecState(b.state)-isActiveRecState(a.state)) || String(b.lastStateChangeAt||b.generatedAt||'').localeCompare(String(a.lastStateChangeAt||a.generatedAt||'')))
+    .map(r=>`<option value="${esc(r.recommendationId)}"${r.recommendationId===REPLAY_REC?' selected':''}>${esc(r.recommendationId)} · ${esc(r.name||leadName(r.leadId))} · ${esc(r.state)}</option>`).join('');
+  const picker=`<select onchange="jReplayPick(this.value)" style="width:100%;box-sizing:border-box;background:var(--bg,#0A0A0A);color:inherit;border:1px solid var(--border);border-radius:8px;padding:.5rem;font:inherit;font-size:.82rem;margin-top:.4rem;">${opts}</select>`;
+  if(!rec){ el.innerHTML=head+`<div style="${P4CARD}">${picker}<p class="sub" style="color:var(--mid,#888);margin:.6rem 0 0;">No recommendation records yet.</p></div>`; return; }
+
+  const events=(Array.isArray(rec.history)?rec.history:[]).slice().sort((a,b)=>String(a.at||'').localeCompare(String(b.at||'')));
+  if(!events.length){ el.innerHTML=head+`<div style="${P4CARD}">${picker}<p class="sub" style="color:var(--mid,#888);margin:.6rem 0 0;">This record has no event history yet.</p></div>`; return; }
+  let cursor = REPLAY_CURSOR==null ? events.length-1 : Math.max(0, Math.min(REPLAY_CURSOR, events.length-1));
+
+  const tf=iso=>{ const d=_intelDate(iso); return d? d.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '—'; };
+  // Replay timeline — each event self-describes; future-of-cursor rows are dimmed.
+  const rows=events.map((e,i)=>{
+    const ty=replayEventType(e), data=replayData(e.data);
+    return `<div style="display:grid;grid-template-columns:auto 1fr;gap:.35rem .7rem;padding:.35rem .6rem;border-left:3px solid ${i===cursor?'var(--gold)':'var(--border)'};opacity:${i>cursor?'.4':'1'};">`
+      +`<div style="white-space:nowrap;">${REPLAY_ICON[ty]||'•'} <b>${esc(ty)}</b></div>`
+      +`<div><div style="${P4SUB}">${tf(e.at)} · ${esc(replayActor(e))}${e.source?(' · '+esc(e.source)):''}</div>`
+      +`<div style="font-size:.86rem;">${e.from?`${esc(e.from)} → `:''}<b>${esc(e.to)}</b>${e.reason?` <span style="${P4SUB}">${esc(e.reason)}</span>`:''}</div>`
+      +(data?`<div style="${P4SUB}">${data}</div>`:'')+`</div></div>`;
+  }).join('');
+
+  // Time Machine — reconstruct state + known data from events[0..cursor] ONLY.
+  const known={}; for(let i=0;i<=cursor;i++){ const d=events[i].data; if(d&&typeof d==='object') Object.assign(known,d); }
+  const stateAt=events[cursor].to, futureN=events.length-1-cursor;
+  const knownStr=replayData(known) || '<i>no supporting data captured yet</i>';
+  const tm=`<div style="margin-top:.9rem;padding:.8rem .9rem;border:1px solid var(--gold);border-radius:10px;background:rgba(200,151,58,0.08);">`
+    +`<div style="${P4SUB}font-weight:800;">⏳ TIME MACHINE — what Jarvis knew at this point</div>`
+    +`<input type="range" min="0" max="${events.length-1}" value="${cursor}" step="1" style="width:100%;margin:.5rem 0;" oninput="jReplayCursor(this.value)">`
+    +`<div style="font-size:.86rem;">As of <b>${tf(events[cursor].at)}</b>: state <b style="color:var(--gold);">${esc(stateAt)}</b>`
+    +` · ${futureN} later event${futureN===1?'':'s'} had not happened yet.</div>`
+    +`<div style="${P4SUB}margin-top:.3rem;">Known then: ${knownStr}</div></div>`;
+
+  el.innerHTML=head
+    +`<div style="${P4CARD}">`
+    +`<div style="${P4SUB}">SELECT RECOMMENDATION</div>${picker}`
+    +`<div style="${P4SUB}margin:.8rem 0 .3rem;">LIFECYCLE REPLAY (${events.length} event${events.length===1?'':'s'})</div>`
+    +`<div style="display:flex;flex-direction:column;gap:.2rem;">${rows}</div>`
+    + tm
+    +`<div style="${P4SUB}margin-top:.7rem;">Reconstructed purely from this record's append-only <code>history[]</code> — no future knowledge, nothing inferred. Events Jarvis does not record (e.g. founder page views) are intentionally absent rather than guessed.</div>`
+    +`</div>`;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// RECOMMENDATION COMMAND CENTER — read-only mission control for platform health.
+// Answers "Is the Recommendation Platform healthy?" entirely from records +
+// integrity reports + shadow proposals. Honest "—" where a signal is not yet
+// instrumented (Self-Healing / Learning ship those); never fabricates a number.
+// ════════════════════════════════════════════════════════════════════════════
+function renderRecCommandCenter(){
+  const el=document.getElementById('sec-rec-command-center'); if(!el) return;
+  const head=`<div class="sec-head"><h2>🩺 Recommendation Platform Health</h2><span class="sub">Mission control — is the platform healthy?</span></div>`;
+  if(!PLATFORM_READY()){
+    el.innerHTML=head+`<div style="${P4CARD}"><p class="sub" style="color:var(--mid,#888);margin:0;">Platform not yet populated — run the backfill to activate it. Dashboard is on the legacy fallback.</p></div>`;
+    return;
+  }
+  const today=todayISO(), dt=v=>String(v||'').slice(0,10);
+  const cnt=s=>RECS.filter(r=>r.state===s).length;
+  const total=RECS.length;
+  const active=RECS.filter(r=>isActiveRecState(r.state)).length;
+  const waitingFounder=RECS.filter(r=>r.state===REC_STATE.GENERATED||r.state===REC_STATE.WAITING_FOR_FOUNDER).length;
+  const waitingCustomer=cnt(REC_STATE.WAITING_FOR_CUSTOMER);
+  const wonAll=RECS.filter(r=>r.state===REC_STATE.WON), lostAll=RECS.filter(r=>r.state===REC_STATE.LOST);
+  const wonToday=wonAll.filter(r=>dt(r.resolvedAt)===today).length;
+  const lostToday=lostAll.filter(r=>dt(r.resolvedAt)===today).length;
+  const shadowMatches=REC_PROPOSALS.filter(p=>p.kind==='auto-won').length;
+  const reviewRequired=REC_PROPOSALS.filter(p=>p.kind==='review-required').length;
+  const sum=(REC_INTEGRITY&&REC_INTEGRITY.summary)||{};
+  const integrityErrors=REC_INTEGRITY?(Number(REC_INTEGRITY.total)||0):null;
+  const duplicates=sum.duplicate||0, orphans=sum.orphan||0, completedActive=sum['completed-order-still-active']||0;
+
+  // Health score — honest, derived from the latest watchdog report (null until first scan).
+  let score=null;
+  if(REC_INTEGRITY){
+    const W={ 'missing-id':10,'completed-order-still-active':15,'duplicate':5,'orphan':3,'customerless':5,'expired':1 };
+    let pen=0; for(const k in W) pen+=W[k]*(sum[k]||0);
+    score=Math.max(0,Math.min(100,100-pen));
+  }
+  const band=score==null?{e:'⚪',t:'Not yet scanned',c:'var(--mid,#888)'}
+    :score>=95?{e:'🟢',t:'Healthy',c:'var(--success,#27AE60)'}
+    :score>=80?{e:'🟡',t:'Watch',c:'var(--warn,#E67E22)'}
+    :{e:'🔴',t:'Degraded',c:'var(--danger,#C0392B)'};
+
+  // Business KPIs — computable from records; honest "—" where human-labelled / not instrumented.
+  const _d=(a,b)=>{ const x=_intelDate(a),y=_intelDate(b); return (x&&y)?Math.max(0,Math.round((y-x)/86400000)):null; };
+  const wonDays=wonAll.map(r=>_d(r.generatedAt,r.resolvedAt)).filter(d=>d!=null);
+  const avgToWon=wonDays.length?Math.round(wonDays.reduce((a,b)=>a+b,0)/wonDays.length):null;
+  const lifeDays=[...wonAll,...lostAll].map(r=>_d(r.generatedAt,r.resolvedAt)).filter(d=>d!=null);
+  const avgLife=lifeDays.length?Math.round(lifeDays.reduce((a,b)=>a+b,0)/lifeDays.length):null;
+  const resolved=wonAll.length+lostAll.length;
+  const resolutionRate=total?Math.round(100*resolved/total):0;
+  const acceptanceRate=total?Math.round(100*(total-waitingFounder)/total):0;
+  const revCaptured=wonAll.reduce((s,r)=>s+(Number(r.actualRevenue)||0),0);
+  const revAttributed=wonAll.filter(r=>r.orderId).reduce((s,r)=>s+(Number(r.actualRevenue)||0),0);
+  const revMissedEst=lostAll.reduce((s,r)=>s+(Number(r.expectedRevenue)||0),0);
+  const respH=RECS.map(r=>{ const h=Array.isArray(r.history)?r.history.find(x=>x.to===REC_STATE.WAITING_FOR_CUSTOMER):null; if(!h)return null; const x=_intelDate(r.generatedAt),y=_intelDate(h.at); return (x&&y)?Math.max(0,(y-x)/3600000):null; }).filter(v=>v!=null);
+  const avgRespH=respH.length?(respH.reduce((a,b)=>a+b,0)/respH.length):null;
+
+  const SUB='font-size:.66rem;text-transform:uppercase;letter-spacing:.6px;color:var(--mid,#888);';
+  const tile=(label,val,sub,col)=>`<div style="background:var(--card2,#141414);border:1px solid var(--border);border-radius:10px;padding:.6rem .7rem;">`
+    +`<div style="${SUB}">${esc(label)}</div><div style="font-size:1.15rem;font-weight:800;${col?`color:${col};`:''}">${val}</div>`
+    +(sub?`<div style="${SUB}margin-top:.15rem;text-transform:none;letter-spacing:0;">${sub}</div>`:'')+`</div>`;
+  const DASH='<span style="color:var(--mid,#888);">—</span>';
+  const grid=t=>`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:.55rem;margin-top:.6rem;">${t}</div>`;
+
+  const platformTiles=[
+    tile('Recommendations', total),
+    tile('Active', active),
+    tile('Waiting Founder', waitingFounder),
+    tile('Waiting Customer', waitingCustomer),
+    tile('Shadow Matches', shadowMatches, 'reconciler proposals'),
+    tile('Review Required', reviewRequired, reviewRequired?'needs human match':''),
+    tile('Integrity Errors', integrityErrors==null?DASH:integrityErrors, integrityErrors==null?'awaiting first scan':'', integrityErrors?'var(--danger,#C0392B)':''),
+    tile('Duplicate Recs', duplicates, '', duplicates?'var(--danger,#C0392B)':''),
+    tile('Orphans', orphans, '', orphans?'var(--danger,#C0392B)':''),
+    tile('Completed-in-queue', completedActive, 'should be 0', completedActive?'var(--danger,#C0392B)':''),
+    tile('Sync Errors', DASH, 'see function logs'),
+    tile('Watchdog Repairs', DASH, 'pending Self-Healing'),
+    tile('Learning Events', DASH, 'pending Learning Engine'),
+    tile('Platform Uptime', DASH, 'not instrumented'),
+  ].join('');
+
+  const kpiTiles=[
+    tile('Won today', wonToday),
+    tile('Lost today', lostToday),
+    tile('Resolution rate', resolutionRate+'%', `${resolved}/${total} resolved`),
+    tile('Acceptance rate', acceptanceRate+'%', 'engaged beyond new'),
+    tile('Avg time to Won', avgToWon==null?DASH:avgToWon+'d'),
+    tile('Avg rec lifetime', avgLife==null?DASH:avgLife+'d'),
+    tile('Founder response', avgRespH==null?DASH:(avgRespH<48?avgRespH.toFixed(1)+'h':Math.round(avgRespH/24)+'d')),
+    tile('Revenue captured', fmt(revCaptured), 'Won · actual'),
+    tile('Revenue attributed', fmt(revAttributed), 'Won w/ order link'),
+    tile('Revenue missed (est)', fmt(revMissedEst), 'Lost · expected ⚖'),
+    tile('Shadow accuracy', DASH, 'manual review (obs.)'),
+    tile('Active duplicates', duplicates, duplicates?'prevention breached':'prevention holding', duplicates?'var(--danger,#C0392B)':'var(--success,#27AE60)'),
+  ].join('');
+
+  const scannedAt=REC_INTEGRITY&&REC_INTEGRITY.scannedAt?` · last scan ${dt(REC_INTEGRITY.scannedAt)}`:'';
+  el.innerHTML=head
+    +`<div style="${P4CARD}border:1.5px solid ${band.c};">`
+    +`<div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:.6rem 1rem;">`
+    +`<span style="font-size:1.25rem;font-weight:800;color:${band.c};">${band.e} ${band.t}</span>`
+    +`<span style="font-weight:800;font-size:1.05rem;">Health Score: ${score==null?DASH:score+'%'}</span>`
+    +`<span style="${SUB}margin-left:auto;text-transform:none;letter-spacing:0;">Recommendation Platform v1 · read-only${esc(scannedAt)}</span>`
+    +`</div>`
+    +`<div style="${SUB}margin-top:.9rem;">PLATFORM</div>`+grid(platformTiles)
+    +`<div style="${SUB}margin-top:.9rem;">BUSINESS KPIs</div>`+grid(kpiTiles)
+    +`<div style="${SUB}margin-top:.8rem;text-transform:none;letter-spacing:0;">⚖ "Revenue missed" is a rule-based expected-value estimate, not realized loss. Tiles marked "—" light up once the Self-Healing and Learning services are instrumented. Health Score is derived from the latest Watchdog integrity scan.</div>`
+    +`</div>`;
+}
+
 function rebuild(){
   OPPS = buildOpportunities();
   CONTEXT = computeContext();
   // Phase 4 decision-first cards (refined visual priority order)
   renderFounderFocus();
+  renderRecCommandCenter();
+  renderRecReplay();
   renderPendingAlert();
   renderTodayMoney();
   renderTopActions();
@@ -3227,6 +3636,26 @@ async function loadData(){
     INTEL = [];
     console.warn('[Jarvis] lead_intelligence read failed (check Firestore rules):', e?.code||e);
   }
+  // Phase E: load the canonical Recommendation Platform records (non-blocking).
+  try{
+    const rSnap = await getDocs(collection(db,'recommendations'));
+    RECS = rSnap.docs.map(d=>({ ...d.data(), recommendationId:d.id }));
+    buildRecIndexes();
+    console.log(`[Jarvis] recommendations loaded: ${RECS.length} (platform ${PLATFORM_READY()?'AUTHORITATIVE':'empty — legacy fallback'})`);
+  }catch(e){
+    RECS = []; buildRecIndexes();
+    console.warn('[Jarvis] recommendations read failed (check Firestore rules):', e?.code||e);
+  }
+  // Recommendation Command Center inputs: latest integrity report + shadow proposals (non-blocking).
+  try{
+    const igSnap = await getDocs(collection(db,'recommendation_integrity_reports'));
+    const reports = igSnap.docs.map(d=>({ ...d.data(), _id:d.id }));
+    REC_INTEGRITY = reports.sort((a,b)=>String(b.scannedAt||'').localeCompare(String(a.scannedAt||'')))[0] || null;
+  }catch(e){ REC_INTEGRITY = null; }
+  try{
+    const pSnap = await getDocs(collection(db,'recommendation_resolution_proposals'));
+    REC_PROPOSALS = pSnap.docs.map(d=>({ ...d.data(), _id:d.id }));
+  }catch(e){ REC_PROPOSALS = []; }
   const allOrders = oSnap.docs.map(d=>({...d.data(), dbId:d.id}));
   // Log the product field shape of the first 3 orders to understand the data structure.
   allOrders.slice(0,3).forEach((o,i)=>console.log(`[Jarvis] order ${i} product fields:`,
