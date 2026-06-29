@@ -21,6 +21,9 @@ const { google } = require('googleapis');
 
 initializeApp();
 
+// recommendation-agent order reconciliation hook (plain helper, not a trigger).
+const recommendationService = require('./agents/recommendation-agent/service');
+
 // Predictable v1 URL — available immediately after deploy
 const UNSUBSCRIBE_BASE =
   `https://us-central1-${process.env.GCLOUD_PROJECT || 'najah-chemist'}.cloudfunctions.net/unsubscribe`;
@@ -200,6 +203,11 @@ exports.onOrderCreated = onDocumentCreated(
     } catch (err) {
       console.error(`[onOrderCreated] Notification failed for ${displayId}:`, err.message);
     }
+
+    // Recommendation integrity: reconcile this order against any open recommendation
+    // (paid + dated-after match). Shadow unless RECONCILE_LIVE_ENABLED. Never blocks
+    // the order; the hourly sweep is the backstop for pay-later orders.
+    try { await recommendationService.reconcileForOrder(orderId); } catch (_) {}
   }
 );
 

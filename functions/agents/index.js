@@ -10,6 +10,7 @@
 
 module.exports = {
   ...require('./lead-agent'),
+  ...require('./recommendation-agent'),
   ...require('./reorder-agent'),
   ...require('./book-agent'),
   ...require('./coaching-agent'),

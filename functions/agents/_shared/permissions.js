@@ -19,6 +19,15 @@ const AGENTS = {
       'write:lead_recommendation_outcomes',
     ],
   },
+  'recommendation-agent': {
+    level: 1, // auto-sync is L1; live auto-Won resolutions are audit-logged at L2
+    permissions: [
+      'write:recommendations',
+      'write:recommendation_resolution_proposals',
+      'write:recommendation_integrity_reports',
+      'write:jarvis_outcomes',
+    ],
+  },
   'reorder-agent':       { level: 1, permissions: [] },
   'book-agent':          { level: 1, permissions: [] },
   'coaching-agent':      { level: 1, permissions: [] },
