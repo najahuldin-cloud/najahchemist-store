@@ -95,12 +95,19 @@ function ymd(date) {
   const d = (date instanceof Date) ? date : new Date(date);
   return d.toISOString().slice(0, 10).replace(/-/g, '');
 }
-function newRecommendationId(leadId, tc, createdAt) {
+// DETERMINISTIC permanent ID per (lead, type, cycle) — NO randomness, NO volatile date.
+// Two concurrent syncs computing the SAME cycle produce the SAME id, so it doubles as the
+// idempotency key for create-if-absent concurrency safety (Phase 4 L2). A short content
+// hash guarantees uniqueness across leads that share the first 6 id characters.
+function newRecommendationId(leadId, tc, cycleSeq) {
   const lead6 = String(leadId || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 6).toUpperCase().padEnd(6, '0');
-  const rand4 = crypto.randomBytes(3).toString('hex').slice(0, 4).toUpperCase();
-  return `REC-${lead6}-${ymd(createdAt || Date.now())}-${tc || 'WA'}-${rand4}`;
+  const seq = Number(cycleSeq) || 1;
+  const h = crypto.createHash('sha1').update(`${leadId}|${tc}|${seq}`).digest('hex').slice(0, 6).toUpperCase();
+  return `REC-${lead6}-${tc || 'WA'}-C${seq}-${h}`;
 }
-const REC_ID_RE = /^REC-[A-Z0-9]{6}-\d{8}-(MQ|FO|HF|RA|EM|WA)-[A-Z0-9]{4}$/;
+// Accepts BOTH the legacy (date + rand4) format AND the new deterministic (cycle + hash)
+// format, so the 535 existing records remain valid (backward compatibility).
+const REC_ID_RE = /^REC-[A-Z0-9]{6}-(?:\d{8}-(?:MQ|FO|HF|RA|EM|WA)-[A-Z0-9]{4}|(?:MQ|FO|HF|RA|EM|WA)-C\d+-[A-Z0-9]{6})$/;
 function isValidRecommendationId(id) { return typeof id === 'string' && REC_ID_RE.test(id); }
 
 // Stable per-(lead,type) key used to dedupe within a sync run and to find "the open

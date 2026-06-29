@@ -11,10 +11,11 @@ const INTEG = require('../agents/recommendation-agent/integrity');
 let pass = 0; const t = (name, fn) => { try { fn(); pass++; console.log('  ✓', name); } catch (e) { console.error('  ✗', name, '\n     ', e.message); process.exitCode = 1; } };
 
 console.log('§3/§5 recommendation-model');
-t('permanent ID is valid + type-coded', () => {
-  const id = RM.newRecommendationId('abc123def', 'HF', '2026-06-29T00:00:00Z');
+t('permanent ID is valid + type-coded + deterministic', () => {
+  const id = RM.newRecommendationId('abc123def', 'HF', 1);
   assert(RM.isValidRecommendationId(id), id);
-  assert(id.includes('-20260629-HF-'));
+  assert(/^REC-[A-Z0-9]{6}-HF-C1-[A-Z0-9]{6}$/.test(id), id);
+  assert.strictEqual(id, RM.newRecommendationId('abc123def', 'HF', 1)); // deterministic (concurrency key)
 });
 t('recType mirrors dashboard codes', () => {
   assert.strictEqual(RM.recType({ recommendedOffer: 'Manufacturing', opportunitySource: 'newlead' }).tc, 'MQ');

@@ -25,6 +25,7 @@ const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const RM = require('../_shared/recommendation-model');
 const ID = require('../_shared/identity');
 const SYNC = require('./sync');
+const GEN = require('./generation');
 const REC = require('./reconcile');
 const INTEG = require('./integrity');
 const { assertPermission } = require('../_shared/permissions');
@@ -79,48 +80,60 @@ async function loadAll(db, name, idField) {
 // ════════════════════════════════════════════════════════════════════════════
 // PHASE A — persist-at-generation: materialize canonical recommendations.
 // ════════════════════════════════════════════════════════════════════════════
+// CONCURRENCY MECHANISM (Phase 4 L1/L2): new records use a DETERMINISTIC id per
+// (leadId, type, cycleSequence) and are written with Firestore `create()` (create-if-absent).
+// Two schedulers racing on the same lead compute the SAME id → the loser's create rejects
+// with ALREADY_EXISTS and is a safe no-op → exactly one record. Each record is a single
+// atomic document write (id + state + chain + initial history), so a failure leaves no
+// partial state. The regeneration defect is fixed by GEN.decideGeneration: a terminal
+// record without a qualifying business event yields BLOCK (no create).
 async function syncRecommendations(db, { write }) {
   if (await isKilled(AGENT)) return { killed: true };
+  const __start = Date.now();
 
   const intel = await loadAll(db, 'lead_intelligence', 'leadId');
   const leads = await loadAll(db, 'leads', '_docId');
   const recs  = await loadAll(db, 'recommendations', 'recommendationId');
   const leadById = new Map(leads.map(l => [l._docId, l]));
 
-  // Index existing OPEN recs by (leadId,type) and collect all open recs per lead.
-  const openByCycle = new Map();
-  const openByLead = new Map();
+  // Index ALL recs (active AND terminal) by chain key (leadId::type) — the decision must
+  // see terminal records to enforce the terminal gate. Also collect active recs per lead.
+  const recsByChainKey = new Map();
+  const activeByLead = new Map();
   for (const r of recs) {
-    if (!RM.isActiveState(r.state)) continue;
-    openByCycle.set(RM.openCycleKey(r.leadId, r.recommendationType), r);
-    const a = openByLead.get(r.leadId) || []; a.push(r); openByLead.set(r.leadId, a);
+    const k = RM.openCycleKey(r.leadId, r.recommendationType);
+    const a = recsByChainKey.get(k) || []; a.push(r); recsByChainKey.set(k, a);
+    if (RM.isActiveState(r.state)) { const b = activeByLead.get(r.leadId) || []; b.push(r); activeByLead.set(r.leadId, b); }
   }
 
   const ts = nowISO();
   const creates = [], updates = [], transitions = [];
+  const reasons = { skip: 0, block: 0, update: 0, generateFirst: 0, generateNewCycle: 0 };
 
-  // Upsert one open recommendation per generatable lead+type.
   for (const i of intel) {
-    if (!SYNC.isGeneratable(i)) continue;
-    const t = RM.recType(i);
-    const cycle = RM.openCycleKey(i.leadId, t.key);
     const lead = leadById.get(i.leadId) || {};
-    const existing = openByCycle.get(cycle);
-    if (existing) {
-      updates.push({ id: existing.recommendationId, patch: SYNC.refreshedDerived(existing, i, lead, ts) });
-    } else {
-      const rec = SYNC.newRecord(i, lead, ts);
-      creates.push(rec);
-      // track so supersession sees freshly-created recs too
-      const a = openByLead.get(i.leadId) || []; a.push(rec); openByLead.set(i.leadId, a);
-      openByCycle.set(cycle, rec);
+    const t = RM.recType(i);
+    const key = RM.openCycleKey(i.leadId, t.key);
+    const recsForKey = recsByChainKey.get(key) || [];
+    const decision = GEN.decideGeneration({ intel: i, lead, recsForChainKey: recsForKey, nowISO: ts });
+    if (decision.action === 'SKIP')  { reasons.skip++; continue; }
+    if (decision.action === 'BLOCK') { reasons.block++; continue; }
+    if (decision.action === 'UPDATE') {
+      reasons.update++;
+      updates.push({ id: decision.target.recommendationId, patch: SYNC.refreshedDerived(decision.target, i, lead, ts) });
+      continue;
     }
+    // GENERATE_FIRST or GENERATE_NEW_CYCLE
+    const chain = GEN.buildChainFields(recsForKey, decision.qbe);
+    const rec = SYNC.newRecord(i, lead, ts, chain);
+    creates.push(rec);
+    if (decision.action === 'GENERATE_FIRST') reasons.generateFirst++; else reasons.generateNewCycle++;
   }
 
-  // §9 Supersession + Expiration over all open recs (including the just-created ones).
+  // §9 Supersession + Expiration over active recs (unchanged; never re-mints).
   const currentTypeByLead = new Map();
   for (const i of intel) if (SYNC.isGeneratable(i)) currentTypeByLead.set(i.leadId, RM.recType(i).key);
-  for (const [leadId, arr] of openByLead) {
+  for (const [leadId, arr] of activeByLead) {
     const currentType = currentTypeByLead.get(leadId) || null;
     const hasNewerOfOtherType = arr.some(r => r.recommendationType === currentType);
     for (const r of arr) {
@@ -135,15 +148,22 @@ async function syncRecommendations(db, { write }) {
   }
 
   if (!write) {
-    return { dryRun: true, wouldCreate: creates.length, wouldUpdate: updates.length, wouldTransition: transitions.length };
+    return { dryRun: true, wouldCreate: creates.length, wouldUpdate: updates.length, wouldTransition: transitions.length, decisions: reasons };
   }
 
   assertPermission(AGENT, 'write:recommendations');
-  let written = 0;
-  for (const group of chunked(creates, CHUNK)) {
-    const batch = db.batch();
-    for (const rec of group) batch.set(db.collection('recommendations').doc(rec.recommendationId), { ...rec, lastScoredAt: FieldValue.serverTimestamp() });
-    await batch.commit(); written += group.length;
+  // Create-if-absent (concurrency-safe + atomic single-doc write). A create that fails for
+  // a reason OTHER than ALREADY_EXISTS is counted as a generation error and skipped — one
+  // bad document never aborts the whole sync.
+  let created = 0, concurrencySkipped = 0, generationErrors = 0;
+  for (const rec of creates) {
+    try {
+      await db.collection('recommendations').doc(rec.recommendationId).create({ ...rec, lastScoredAt: FieldValue.serverTimestamp() });
+      created++;
+    } catch (e) {
+      if (e && (e.code === 6 || /already exists/i.test(e.message || ''))) { concurrencySkipped++; }
+      else { generationErrors++; console.error(`[${AGENT}] create failed ${rec.recommendationId}:`, e && e.message); }
+    }
   }
   for (const group of chunked(updates, CHUNK)) {
     const batch = db.batch();
@@ -154,8 +174,23 @@ async function syncRecommendations(db, { write }) {
     await applyTransition(db, tr.id, tr.to, tr.reason, AGENT, { actor: 'system', source: 'sync' });
   }
 
-  await logAction({ agent: AGENT, action: 'syncRecommendations', after: { created: creates.length, updated: updates.length, transitions: transitions.length }, level: 1, actor: 'scheduler' });
-  return { created: creates.length, updated: updates.length, transitions: transitions.length };
+  // ── Recommendation Generation Metrics (daily observability) ──
+  const metrics = {
+    generated: created,                       // recommendations actually created
+    updated: updates.length,                  // recommendations refreshed
+    newChains: reasons.generateFirst,         // first-cycle creates (new chains)
+    newCycles: reasons.generateNewCycle,      // re-engagement cycles
+    suppressedG2: reasons.update,             // not created — active rec exists (G2)
+    suppressedG3: reasons.block,              // not created — terminal, no qualifying event (G3)
+    qbesDetected: reasons.generateNewCycle,   // qualifying events that drove a new cycle
+    duplicatePreventionCount: concurrencySkipped, // create-if-absent no-ops (concurrency)
+    generationErrors,
+    transitions: transitions.length,
+    generationDurationMs: Date.now() - __start,
+  };
+  metrics.health = generationHealth(metrics);   // derived summary (Green/Yellow/Red + reasons)
+  await logAction({ agent: AGENT, action: 'syncRecommendations', after: metrics, level: 1, actor: 'scheduler' });
+  return metrics;
 }
 
 function daysSince(iso, nowIso) {
@@ -174,6 +209,25 @@ const EVENT_TYPE_BY_STATE = {
   [RM.STATE.SUPERSEDED]: 'superseded', [RM.STATE.ARCHIVED]: 'archived',
 };
 function defaultEventType(toState) { return EVENT_TYPE_BY_STATE[toState] || 'transition'; }
+
+// Derived single-run generation health (NO new logic — summarizes the metrics already
+// collected, so the Command Center / logs are scannable at a glance). Red on any
+// generation error; Yellow on a slow run; Green otherwise. Cross-run trends (e.g.
+// suppressedG3 dropping to 0 while terminals still occur) are an Observation/Watchdog
+// concern, not a single-run signal.
+function generationHealth(m) {
+  const status = m.generationErrors > 0 ? 'red' : (m.generationDurationMs > 120000 ? 'yellow' : 'green');
+  return {
+    status,
+    reasons: [
+      `Generation Errors: ${m.generationErrors}`,
+      `Duplicate Prevention: ${m.duplicatePreventionCount}`,
+      `G3 Suppressions: ${m.suppressedG3}`,
+      `New Cycles: ${m.newCycles}`,
+      `Runtime: ${m.generationDurationMs} ms`,
+    ],
+  };
+}
 
 // Apply + audit a single canonical state transition (append to history). Never illegal.
 async function applyTransition(db, recId, toState, reason, actor, extra) {
@@ -438,5 +492,5 @@ async function backfillRecommendations(db, { write }) {
 module.exports = {
   AGENT, TZ, ADMIN_EMAIL, SYNC_WRITE_ENABLED, RECONCILE_LIVE_ENABLED,
   syncRecommendations, reconcileOnce, integrityScan, reconcileForOrder,
-  backfillRecommendations, applyTransition, orderHelpers,
+  backfillRecommendations, applyTransition, orderHelpers, generationHealth,
 };
