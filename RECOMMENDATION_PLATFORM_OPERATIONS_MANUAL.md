@@ -165,12 +165,13 @@ The v1 contract is stable: **permanent ID format, the `state` enum + legal trans
 ## Roadmap (operational sequence)
 1. ✅ **Recommendation Platform** — deploy → validate → observe → **certify v1** (you are here)
 2. **Self-Healing Watchdog** — automated repairs + escalation
-3. **Learning Engine (Shadow → Production)** — advisory-first, staged, explainable, reversible
-4. **Demand Hunter** — *elevated ahead of AI Sales* (market/trend intelligence: trending ingredients, new-product & underserved-niche opportunities, search trends, competitor & pricing moves — feeds product, marketing, and sales at once)
-5. AI Sales Agent
-6. AI Marketing Agent
-7. Customer Success AI
-8. Executive Orchestrator
+3. **Identity Resolution Service** — canonical customer identity (unifies duplicate clustering + matching); unblocks cross-lead chains/replay/timeline/reconciliation. Before Learning so it trains on unified identity.
+4. **Learning Engine (Shadow → Production)** — advisory-first, staged, explainable, reversible
+5. **Demand Hunter** — *elevated ahead of AI Sales* (market/trend intelligence: trending ingredients, new-product & underserved-niche opportunities, search trends, competitor & pricing moves — feeds product, marketing, and sales at once)
+6. AI Sales Agent
+7. AI Marketing Agent
+8. Customer Success AI
+9. Executive Orchestrator
 
 Each plugs into the certified v1 platform via the §13 extension contract — read the read-model, act through the interfaces, emit events — without modifying platform internals.
 

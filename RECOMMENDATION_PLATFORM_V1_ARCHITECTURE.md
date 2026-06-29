@@ -240,6 +240,7 @@ Full runbook: **`DEPLOY_RECOMMENDATION_PLATFORM.md`**. Summary:
 ## 13. Future Extension Points
 
 Future systems plug in **without modifying platform internals**:
+- **Identity Resolution Service [v1.x — FOUNDATIONAL, scheduled before the Learning Engine]** — the canonical customer-identity layer the Recommendation Platform deliberately does **not** implement itself. Unifies today's two partial mechanisms (`_shared/duplicates.js` clustering + `_shared/identity.js` email/phone matching) into one shared `resolve(contact)` service producing a **stable canonical customer id** (e.g., a persisted `people` collection) + cluster members + primary. Will provide: canonical customer identity, customer clustering, duplicate resolution, **cross-lead** recommendation chains, cross-lead replay, cross-lead timelines, cross-lead order reconciliation, cross-lead Gmail history, cross-lead WhatsApp history, and future omnichannel identity. Until it exists, the Recommendation Platform is **single-lead** (see Known Limitations).
 - **Demand Hunter / AI Marketing** — read `lead_intelligence` + `recommendations`; create new recommendation *types* (extend `recType`) and/or campaigns; never mutate existing records' identity/state directly.
 - **AI Sales / Customer Success** — consume active recs via the read-model; act through the same transition API (`recMarkActioned`/`jRec*` analogues or a callable), producing `actioned`/`resolved` events.
 - **Learning Engine [v1.x]** — read resolved records + `history[]` (+ Time Machine for point-in-time truth); write *advisory* confidence/ranking adjustments behind staged flags; **must not** rewrite history, IDs, or manual decisions. (See the staged shadow-first philosophy.)
@@ -263,6 +264,22 @@ Extension contract: **read the read-model; act via the transition/matching/propo
 9. **Explainability** — every recommendation answers why-this/now/customer/channel/not-another; every learning adjustment must explain itself.
 10. **Reversibility** — every capability is flag-controlled and rollback-able; historical outcomes are never overwritten.
 11. **Honest data** — estimates are labelled; unknowns show "—"; nothing is fabricated.
+12. **Single-lead scope (v1)** — the Recommendation Generator depends **only on evidence within a single `lead` record**. It must never infer that two different lead documents belong to the same customer, and must never read duplicate clusters to make generation decisions. Cross-lead behavior is owned exclusively by the future Identity Resolution Service. (The generator may still *exclude* non-primary duplicates via the scorer's stored `isPrimaryRecord` flag — that is exclusion, not cross-lead inference.)
+
+---
+
+## 14a. Known Limitations (intentional — not bugs)
+
+Cross-lead recommendation chaining is **out of scope for Recommendation Platform v1.** Until the Identity Resolution Service exists:
+- Recommendation **chains** are per lead.
+- **Replay Mode** is per lead.
+- **Time Machine** is per lead.
+- **Recommendation generation** is per lead.
+- Recommendation replay must **never infer relationships between different lead documents**.
+
+> **Technical debt (intentional):** *"If a returning customer creates a new lead after reaching a terminal recommendation on a previous lead, Recommendation Platform v1 intentionally treats the new lead independently until the Identity Resolution service is implemented."*
+
+This is a deliberate scoping decision so the regeneration-defect fix stays single-lead, deterministic, and free of unproven dependencies — **not** an oversight. The returning-customer / cross-lead case is deferred to the Identity Resolution Service (roadmap item 3, before the Learning Engine).
 
 ---
 

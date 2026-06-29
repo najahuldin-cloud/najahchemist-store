@@ -267,8 +267,9 @@ No new AI capabilities until v1 is certified. Legacy recommendation code **remai
 1. **Recommendation Platform Stabilization** (this package) → certify v1.
 2. **Remove legacy** recommendation code + **Enable Live Reconciliation** (`RECONCILE_LIVE_ENABLED=true`).
 3. **Recommendation Watchdog Self-Healing Engine**.
-4. **Learning Engine (Shadow → Production)** — staged, advisory-first, explainable, reversible.
-5. **Demand Hunter** — *elevated ahead of AI Sales* (market/trend intelligence feeds product+marketing+sales at once).
-6. **AI Sales Agent** · 7. **AI Marketing Agent** · 8. **Customer Success AI** · 9. **Executive Orchestrator**.
+4. **Identity Resolution Service** — canonical customer identity; unblocks cross-lead chains/replay/timeline/order-reconciliation. Placed *before* the Learning Engine so learning trains on unified identity, not fragmented leads.
+5. **Learning Engine (Shadow → Production)** — staged, advisory-first, explainable, reversible.
+6. **Demand Hunter** — *elevated ahead of AI Sales* (market/trend intelligence feeds product+marketing+sales at once).
+7. **AI Sales Agent** · 8. **AI Marketing Agent** · 9. **Customer Success AI** · 10. **Executive Orchestrator**.
 
 Future agents plug into the certified v1 services rather than re-implementing logic. Correctness, traceability, and stability take priority over new functionality.
