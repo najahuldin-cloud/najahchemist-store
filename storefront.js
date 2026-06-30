@@ -1859,10 +1859,27 @@ window.sfChatSend = async function() {
   sfAddChatMsg(msg, true);
   const typing = sfAddChatMsg('...', false, true);
   try {
+    // Use the SAME live product data the storefront catalogue renders from.
+    // window.buildChatbotSystem() (admin-module.js) compiles window.PRODUCTS + the
+    // Additional Knowledge box into the system prompt, so there is one source of truth
+    // and product/price changes appear in chatbot answers automatically. Fall back to
+    // the legacy {message, history} format only if that helper isn't available yet.
+    let reqBody;
+    if (typeof window.buildChatbotSystem === 'function') {
+      // sfAddChatMsg already pushed this user turn onto sfChatHistory.
+      let messages = sfChatHistory
+        .filter(h => h.role === 'user' || h.role === 'assistant')
+        .slice(-7);
+      // The API requires the first turn to be from the user.
+      while (messages.length && messages[0].role !== 'user') messages.shift();
+      reqBody = { messages, system: window.buildChatbotSystem() };
+    } else {
+      reqBody = { message: msg, history: sfChatHistory.slice(-6) };
+    }
     const res = await fetch('/.netlify/functions/chat', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({message: msg, history: sfChatHistory.slice(-6)})
+      body: JSON.stringify(reqBody)
     });
     const data = await res.json();
     if (typing) typing.remove();
