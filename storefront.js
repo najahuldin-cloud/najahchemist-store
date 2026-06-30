@@ -1837,8 +1837,8 @@ let sfChatHistory = [];
 
 window.sfToggleChat = function() {
   sfChatOpen = !sfChatOpen;
-  const box = document.getElementById('sf-chat-box');
-  const fab = document.getElementById('sf-chat-fab');
+  const box = document.getElementById('sf-assistant-panel');
+  const fab = document.getElementById('sf-assistant-button');
   if (box) box.classList.toggle('open', sfChatOpen);
   if (fab) fab.style.display = sfChatOpen ? 'none' : 'flex';
   if (sfChatOpen && sfChatHistory.length === 0) {
