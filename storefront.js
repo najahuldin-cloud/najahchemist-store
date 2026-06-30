@@ -1890,14 +1890,26 @@ window.sfChatSend = async function() {
   }
 };
 
+// Render minimal markdown (bold + line breaks) for bot replies. HTML-escape first
+// so model output can never inject markup, then add only our own <strong>/<br> tags.
+function sfFormatMsg(text) {
+  return String(text)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+
 function sfAddChatMsg(text, isUser, isTyping) {
   const msgs = document.getElementById('sf-ch-msgs');
   if (!msgs) return null;
   const div = document.createElement('div');
   div.className = isUser ? 'sf-ch-msg sf-ch-user' : 'sf-ch-msg sf-ch-bot';
-  div.textContent = text;
+  // User text and the typing placeholder stay literal; bot replies get formatting.
+  if (isUser || isTyping) div.textContent = text;
+  else div.innerHTML = sfFormatMsg(text);
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
+  // Store RAW text in history so the API conversation stays clean (no HTML).
   if (!isTyping) sfChatHistory.push({role: isUser ? 'user' : 'assistant', content: text});
   return div;
 }
