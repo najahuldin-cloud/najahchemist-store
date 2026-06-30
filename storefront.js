@@ -1851,44 +1851,95 @@ window.sfChatQ = function(q) {
   window.sfChatSend();
 };
 
-window.sfChatSend = async function() {
+window.sfChatSend = function() {
   const inp = document.getElementById('sf-ch-in');
   const msg = (inp ? inp.value : '').trim();
   if (!msg) return;
   if (inp) inp.value = '';
-  sfAddChatMsg(msg, true);
-  const typing = sfAddChatMsg('...', false, true);
-  try {
-    // Use the SAME live product data the storefront catalogue renders from.
-    // window.buildChatbotSystem() (admin-module.js) compiles window.PRODUCTS + the
-    // Additional Knowledge box into the system prompt, so there is one source of truth
-    // and product/price changes appear in chatbot answers automatically. Fall back to
-    // the legacy {message, history} format only if that helper isn't available yet.
-    let reqBody;
-    if (typeof window.buildChatbotSystem === 'function') {
-      // sfAddChatMsg already pushed this user turn onto sfChatHistory.
-      let messages = sfChatHistory
-        .filter(h => h.role === 'user' || h.role === 'assistant')
-        .slice(-7);
-      // The API requires the first turn to be from the user.
-      while (messages.length && messages[0].role !== 'user') messages.shift();
-      reqBody = { messages, system: window.buildChatbotSystem() };
-    } else {
-      reqBody = { message: msg, history: sfChatHistory.slice(-6) };
-    }
-    const res = await fetch('/.netlify/functions/chat', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(reqBody)
-    });
-    const data = await res.json();
-    if (typing) typing.remove();
-    sfAddChatMsg(data.reply || 'Sorry, I could not get a response. Please try again.', false);
-  } catch(e) {
-    if (typing) typing.remove();
-    sfAddChatMsg('Sorry, something went wrong. Please WhatsApp us directly at +1 876-885-1099.', false);
-  }
+  sfAddChatMsg(msg, true);     // echo the user's turn (also pushes to sfChatHistory)
+  sfChatDispatch(msg);
 };
+
+// Sends the request and handles success/failure. Kept separate from sfChatSend so a
+// failed message can be retried WITHOUT re-echoing the user bubble or re-pushing history.
+function sfChatDispatch(msg) {
+  const typing = sfAddChatMsg('...', false, true);
+  (async () => {
+    try {
+      // Use the SAME live product data the storefront catalogue renders from.
+      // window.buildChatbotSystem() (admin-module.js) compiles window.PRODUCTS + the
+      // Additional Knowledge box into the system prompt, so there is one source of truth
+      // and product/price changes appear in chatbot answers automatically. Fall back to
+      // the legacy {message, history} format only if that helper isn't available yet.
+      let reqBody;
+      if (typeof window.buildChatbotSystem === 'function') {
+        let messages = sfChatHistory
+          .filter(h => h.role === 'user' || h.role === 'assistant')
+          .slice(-7);
+        // The API requires the first turn to be from the user.
+        while (messages.length && messages[0].role !== 'user') messages.shift();
+        reqBody = { messages, system: window.buildChatbotSystem() };
+      } else {
+        reqBody = { message: msg, history: sfChatHistory.slice(-6) };
+      }
+      const res = await fetch('/.netlify/functions/chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(reqBody)
+      });
+      let data = null;
+      try { data = await res.json(); } catch (_) {}
+      if (typing) typing.remove();
+      // Treat network errors, non-2xx, and empty replies as failures → visible fallback.
+      if (!res.ok || !data || !data.reply) { sfChatShowFailure(msg); return; }
+      sfAddChatMsg(data.reply, false);
+    } catch (err) {
+      if (typing) typing.remove();
+      sfChatShowFailure(msg, err);
+    }
+  })();
+}
+
+// Visible, actionable failure state — never a silent/dead-end error.
+// Preserves the customer's message, offers Retry + one-tap WhatsApp, and shows a
+// reference ID so support can trace the incident if the customer reports it.
+function sfChatShowFailure(msg, err) {
+  const ref = 'NC-' + (Date.now().toString(36) + Math.random().toString(36).slice(2))
+    .slice(-6).toUpperCase();
+  console.error('[chat] request failed — ref ' + ref, err || '');
+
+  // Keep the customer's message so they don't have to retype it.
+  const inp = document.getElementById('sf-ch-in');
+  if (inp && !inp.value.trim()) inp.value = msg;
+
+  const waText = encodeURIComponent(
+    'Hi Najah Chemist! I was using the website chat (ref ' + ref + ') but it dropped. My question: ' + msg);
+  const waHref = 'https://wa.me/18768851099?text=' + waText;
+
+  const msgs = document.getElementById('sf-ch-msgs');
+  if (!msgs) return;
+  const box = document.createElement('div');
+  box.className = 'sf-ch-fail';
+  // msg is NOT injected into innerHTML (only into the encoded WhatsApp href), so no XSS.
+  box.innerHTML =
+    '<div class="sf-ch-fail-title">We couldn’t reach our assistant right now</div>' +
+    '<div class="sf-ch-fail-sub">Your message is saved below — try again, or reach us instantly on WhatsApp.</div>' +
+    '<div class="sf-ch-fail-actions">' +
+      '<a class="sf-ch-fail-btn sf-ch-fail-wa" target="_blank" rel="noopener" href="' + waHref + '">💬 Continue on WhatsApp</a>' +
+      '<button class="sf-ch-fail-btn sf-ch-fail-retry" type="button">↻ Try again</button>' +
+    '</div>' +
+    '<div class="sf-ch-fail-ref">Reference: ' + ref + '</div>';
+  msgs.appendChild(box);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  const retryBtn = box.querySelector('.sf-ch-fail-retry');
+  if (retryBtn) retryBtn.addEventListener('click', function() {
+    box.remove();
+    const inp2 = document.getElementById('sf-ch-in');
+    if (inp2 && inp2.value.trim() === msg) inp2.value = '';   // clear the restored copy
+    sfChatDispatch(msg);                                      // resend without re-echoing
+  });
+}
 
 // Render minimal markdown (bold + line breaks) for bot replies. HTML-escape first
 // so model output can never inject markup, then add only our own <strong>/<br> tags.

@@ -79,7 +79,20 @@ exports.handler = async (event) => {
     });
 
     const data = await response.json();
-    const replyText = data.content?.[0]?.text || "I'm having trouble right now. Please WhatsApp us at +1 876-885-1099.";
+    const replyText = data.content?.[0]?.text;
+
+    // Upstream failure (e.g. billing/auth outage): Anthropic returns 200 with an error
+    // body and no content, OR a non-2xx. Signal this to the client with a non-2xx status
+    // so the storefront shows its visible recovery UI instead of a dead-end message.
+    if (!response.ok || !replyText) {
+      console.error("chat upstream error:", response.status, JSON.stringify(data).slice(0, 300));
+      const fallback = "Sorry, I'm having trouble right now. Please WhatsApp us at +1 876-885-1099.";
+      return {
+        statusCode: 502,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ error: true, reply: fallback })
+      };
+    }
 
     return {
       statusCode: 200,

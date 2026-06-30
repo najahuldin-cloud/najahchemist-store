@@ -472,6 +472,17 @@ tr:hover td{background:var(--warm);}
 .sf-ch-inp input:focus{border-color:#0F0E0D;}
 .sf-ch-send{width:30px;height:30px;border-radius:50%;background:#0F0E0D;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;}
 .sf-ch-send:hover{background:#333;}
+/* Visible failure / recovery card (Section 4) */
+.sf-ch-fail{align-self:stretch;background:#FFF7F5;border:1px solid #F3C9C0;border-radius:14px;padding:0.85rem 0.9rem;display:flex;flex-direction:column;gap:0.5rem;}
+.sf-ch-fail-title{font-size:0.82rem;font-weight:700;color:#9A2A1A;}
+.sf-ch-fail-sub{font-size:0.76rem;line-height:1.45;color:#6B5550;}
+.sf-ch-fail-actions{display:flex;flex-wrap:wrap;gap:0.45rem;margin-top:0.15rem;}
+.sf-ch-fail-btn{display:inline-flex;align-items:center;gap:0.3rem;padding:0.5rem 0.85rem;border-radius:22px;font-family:'Outfit',sans-serif;font-size:0.78rem;font-weight:600;cursor:pointer;text-decoration:none;border:none;}
+.sf-ch-fail-wa{background:#25D366;color:white;}
+.sf-ch-fail-wa:hover{background:#1ebe5a;}
+.sf-ch-fail-retry{background:#0F0E0D;color:white;}
+.sf-ch-fail-retry:hover{background:#333;}
+.sf-ch-fail-ref{font-size:0.66rem;color:#9A8F8B;letter-spacing:0.02em;}
 
 @media(max-width:640px){
   .sf-about-inner{grid-template-columns:1fr;}
