@@ -1954,7 +1954,7 @@ function sfAddChatMsg(text, isUser, isTyping) {
   const msgs = document.getElementById('sf-ch-msgs');
   if (!msgs) return null;
   const div = document.createElement('div');
-  div.className = isUser ? 'sf-ch-msg sf-ch-user' : 'sf-ch-msg sf-ch-bot';
+  div.className = isUser ? 'sf-ch-msg sf-ch-msg-user' : 'sf-ch-msg sf-ch-msg-bot';
   // User text and the typing placeholder stay literal; bot replies get formatting.
   if (isUser || isTyping) div.textContent = text;
   else div.innerHTML = sfFormatMsg(text);
