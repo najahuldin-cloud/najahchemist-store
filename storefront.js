@@ -2219,9 +2219,17 @@ window.sfOpenReorder = function() {
   var inp = document.getElementById('sf-reorder-phone');
   var msg = document.getElementById('sf-reorder-msg');
   var btn = document.getElementById('sf-reorder-btn');
-  if (inp) inp.value = '';
+  ['sf-reorder-phone','sf-reorder-email','sf-reorder-ordernum'].forEach(function(id){
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
   if (msg) { msg.textContent = ''; msg.style.display = 'none'; }
   if (btn) { btn.textContent = 'Load My Order →'; btn.disabled = false; }
+  // Reset to the lookup form (hide the reuse-details confirmation).
+  var form = document.getElementById('sf-reorder-form');
+  var confirmBox = document.getElementById('sf-reorder-confirm');
+  if (form) form.style.display = 'block';
+  if (confirmBox) confirmBox.style.display = 'none';
+  _sfReorderDetails = null;
   var ov = document.getElementById('sf-reorder-overlay');
   if (ov) ov.classList.add('open');
   setTimeout(function(){ if (inp) inp.focus(); }, 150);
@@ -2232,8 +2240,14 @@ window.sfCloseReorder = function() {
   if (ov) ov.classList.remove('open');
 };
 
+// Holds the matched order's contact/shipping details between FOUND and the
+// customer's explicit "reuse" choice. Never auto-displayed (privacy).
+var _sfReorderDetails = null;
+
 window.sfLoadOrder = async function() {
-  var rawPhone = (document.getElementById('sf-reorder-phone')?.value || '').trim();
+  var phone       = (document.getElementById('sf-reorder-phone')?.value || '').trim();
+  var email       = (document.getElementById('sf-reorder-email')?.value || '').trim();
+  var orderNumber = (document.getElementById('sf-reorder-ordernum')?.value || '').trim();
   var msgEl = document.getElementById('sf-reorder-msg');
   var btn = document.getElementById('sf-reorder-btn');
 
@@ -2242,106 +2256,130 @@ window.sfLoadOrder = async function() {
     if (btn) { btn.textContent = 'Load My Order →'; btn.disabled = false; }
   };
 
-  var digits = rawPhone.replace(/\D/g, '');
-  if (digits.length < 7) { showErr('Please enter a valid phone number.'); return; }
+  // Need at least one identifier (the server validates authoritatively).
+  if (!phone && !email && !orderNumber) {
+    showErr('Please enter your phone number, email, or order number.');
+    return;
+  }
 
   if (btn) { btn.textContent = 'Searching…'; btn.disabled = true; }
   if (msgEl) { msgEl.style.display = 'none'; }
 
+  // The browser never reads the orders collection directly (orders are not
+  // publicly readable). A server function verifies ownership and returns a
+  // customer-friendly status — see netlify/functions/lookup-order.js.
+  var data = null;
   try {
-    var db = window._db;
-    if (!db) { showErr('Service not ready — please try again.'); return; }
-
-    var mod = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
-    var collection = mod.collection, getDocs = mod.getDocs, query = mod.query,
-        orderBy = mod.orderBy, limit = mod.limit;
-
-    var snap = await getDocs(query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(300)));
-
-    // Find most recent order whose phone matches (normalize both sides to digits)
-    var matchOrder = null;
-    snap.forEach(function(d) {
-      if (matchOrder) return;
-      var o = d.data();
-      var stored = [o.phone, o.whatsapp, o.customerWhatsApp].filter(Boolean);
-      for (var i = 0; i < stored.length; i++) {
-        var s = stored[i].replace(/\D/g, '');
-        if (!s) continue;
-        // Match if either number ends with the other (handles country code differences)
-        if (s.endsWith(digits) || digits.endsWith(s) || s.slice(-7) === digits.slice(-7)) {
-          matchOrder = o;
-          break;
-        }
-      }
+    var res = await fetch('/.netlify/functions/lookup-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: phone, email: email, orderNumber: orderNumber })
     });
-
-    if (!matchOrder) {
-      // Walkthrough-audit fix: previously this closed the modal and scrolled away,
-      // which read as a silent failure. Keep the modal open with a clear message.
-      showErr('We couldn’t find a previous order with this number — try a different number, or just fill in your details below.');
-      return;
-    }
-
-    // Rebuild cart items from the order's product string
-    // Format: "Name (Size xQty) | Name2 (Size2 xQty2)"
-    var products = window.PRODUCTS || [];
-    var productStr = matchOrder.product || '';
-    var parts = productStr.split(' | ');
-    var added = 0;
-
-    parts.forEach(function(part) {
-      var m = part.match(/^(.+) \((.+) x(\d+)\)$/);
-      if (!m) return;
-      var itemName = m[1].trim();
-      var sizeStr  = m[2].trim();  // may include scent, e.g. "1 Litre · Strawberry"
-      var qty      = parseInt(m[3]) || 1;
-      var baseSize = sizeStr.split(' · ')[0]; // strip scent/mint for key lookup
-
-      var prod = products.find(function(p) { return p.name === itemName; });
-      if (!prod) return;
-
-      var pricingKey = Object.keys(prod.pricing || {}).find(function(k) {
-        return sfSizeLabel(k) === baseSize;
-      }) || Object.keys(prod.pricing || {})[0];
-      if (!pricingKey) return;
-
-      var price = (prod.pricing[pricingKey] || {}).price || 0;
-      var cartKey = prod.id + '|' + sizeStr + '||';
-      var existing = sfCart.find(function(i) { return i._key === cartKey; });
-      if (existing) {
-        existing.qty += qty;
-      } else {
-        sfCart.push({
-          _key: cartKey, id: prod.id, name: prod.name,
-          size: sizeStr, price: price, qty: qty,
-          emoji: prod.emoji || '🧴', cat: prod.cat
-        });
-      }
-      added++;
-    });
-
-    sfCloseReorder();
-
-    if (added === 0) {
-      sfShowToast('Products from your last order are no longer available. Browse below.');
-      sfScroll('sf-products');
-      return;
-    }
-
-    sfUpdateCartBtn();
-    sfOpenCart();
-
-    // Show success banner in cart, auto-hide after 8 s
-    var banner = document.getElementById('sf-reorder-success');
-    if (banner) {
-      banner.style.display = 'block';
-      setTimeout(function() { banner.style.display = 'none'; }, 8000);
-    }
-
-  } catch(e) {
-    console.error('[reorder]', e);
-    showErr('Something went wrong — please try again.');
+    try { data = await res.json(); } catch (_) {}
+  } catch (e) {
+    console.error('[reorder] network', e);
   }
+
+  var status = (data && data.status) || 'UNAVAILABLE';
+
+  if (status === 'NO_MATCH') {
+    showErr('We couldn’t find a previous order with those details — try a different number, or just fill in your details below.');
+    return;
+  }
+  if (status === 'AMBIGUOUS') {
+    showErr('We found more than one possible order. Please WhatsApp us at +1 876-885-1099 so we can locate it for you.');
+    return;
+  }
+  if (status === 'INVALID_REQUEST') {
+    showErr('Please enter a valid phone number, email, or order number.');
+    return;
+  }
+  if (status !== 'FOUND') {
+    // UNAVAILABLE or anything unexpected — never a dead end.
+    showErr('We’re unable to retrieve previous orders right now. Please add items below, or just fill in your details at checkout.');
+    return;
+  }
+
+  // FOUND — rebuild cart items only (no personal details shown yet).
+  var added = sfRebuildCartFromOrderStr((data.order && data.order.product) || '');
+  if (added === 0) {
+    showErr('Your previous order’s products are no longer available — please browse our current products below.');
+    return;
+  }
+  sfUpdateCartBtn();
+
+  // Privacy: do NOT auto-fill saved name/phone/email/address. Ask first.
+  _sfReorderDetails = data.details || null;
+  if (btn) { btn.textContent = 'Load My Order →'; btn.disabled = false; }
+  var confirmBox = document.getElementById('sf-reorder-confirm');
+  var formBox = document.getElementById('sf-reorder-form');
+  if (confirmBox && formBox && _sfReorderDetails) {
+    formBox.style.display = 'none';
+    confirmBox.style.display = 'block';
+  } else {
+    sfCloseReorder();
+    sfOpenCart();
+    sfReorderSuccessBanner();
+  }
+};
+
+// Parse "Name (Size xQty) | ..." and add matching live products to the existing cart.
+function sfRebuildCartFromOrderStr(productStr) {
+  var products = window.PRODUCTS || [];
+  var added = 0;
+  (productStr || '').split(' | ').forEach(function(part) {
+    var m = part.match(/^(.+) \((.+) x(\d+)\)$/);
+    if (!m) return;
+    var itemName = m[1].trim();
+    var sizeStr  = m[2].trim();              // may include scent, e.g. "1 Litre · Strawberry"
+    var qty      = parseInt(m[3]) || 1;
+    var baseSize = sizeStr.split(' · ')[0];  // strip scent/mint for key lookup
+    var prod = products.find(function(p) { return p.name === itemName; });
+    if (!prod) return;
+    var pricingKey = Object.keys(prod.pricing || {}).find(function(k) {
+      return sfSizeLabel(k) === baseSize;
+    }) || Object.keys(prod.pricing || {})[0];
+    if (!pricingKey) return;
+    var price = (prod.pricing[pricingKey] || {}).price || 0;
+    var cartKey = prod.id + '|' + sizeStr + '||';
+    var existing = sfCart.find(function(i) { return i._key === cartKey; });
+    if (existing) { existing.qty += qty; }
+    else {
+      sfCart.push({ _key: cartKey, id: prod.id, name: prod.name, size: sizeStr,
+        price: price, qty: qty, emoji: prod.emoji || '🧴', cat: prod.cat });
+    }
+    added++;
+  });
+  return added;
+}
+
+function sfReorderSuccessBanner() {
+  var banner = document.getElementById('sf-reorder-success');
+  if (banner) {
+    banner.style.display = 'block';
+    setTimeout(function() { banner.style.display = 'none'; }, 8000);
+  }
+}
+
+// Privacy gate: prefill saved contact/shipping details only on explicit consent.
+window.sfReorderReuseYes = function() {
+  var d = _sfReorderDetails || {};
+  var set = function(id, val) { var el = document.getElementById(id); if (el && val) el.value = val; };
+  set('sf-cust-name', d.name);
+  set('sf-cust-phone', d.phone);
+  set('sf-cust-email', d.email);
+  set('sf-delivery-address', d.address);
+  _sfReorderDetails = null;
+  sfCloseReorder();
+  sfOpenCart();
+  sfReorderSuccessBanner();
+};
+
+window.sfReorderReuseNo = function() {
+  _sfReorderDetails = null;
+  sfCloseReorder();
+  sfOpenCart();
+  sfReorderSuccessBanner();
 };
 
 // ── Staff/Admin visibility — show buttons if ?staff=true in URL ───────────
