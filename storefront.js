@@ -2276,9 +2276,9 @@ window.sfLoadOrder = async function() {
     });
 
     if (!matchOrder) {
-      sfCloseReorder();
-      sfShowToast('No previous order found for this number. Browse our products below.');
-      sfScroll('sf-products');
+      // Walkthrough-audit fix: previously this closed the modal and scrolled away,
+      // which read as a silent failure. Keep the modal open with a clear message.
+      showErr('We couldn’t find a previous order with this number — try a different number, or just fill in your details below.');
       return;
     }
 

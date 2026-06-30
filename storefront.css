@@ -215,6 +215,14 @@ tr:hover td{background:var(--warm);}
 .sf-section-h2 em { font-style:italic; font-weight:400; color:#8A8480; }
 .sf-section-sub { font-size:0.88rem; color:#8A8480; margin-bottom:2.5rem; max-width:500px; }
 
+/* Homepage entry points (Section 5) — responsive auto-fit grid, no fixed columns */
+.sf-help-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:1rem; margin-top:1.25rem; }
+.sf-help-card { background:white; border:1px solid #E8E4DE; border-radius:16px; padding:1.4rem 1.3rem; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s, border-color 0.2s; }
+.sf-help-card:hover { border-color:#0F0E0D; transform:translateY(-4px); box-shadow:0 14px 30px rgba(0,0,0,0.08); }
+.sf-help-emoji { font-size:1.9rem; line-height:1; }
+.sf-help-title { font-weight:700; font-size:1rem; color:#0F0E0D; margin:0.55rem 0 0.3rem; }
+.sf-help-desc { font-size:0.82rem; color:#6B7280; line-height:1.5; }
+
 .sf-cats { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.6rem; }
 .sf-cat { padding:0.35rem 1rem; border:1.5px solid #E8E4DE; border-radius:20px; font-size:0.75rem; font-weight:600; cursor:pointer; transition:all 0.18s; background:white; color:#8A8480; font-family:'Outfit',sans-serif; }
 .sf-cat.on { background:#0F0E0D; color:white; border-color:#0F0E0D; }
