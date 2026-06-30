@@ -1851,44 +1851,95 @@ window.sfChatQ = function(q) {
   window.sfChatSend();
 };
 
-window.sfChatSend = async function() {
+window.sfChatSend = function() {
   const inp = document.getElementById('sf-ch-in');
   const msg = (inp ? inp.value : '').trim();
   if (!msg) return;
   if (inp) inp.value = '';
-  sfAddChatMsg(msg, true);
-  const typing = sfAddChatMsg('...', false, true);
-  try {
-    // Use the SAME live product data the storefront catalogue renders from.
-    // window.buildChatbotSystem() (admin-module.js) compiles window.PRODUCTS + the
-    // Additional Knowledge box into the system prompt, so there is one source of truth
-    // and product/price changes appear in chatbot answers automatically. Fall back to
-    // the legacy {message, history} format only if that helper isn't available yet.
-    let reqBody;
-    if (typeof window.buildChatbotSystem === 'function') {
-      // sfAddChatMsg already pushed this user turn onto sfChatHistory.
-      let messages = sfChatHistory
-        .filter(h => h.role === 'user' || h.role === 'assistant')
-        .slice(-7);
-      // The API requires the first turn to be from the user.
-      while (messages.length && messages[0].role !== 'user') messages.shift();
-      reqBody = { messages, system: window.buildChatbotSystem() };
-    } else {
-      reqBody = { message: msg, history: sfChatHistory.slice(-6) };
-    }
-    const res = await fetch('/.netlify/functions/chat', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(reqBody)
-    });
-    const data = await res.json();
-    if (typing) typing.remove();
-    sfAddChatMsg(data.reply || 'Sorry, I could not get a response. Please try again.', false);
-  } catch(e) {
-    if (typing) typing.remove();
-    sfAddChatMsg('Sorry, something went wrong. Please WhatsApp us directly at +1 876-885-1099.', false);
-  }
+  sfAddChatMsg(msg, true);     // echo the user's turn (also pushes to sfChatHistory)
+  sfChatDispatch(msg);
 };
+
+// Sends the request and handles success/failure. Kept separate from sfChatSend so a
+// failed message can be retried WITHOUT re-echoing the user bubble or re-pushing history.
+function sfChatDispatch(msg) {
+  const typing = sfAddChatMsg('...', false, true);
+  (async () => {
+    try {
+      // Use the SAME live product data the storefront catalogue renders from.
+      // window.buildChatbotSystem() (admin-module.js) compiles window.PRODUCTS + the
+      // Additional Knowledge box into the system prompt, so there is one source of truth
+      // and product/price changes appear in chatbot answers automatically. Fall back to
+      // the legacy {message, history} format only if that helper isn't available yet.
+      let reqBody;
+      if (typeof window.buildChatbotSystem === 'function') {
+        let messages = sfChatHistory
+          .filter(h => h.role === 'user' || h.role === 'assistant')
+          .slice(-7);
+        // The API requires the first turn to be from the user.
+        while (messages.length && messages[0].role !== 'user') messages.shift();
+        reqBody = { messages, system: window.buildChatbotSystem() };
+      } else {
+        reqBody = { message: msg, history: sfChatHistory.slice(-6) };
+      }
+      const res = await fetch('/.netlify/functions/chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(reqBody)
+      });
+      let data = null;
+      try { data = await res.json(); } catch (_) {}
+      if (typing) typing.remove();
+      // Treat network errors, non-2xx, and empty replies as failures → visible fallback.
+      if (!res.ok || !data || !data.reply) { sfChatShowFailure(msg); return; }
+      sfAddChatMsg(data.reply, false);
+    } catch (err) {
+      if (typing) typing.remove();
+      sfChatShowFailure(msg, err);
+    }
+  })();
+}
+
+// Visible, actionable failure state — never a silent/dead-end error.
+// Preserves the customer's message, offers Retry + one-tap WhatsApp, and shows a
+// reference ID so support can trace the incident if the customer reports it.
+function sfChatShowFailure(msg, err) {
+  const ref = 'NC-' + (Date.now().toString(36) + Math.random().toString(36).slice(2))
+    .slice(-6).toUpperCase();
+  console.error('[chat] request failed — ref ' + ref, err || '');
+
+  // Keep the customer's message so they don't have to retype it.
+  const inp = document.getElementById('sf-ch-in');
+  if (inp && !inp.value.trim()) inp.value = msg;
+
+  const waText = encodeURIComponent(
+    'Hi Najah Chemist! I was using the website chat (ref ' + ref + ') but it dropped. My question: ' + msg);
+  const waHref = 'https://wa.me/18768851099?text=' + waText;
+
+  const msgs = document.getElementById('sf-ch-msgs');
+  if (!msgs) return;
+  const box = document.createElement('div');
+  box.className = 'sf-ch-fail';
+  // msg is NOT injected into innerHTML (only into the encoded WhatsApp href), so no XSS.
+  box.innerHTML =
+    '<div class="sf-ch-fail-title">We couldn’t reach our assistant right now</div>' +
+    '<div class="sf-ch-fail-sub">Your message is saved below — try again, or reach us instantly on WhatsApp.</div>' +
+    '<div class="sf-ch-fail-actions">' +
+      '<a class="sf-ch-fail-btn sf-ch-fail-wa" target="_blank" rel="noopener" href="' + waHref + '">💬 Continue on WhatsApp</a>' +
+      '<button class="sf-ch-fail-btn sf-ch-fail-retry" type="button">↻ Try again</button>' +
+    '</div>' +
+    '<div class="sf-ch-fail-ref">Reference: ' + ref + '</div>';
+  msgs.appendChild(box);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  const retryBtn = box.querySelector('.sf-ch-fail-retry');
+  if (retryBtn) retryBtn.addEventListener('click', function() {
+    box.remove();
+    const inp2 = document.getElementById('sf-ch-in');
+    if (inp2 && inp2.value.trim() === msg) inp2.value = '';   // clear the restored copy
+    sfChatDispatch(msg);                                      // resend without re-echoing
+  });
+}
 
 // Render minimal markdown (bold + line breaks) for bot replies. HTML-escape first
 // so model output can never inject markup, then add only our own <strong>/<br> tags.
@@ -1903,7 +1954,7 @@ function sfAddChatMsg(text, isUser, isTyping) {
   const msgs = document.getElementById('sf-ch-msgs');
   if (!msgs) return null;
   const div = document.createElement('div');
-  div.className = isUser ? 'sf-ch-msg sf-ch-user' : 'sf-ch-msg sf-ch-bot';
+  div.className = isUser ? 'sf-ch-msg sf-ch-msg-user' : 'sf-ch-msg sf-ch-msg-bot';
   // User text and the typing placeholder stay literal; bot replies get formatting.
   if (isUser || isTyping) div.textContent = text;
   else div.innerHTML = sfFormatMsg(text);
@@ -2168,9 +2219,17 @@ window.sfOpenReorder = function() {
   var inp = document.getElementById('sf-reorder-phone');
   var msg = document.getElementById('sf-reorder-msg');
   var btn = document.getElementById('sf-reorder-btn');
-  if (inp) inp.value = '';
+  ['sf-reorder-phone','sf-reorder-email','sf-reorder-ordernum'].forEach(function(id){
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
   if (msg) { msg.textContent = ''; msg.style.display = 'none'; }
   if (btn) { btn.textContent = 'Load My Order →'; btn.disabled = false; }
+  // Reset to the lookup form (hide the reuse-details confirmation).
+  var form = document.getElementById('sf-reorder-form');
+  var confirmBox = document.getElementById('sf-reorder-confirm');
+  if (form) form.style.display = 'block';
+  if (confirmBox) confirmBox.style.display = 'none';
+  _sfReorderDetails = null;
   var ov = document.getElementById('sf-reorder-overlay');
   if (ov) ov.classList.add('open');
   setTimeout(function(){ if (inp) inp.focus(); }, 150);
@@ -2181,8 +2240,14 @@ window.sfCloseReorder = function() {
   if (ov) ov.classList.remove('open');
 };
 
+// Holds the matched order's contact/shipping details between FOUND and the
+// customer's explicit "reuse" choice. Never auto-displayed (privacy).
+var _sfReorderDetails = null;
+
 window.sfLoadOrder = async function() {
-  var rawPhone = (document.getElementById('sf-reorder-phone')?.value || '').trim();
+  var phone       = (document.getElementById('sf-reorder-phone')?.value || '').trim();
+  var email       = (document.getElementById('sf-reorder-email')?.value || '').trim();
+  var orderNumber = (document.getElementById('sf-reorder-ordernum')?.value || '').trim();
   var msgEl = document.getElementById('sf-reorder-msg');
   var btn = document.getElementById('sf-reorder-btn');
 
@@ -2191,106 +2256,130 @@ window.sfLoadOrder = async function() {
     if (btn) { btn.textContent = 'Load My Order →'; btn.disabled = false; }
   };
 
-  var digits = rawPhone.replace(/\D/g, '');
-  if (digits.length < 7) { showErr('Please enter a valid phone number.'); return; }
+  // Need at least one identifier (the server validates authoritatively).
+  if (!phone && !email && !orderNumber) {
+    showErr('Please enter your phone number, email, or order number.');
+    return;
+  }
 
   if (btn) { btn.textContent = 'Searching…'; btn.disabled = true; }
   if (msgEl) { msgEl.style.display = 'none'; }
 
+  // The browser never reads the orders collection directly (orders are not
+  // publicly readable). A server function verifies ownership and returns a
+  // customer-friendly status — see netlify/functions/lookup-order.js.
+  var data = null;
   try {
-    var db = window._db;
-    if (!db) { showErr('Service not ready — please try again.'); return; }
-
-    var mod = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
-    var collection = mod.collection, getDocs = mod.getDocs, query = mod.query,
-        orderBy = mod.orderBy, limit = mod.limit;
-
-    var snap = await getDocs(query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(300)));
-
-    // Find most recent order whose phone matches (normalize both sides to digits)
-    var matchOrder = null;
-    snap.forEach(function(d) {
-      if (matchOrder) return;
-      var o = d.data();
-      var stored = [o.phone, o.whatsapp, o.customerWhatsApp].filter(Boolean);
-      for (var i = 0; i < stored.length; i++) {
-        var s = stored[i].replace(/\D/g, '');
-        if (!s) continue;
-        // Match if either number ends with the other (handles country code differences)
-        if (s.endsWith(digits) || digits.endsWith(s) || s.slice(-7) === digits.slice(-7)) {
-          matchOrder = o;
-          break;
-        }
-      }
+    var res = await fetch('/.netlify/functions/lookup-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: phone, email: email, orderNumber: orderNumber })
     });
-
-    if (!matchOrder) {
-      sfCloseReorder();
-      sfShowToast('No previous order found for this number. Browse our products below.');
-      sfScroll('sf-products');
-      return;
-    }
-
-    // Rebuild cart items from the order's product string
-    // Format: "Name (Size xQty) | Name2 (Size2 xQty2)"
-    var products = window.PRODUCTS || [];
-    var productStr = matchOrder.product || '';
-    var parts = productStr.split(' | ');
-    var added = 0;
-
-    parts.forEach(function(part) {
-      var m = part.match(/^(.+) \((.+) x(\d+)\)$/);
-      if (!m) return;
-      var itemName = m[1].trim();
-      var sizeStr  = m[2].trim();  // may include scent, e.g. "1 Litre · Strawberry"
-      var qty      = parseInt(m[3]) || 1;
-      var baseSize = sizeStr.split(' · ')[0]; // strip scent/mint for key lookup
-
-      var prod = products.find(function(p) { return p.name === itemName; });
-      if (!prod) return;
-
-      var pricingKey = Object.keys(prod.pricing || {}).find(function(k) {
-        return sfSizeLabel(k) === baseSize;
-      }) || Object.keys(prod.pricing || {})[0];
-      if (!pricingKey) return;
-
-      var price = (prod.pricing[pricingKey] || {}).price || 0;
-      var cartKey = prod.id + '|' + sizeStr + '||';
-      var existing = sfCart.find(function(i) { return i._key === cartKey; });
-      if (existing) {
-        existing.qty += qty;
-      } else {
-        sfCart.push({
-          _key: cartKey, id: prod.id, name: prod.name,
-          size: sizeStr, price: price, qty: qty,
-          emoji: prod.emoji || '🧴', cat: prod.cat
-        });
-      }
-      added++;
-    });
-
-    sfCloseReorder();
-
-    if (added === 0) {
-      sfShowToast('Products from your last order are no longer available. Browse below.');
-      sfScroll('sf-products');
-      return;
-    }
-
-    sfUpdateCartBtn();
-    sfOpenCart();
-
-    // Show success banner in cart, auto-hide after 8 s
-    var banner = document.getElementById('sf-reorder-success');
-    if (banner) {
-      banner.style.display = 'block';
-      setTimeout(function() { banner.style.display = 'none'; }, 8000);
-    }
-
-  } catch(e) {
-    console.error('[reorder]', e);
-    showErr('Something went wrong — please try again.');
+    try { data = await res.json(); } catch (_) {}
+  } catch (e) {
+    console.error('[reorder] network', e);
   }
+
+  var status = (data && data.status) || 'UNAVAILABLE';
+
+  if (status === 'NO_MATCH') {
+    showErr('We couldn’t find a previous order with those details — try a different number, or just fill in your details below.');
+    return;
+  }
+  if (status === 'AMBIGUOUS') {
+    showErr('We found more than one possible order. Please WhatsApp us at +1 876-885-1099 so we can locate it for you.');
+    return;
+  }
+  if (status === 'INVALID_REQUEST') {
+    showErr('Please enter a valid phone number, email, or order number.');
+    return;
+  }
+  if (status !== 'FOUND') {
+    // UNAVAILABLE or anything unexpected — never a dead end.
+    showErr('We’re unable to retrieve previous orders right now. Please add items below, or just fill in your details at checkout.');
+    return;
+  }
+
+  // FOUND — rebuild cart items only (no personal details shown yet).
+  var added = sfRebuildCartFromOrderStr((data.order && data.order.product) || '');
+  if (added === 0) {
+    showErr('Your previous order’s products are no longer available — please browse our current products below.');
+    return;
+  }
+  sfUpdateCartBtn();
+
+  // Privacy: do NOT auto-fill saved name/phone/email/address. Ask first.
+  _sfReorderDetails = data.details || null;
+  if (btn) { btn.textContent = 'Load My Order →'; btn.disabled = false; }
+  var confirmBox = document.getElementById('sf-reorder-confirm');
+  var formBox = document.getElementById('sf-reorder-form');
+  if (confirmBox && formBox && _sfReorderDetails) {
+    formBox.style.display = 'none';
+    confirmBox.style.display = 'block';
+  } else {
+    sfCloseReorder();
+    sfOpenCart();
+    sfReorderSuccessBanner();
+  }
+};
+
+// Parse "Name (Size xQty) | ..." and add matching live products to the existing cart.
+function sfRebuildCartFromOrderStr(productStr) {
+  var products = window.PRODUCTS || [];
+  var added = 0;
+  (productStr || '').split(' | ').forEach(function(part) {
+    var m = part.match(/^(.+) \((.+) x(\d+)\)$/);
+    if (!m) return;
+    var itemName = m[1].trim();
+    var sizeStr  = m[2].trim();              // may include scent, e.g. "1 Litre · Strawberry"
+    var qty      = parseInt(m[3]) || 1;
+    var baseSize = sizeStr.split(' · ')[0];  // strip scent/mint for key lookup
+    var prod = products.find(function(p) { return p.name === itemName; });
+    if (!prod) return;
+    var pricingKey = Object.keys(prod.pricing || {}).find(function(k) {
+      return sfSizeLabel(k) === baseSize;
+    }) || Object.keys(prod.pricing || {})[0];
+    if (!pricingKey) return;
+    var price = (prod.pricing[pricingKey] || {}).price || 0;
+    var cartKey = prod.id + '|' + sizeStr + '||';
+    var existing = sfCart.find(function(i) { return i._key === cartKey; });
+    if (existing) { existing.qty += qty; }
+    else {
+      sfCart.push({ _key: cartKey, id: prod.id, name: prod.name, size: sizeStr,
+        price: price, qty: qty, emoji: prod.emoji || '🧴', cat: prod.cat });
+    }
+    added++;
+  });
+  return added;
+}
+
+function sfReorderSuccessBanner() {
+  var banner = document.getElementById('sf-reorder-success');
+  if (banner) {
+    banner.style.display = 'block';
+    setTimeout(function() { banner.style.display = 'none'; }, 8000);
+  }
+}
+
+// Privacy gate: prefill saved contact/shipping details only on explicit consent.
+window.sfReorderReuseYes = function() {
+  var d = _sfReorderDetails || {};
+  var set = function(id, val) { var el = document.getElementById(id); if (el && val) el.value = val; };
+  set('sf-cust-name', d.name);
+  set('sf-cust-phone', d.phone);
+  set('sf-cust-email', d.email);
+  set('sf-delivery-address', d.address);
+  _sfReorderDetails = null;
+  sfCloseReorder();
+  sfOpenCart();
+  sfReorderSuccessBanner();
+};
+
+window.sfReorderReuseNo = function() {
+  _sfReorderDetails = null;
+  sfCloseReorder();
+  sfOpenCart();
+  sfReorderSuccessBanner();
 };
 
 // ── Staff/Admin visibility — show buttons if ?staff=true in URL ───────────
