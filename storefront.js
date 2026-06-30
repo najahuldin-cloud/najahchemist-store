@@ -1837,8 +1837,8 @@ let sfChatHistory = [];
 
 window.sfToggleChat = function() {
   sfChatOpen = !sfChatOpen;
-  const box = document.getElementById('sf-chat-box');
-  const fab = document.getElementById('sf-chat-fab');
+  const box = document.getElementById('sf-assistant-panel');
+  const fab = document.getElementById('sf-assistant-button');
   if (box) box.classList.toggle('open', sfChatOpen);
   if (fab) fab.style.display = sfChatOpen ? 'none' : 'flex';
   if (sfChatOpen && sfChatHistory.length === 0) {
@@ -1859,10 +1859,27 @@ window.sfChatSend = async function() {
   sfAddChatMsg(msg, true);
   const typing = sfAddChatMsg('...', false, true);
   try {
+    // Use the SAME live product data the storefront catalogue renders from.
+    // window.buildChatbotSystem() (admin-module.js) compiles window.PRODUCTS + the
+    // Additional Knowledge box into the system prompt, so there is one source of truth
+    // and product/price changes appear in chatbot answers automatically. Fall back to
+    // the legacy {message, history} format only if that helper isn't available yet.
+    let reqBody;
+    if (typeof window.buildChatbotSystem === 'function') {
+      // sfAddChatMsg already pushed this user turn onto sfChatHistory.
+      let messages = sfChatHistory
+        .filter(h => h.role === 'user' || h.role === 'assistant')
+        .slice(-7);
+      // The API requires the first turn to be from the user.
+      while (messages.length && messages[0].role !== 'user') messages.shift();
+      reqBody = { messages, system: window.buildChatbotSystem() };
+    } else {
+      reqBody = { message: msg, history: sfChatHistory.slice(-6) };
+    }
     const res = await fetch('/.netlify/functions/chat', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({message: msg, history: sfChatHistory.slice(-6)})
+      body: JSON.stringify(reqBody)
     });
     const data = await res.json();
     if (typing) typing.remove();
@@ -1873,14 +1890,26 @@ window.sfChatSend = async function() {
   }
 };
 
+// Render minimal markdown (bold + line breaks) for bot replies. HTML-escape first
+// so model output can never inject markup, then add only our own <strong>/<br> tags.
+function sfFormatMsg(text) {
+  return String(text)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+
 function sfAddChatMsg(text, isUser, isTyping) {
   const msgs = document.getElementById('sf-ch-msgs');
   if (!msgs) return null;
   const div = document.createElement('div');
   div.className = isUser ? 'sf-ch-msg sf-ch-user' : 'sf-ch-msg sf-ch-bot';
-  div.textContent = text;
+  // User text and the typing placeholder stay literal; bot replies get formatting.
+  if (isUser || isTyping) div.textContent = text;
+  else div.innerHTML = sfFormatMsg(text);
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
+  // Store RAW text in history so the API conversation stays clean (no HTML).
   if (!isTyping) sfChatHistory.push({role: isUser ? 'user' : 'assistant', content: text});
   return div;
 }

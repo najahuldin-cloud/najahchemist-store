@@ -1601,7 +1601,8 @@ function getSYS(){
   (window.PRODUCTS||[]).filter(p=>!p.hidden).forEach(p=>{
     const c=cats[p.cat]||p.cat.toUpperCase();
     if(!grouped[c]) grouped[c]=[];
-    grouped[c].push(`  • ${p.name} — ${fmtPricing(p.pricing)}${p.ingredients?'\n    Ingredients: '+p.ingredients:''}${p.benefits?'\n    Benefits: '+(Array.isArray(p.benefits)?p.benefits.join(', '):p.benefits):''}`);
+    const stock = p.outOfStock ? ' — ⚠ CURRENTLY OUT OF STOCK' : '';
+    grouped[c].push(`  • ${p.name}${stock} — ${fmtPricing(p.pricing)}${p.tagline?'\n    '+p.tagline:''}${p.ingredients?'\n    Ingredients: '+p.ingredients:''}${p.benefits?'\n    Benefits: '+(Array.isArray(p.benefits)?p.benefits.join(', '):p.benefits):''}`);
   });
   const catalogue=Object.entries(grouped).map(([cat,lines])=>`${cat}:\n${lines.join('\n')}`).join('\n\n');
 
@@ -1613,6 +1614,8 @@ BRAND: Najah Chemist uses professional-grade actives — kojic acid, AHAs, salic
 LIVE PRODUCT CATALOGUE (from Firestore)
 ══════════════════════════════════════
 ${catalogue}
+
+IMPORTANT — PRODUCT ACCURACY: The LIVE PRODUCT CATALOGUE above is the single live source of truth for products, sizes, prices and stock — it updates automatically from our store. Only quote products, sizes and prices that appear in it. If a customer asks for a product, size, or price that is NOT listed, do not invent one — say you can't find that exact item and suggest the closest matching product(s) from the catalogue. If a product is marked OUT OF STOCK, tell the customer and offer the closest in-stock alternative.
 
 ══════════════════════════════════════
 INGREDIENTS & BENEFITS (detailed)
@@ -1702,18 +1705,27 @@ PRIVATE LABEL: MOQ 1 litre / 2 lbs | Lead time 7–14 days | 50% deposit | Custo
 CONTACT: WhatsApp (876) 885-1099 · @najahchemist on Instagram & TikTok · najahchemistja.com`;
 }
 
+// Single source of truth for the chatbot system prompt. Used by BOTH the inline chat
+// section (callAI, below) and the floating storefront widget (storefront.js → sfChatSend).
+// Combines the live product catalogue built from window.PRODUCTS (getSYS) with the
+// manually-editable "Additional Knowledge" box (Firestore settings/chatbot_knowledge,
+// loaded into window._extraChatbotKnowledge). No product data is duplicated anywhere else.
+window.buildChatbotSystem = function(){
+  const extraKb = window._extraChatbotKnowledge ? '\n\nADDITIONAL BUSINESS INFORMATION:\n' + window._extraChatbotKnowledge : '';
+  return getSYS() + extraKb;
+};
+
 let hist=[];
 function addMsg(txt,isUser){const m=document.getElementById('chat-msgs');const el=document.createElement('div');el.className='msg '+(isUser?'msg-user':'msg-bot');el.innerHTML=txt.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');m.appendChild(el);m.scrollTop=m.scrollHeight;}
 function showTyping(){const m=document.getElementById('chat-msgs');const el=document.createElement('div');el.className='msg-typing';el.id='typing-ind';el.innerHTML='<div class="dot-a"><span></span><span></span><span></span></div>';m.appendChild(el);m.scrollTop=m.scrollHeight;}
 function rmTyping(){const t=document.getElementById('typing-ind');if(t)t.remove();}
 async function callAI(msg){
   hist.push({role:'user',content:msg});
-  const extraKb = window._extraChatbotKnowledge ? '\n\nADDITIONAL BUSINESS INFORMATION:\n' + window._extraChatbotKnowledge : '';
   try{
     const r=await fetch('/.netlify/functions/chat',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({messages:hist.slice(-20),system:getSYS()+extraKb})
+      body:JSON.stringify({messages:hist.slice(-20),system:window.buildChatbotSystem()})
     });
     const d=await r.json();
     const reply=d.content?.[0]?.text||"I'm having trouble. Please DM us @najahchemist!";

@@ -248,7 +248,7 @@
       <div class="sf-section-label" style="color:#16a34a;">Private Label</div>
       <h2 class="sf-section-h2">We manufacture. You brand. <em>You sell.</em></h2>
       <p class="sf-section-sub">Order any formula in bulk, apply your label, and sell under your own brand name. Used by 500+ clients island-wide.</p>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem;margin-bottom:2.5rem;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1.25rem;margin-bottom:2.5rem;">
         <div style="background:white;border:1px solid #bbf7d0;border-radius:14px;padding:1.4rem 1.5rem;text-align:center;">
           <div style="font-family:'Playfair Display',serif;font-size:1.35rem;font-weight:700;color:#0F0E0D;">1 litre / 2 lbs</div>
           <div style="font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#16a34a;margin-top:0.3rem;">Minimum order</div>
@@ -1136,8 +1136,8 @@
   </div>
 
   <!-- ══ FLOATING CHAT WIDGET ══ -->
-  <div id="sf-chat-widget">
-    <div id="sf-chat-box">
+  <div id="sf-assistant-launcher">
+    <div id="sf-assistant-panel">
       <div class="sf-ch-hdr">
         <div class="sf-ch-av"><span>Nc</span></div>
         <div style="flex:1;">
@@ -1162,10 +1162,10 @@
         </button>
       </div>
     </div>
-    <button id="sf-chat-fab" onclick="sfToggleChat()">
+    <button id="sf-assistant-button" onclick="sfToggleChat()">
       <svg id="sf-fab-icon" width="22" height="22" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
       <svg id="sf-close-icon" width="18" height="18" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24" style="display:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      <span id="sf-chat-unread" style="position:absolute;top:-3px;right:-3px;width:18px;height:18px;background:#DC2626;color:white;border-radius:50%;font-size:0.6rem;font-weight:700;display:none;align-items:center;justify-content:center;">1</span>
+      <span id="sf-assistant-unread" style="position:absolute;top:-3px;right:-3px;width:18px;height:18px;background:#DC2626;color:white;border-radius:50%;font-size:0.6rem;font-weight:700;display:none;align-items:center;justify-content:center;">1</span>
     </button>
   </div>
 
