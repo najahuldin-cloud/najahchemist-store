@@ -367,13 +367,35 @@ tr:hover td{background:var(--warm);}
 .sf-qty-btn:hover{border-color:#0F0E0D;background:#0F0E0D;color:white;}
 
 /* ── CART BUTTON (fixed bottom left) ── */
-#sf-cart-btn{position:fixed;bottom:1.5rem;left:1.5rem;z-index:700;background:#0F0E0D;color:white;border:none;border-radius:28px;padding:0.65rem 1.1rem;font-family:'Outfit',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;display:none;align-items:center;gap:0.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.25);transition:all 0.2s;}
+#sf-cart-btn{position:fixed;bottom:1.5rem;left:1.5rem;z-index:700;background:var(--green,#2D6A4F);color:white;border:none;border-radius:28px;padding:0.65rem 1.1rem;font-family:'Outfit',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;display:none;align-items:center;gap:0.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.25);transition:all 0.2s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 #sf-cart-btn:hover{transform:translateY(-2px);}
+/* Floating cart button is mobile-only; desktop uses the nav cart instead */
+@media(min-width:641px){#sf-cart-btn{display:none !important;}}
 .sf-cart-count-badge{background:#DC2626;color:white;width:18px;height:18px;border-radius:50%;font-size:0.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;}
 
-/* ── CART OVERLAY ── */
-#sf-cart-overlay{z-index:800;}
-.sf-cart-modal{background:white;width:100%;max-width:500px;max-height:94vh;border-radius:20px;display:flex;flex-direction:column;overflow:hidden;animation:sfUp 0.25s ease;} .sf-cart-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+/* ── NAV CART (desktop) ── */
+#sf-nav-cart{position:relative;display:flex;align-items:center;gap:0.4rem;background:var(--green,#2D6A4F);color:#fff;border:none;border-radius:8px;padding:0.4rem 0.7rem;font-family:'Outfit',sans-serif;font-size:0.8rem;font-weight:700;cursor:pointer;transition:all 0.18s;white-space:nowrap;}
+#sf-nav-cart:hover{background:#245741;transform:translateY(-1px);}
+.sf-nav-cart-ico{font-size:0.95rem;line-height:1;}
+.sf-nav-cart-sub{font-size:0.76rem;font-weight:700;}
+#sf-nav-cart .sf-cart-count-badge{position:absolute;top:-6px;left:-6px;}
+@media(max-width:640px){#sf-nav-cart{display:none;}}
+
+/* ── CART DRAWER (slide-out) ── */
+/* Scoped to #sf-cart-overlay only — the shared .sf-overlay base (product modal) is untouched. */
+/* Desktop: drawer sits alongside the catalogue — backdrop is transparent and passes
+   clicks through so shoppers can keep browsing while the cart stays open. */
+#sf-cart-overlay{z-index:800;justify-content:flex-end;align-items:stretch;padding:0;background:transparent;pointer-events:none;}
+.sf-cart-modal{background:white;width:100%;max-width:440px;height:100vh;max-height:100vh;border-radius:0;display:flex;flex-direction:column;overflow:hidden;box-shadow:-8px 0 40px rgba(0,0,0,0.22);animation:sfSlideRight 0.28s cubic-bezier(0.22,0.61,0.36,1);pointer-events:auto;}
+.sf-cart-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+@keyframes sfSlideRight{from{transform:translateX(100%)}to{transform:translateX(0)}}
+@keyframes sfSlideUpSheet{from{transform:translateY(100%)}to{transform:translateY(0)}}
+/* Mobile drag handle — hidden on desktop (drawer comes from the right) */
+.sf-cart-drag{display:none;}
+/* Inline size/scent editors inside a cart line */
+.sf-cart-edit-row{display:flex;flex-wrap:wrap;gap:0.35rem;margin:0.15rem 0 0.4rem;}
+.sf-cart-sel{font-family:'Outfit',sans-serif;font-size:0.72rem;font-weight:600;color:#0F0E0D;border:1.5px solid #E8E4DE;border-radius:6px;background:#FAFAF8;padding:0.22rem 0.4rem;max-width:100%;cursor:pointer;outline:none;transition:border-color 0.15s;}
+.sf-cart-sel:focus{border-color:#0F0E0D;}
 .sf-cart-hdr{padding:1.1rem 1.4rem;border-bottom:1px solid #E8E4DE;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .sf-cart-hdr h3{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;}
 .sf-cart-items-wrap{}
@@ -495,11 +517,46 @@ tr:hover td{background:var(--warm);}
 @media(max-width:640px){
   .sf-about-inner{grid-template-columns:1fr;}
   .sf-about-wrap{padding:3rem 1.2rem;}
-  #sf-cart-btn{bottom:1rem;left:1rem;}
+  #sf-cart-btn{bottom:1rem;left:1rem;max-width:calc(100vw - 6rem);}
   #sf-assistant-launcher{bottom:1rem;right:1rem;}
+  /* Cart drawer becomes a bottom sheet on mobile — dim, tap-to-close backdrop */
+  #sf-cart-overlay{align-items:flex-end;justify-content:center;background:rgba(15,14,13,0.5);pointer-events:auto;}
+  .sf-cart-modal{max-width:100%;height:92vh;max-height:92vh;border-radius:20px 20px 0 0;box-shadow:0 -8px 40px rgba(0,0,0,0.25);animation:sfSlideUpSheet 0.3s cubic-bezier(0.22,0.61,0.36,1);}
+  .sf-cart-drag{display:flex;justify-content:center;align-items:center;padding:0.6rem 0 0.1rem;cursor:grab;touch-action:none;}
+  .sf-cart-drag span{width:38px;height:4px;border-radius:3px;background:#D8D2CA;display:block;}
   /* Mobile opened state = full-screen */
   #sf-assistant-panel{width:100vw;max-width:100vw;top:0;right:0;}
   #sf-assistant-panel.open{display:flex;}
+  /* Keep bottom banners clear of the floating cart button on mobile */
+  #sf-added-confirm, #sf-welcome-back{bottom:5.25rem;}
+}
+
+/* ── "Added to cart" inline confirmation ── */
+#sf-added-confirm{position:fixed;z-index:900;left:50%;bottom:1.25rem;transform:translateX(-50%) translateY(160%);background:#fff;border:1px solid #E8E4DE;border-left:4px solid #27AE60;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.18);padding:0.7rem 0.9rem;font-family:'Outfit',sans-serif;max-width:calc(100% - 2rem);width:340px;opacity:0;transition:transform 0.32s cubic-bezier(0.22,0.61,0.36,1),opacity 0.25s;pointer-events:none;}
+#sf-added-confirm.show{transform:translateX(-50%) translateY(0);opacity:1;pointer-events:auto;}
+.sf-ac-msg{font-size:0.82rem;color:#1C1A18;margin-bottom:0.5rem;line-height:1.4;}
+.sf-ac-btns{display:flex;gap:0.5rem;}
+.sf-ac-btn{flex:1;padding:0.5rem;border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.76rem;font-weight:700;cursor:pointer;border:1.5px solid #E8E4DE;background:#fff;color:#0F0E0D;transition:all 0.15s;}
+.sf-ac-cont:hover{background:#F5F2ED;}
+.sf-ac-view{background:var(--green,#2D6A4F);color:#fff;border-color:var(--green,#2D6A4F);}
+.sf-ac-view:hover{background:#245741;}
+@media(min-width:641px){
+  #sf-added-confirm{left:auto;right:1.5rem;transform:translateX(0) translateY(160%);}
+  #sf-added-confirm.show{transform:translateX(0) translateY(0);}
+}
+
+/* ── "Welcome back" cart prompt ── */
+#sf-welcome-back{position:fixed;z-index:900;left:50%;bottom:1.25rem;transform:translateX(-50%) translateY(180%);background:#fff;border:1px solid #E8E4DE;border-left:4px solid #C8973A;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.18);padding:0.7rem 0.9rem;font-family:'Outfit',sans-serif;max-width:calc(100% - 2rem);width:340px;opacity:0;transition:transform 0.32s cubic-bezier(0.22,0.61,0.36,1),opacity 0.25s;}
+#sf-welcome-back.show{transform:translateX(-50%) translateY(0);opacity:1;}
+.sf-wb-msg{font-size:0.82rem;color:#1C1A18;margin-bottom:0.5rem;line-height:1.4;}
+.sf-wb-btns{display:flex;gap:0.5rem;}
+.sf-wb-btn{flex:1;padding:0.5rem;border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.76rem;font-weight:700;cursor:pointer;border:1.5px solid #E8E4DE;background:#fff;color:#0F0E0D;transition:all 0.15s;}
+.sf-wb-fresh:hover{background:#F5F2ED;}
+.sf-wb-restore{background:var(--green,#2D6A4F);color:#fff;border-color:var(--green,#2D6A4F);}
+.sf-wb-restore:hover{background:#245741;}
+@media(min-width:641px){
+  #sf-welcome-back{left:1.5rem;transform:translateX(0) translateY(180%);}
+  #sf-welcome-back.show{transform:translateX(0) translateY(0);}
 }
 
 /* Staff/Admin buttons — hidden by default, revealed via ?staff=true */
