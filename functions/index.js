@@ -3074,8 +3074,14 @@ async function fireImmediateJourneyEmail(ref, order, docId, n) {
   const journey = order.journey || {};
   if (journey.emailsSent && journey.emailsSent[n]) return;              // already sent
   const to = (order.email || order.customerEmail || '').trim();
-  if (!to) { console.warn(`[journey] No email on order ${docId} — skip email ${n}`); return; }
-  await ref.update({ [`journey.emailsSent.${n}`]: Timestamp.now() });
+  if (!to) {
+    // WhatsApp-only client (common in JA). Skip email silently; flag the order so
+    // the admin Client Journey tab can surface them for manual WhatsApp nurture.
+    await ref.update({ 'journey.emailAvailable': false }).catch(() => {});
+    console.warn(`[journey] No email on order ${docId} — WhatsApp-only, skip email ${n}`);
+    return;
+  }
+  await ref.update({ [`journey.emailsSent.${n}`]: Timestamp.now(), 'journey.emailAvailable': true });
   try {
     const { subject, html } = buildJourneyEmail(n, order, docId);
     await sendResendEmail(to, subject, html);
@@ -3212,16 +3218,17 @@ exports.sendJourneyEmails = onSchedule(
         await doc.ref.update({ 'journey.scheduledEmails': arr });
 
         if (!to) {
+          // WhatsApp-only client — mark skipped and flag the order for manual nurture.
           arr[i] = { ...arr[i], skippedReason: 'no_email' };
-          await doc.ref.update({ 'journey.scheduledEmails': arr }).catch(() => {});
-          console.warn(`[sendJourneyEmails] No email on order ${doc.id} — skip email ${entry.emailNumber}`);
+          await doc.ref.update({ 'journey.scheduledEmails': arr, 'journey.emailAvailable': false }).catch(() => {});
+          console.warn(`[sendJourneyEmails] No email on order ${doc.id} — WhatsApp-only, skip email ${entry.emailNumber}`);
           continue;
         }
 
         try {
           const { subject, html } = buildJourneyEmail(entry.emailNumber, order, doc.id);
           await sendResendEmail(to, subject, html);
-          await doc.ref.update({ [`journey.emailsSent.${entry.emailNumber}`]: Timestamp.now() });
+          await doc.ref.update({ [`journey.emailsSent.${entry.emailNumber}`]: Timestamp.now(), 'journey.emailAvailable': true });
           console.log(`[sendJourneyEmails] Sent email ${entry.emailNumber} → ${to} (${doc.id})`);
         } catch (err) {
           arr[i] = { ...entry, sent: false };            // roll back so it retries next hour

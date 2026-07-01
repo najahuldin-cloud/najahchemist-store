@@ -673,6 +673,12 @@ select.finp{cursor:pointer;}
           <div id="journey-due-body"><div class="empty-state" style="padding:1rem;">Loading…</div></div>
         </div>
 
+        <!-- Section 1b — No Email (WhatsApp-only) -->
+        <div class="card" style="margin-bottom:1.2rem;">
+          <div class="card-title">📱 No Email — WhatsApp Only <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--mid);">nurture manually · full 10-message sequence</span></div>
+          <div id="journey-noemail-body"><div class="empty-state" style="padding:1rem;">Loading…</div></div>
+        </div>
+
         <!-- Section 2 — All Clients -->
         <div class="card">
           <div class="card-title">All Clients <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--mid);">paid orders · last 90 days</span></div>
@@ -1546,6 +1552,22 @@ const JOURNEY_WA = {
   }
 };
 
+// WhatsApp-friendly versions of all 10 journey messages — used to manually nurture
+// WhatsApp-only clients (no email) through the full sequence, one tap per message.
+// Moments 1/5/7 reuse the exact 3 key-moment texts above so they never diverge.
+const JOURNEY_WA_FULL = {
+  1: { label:'Payment Confirmed',      msg: JOURNEY_WA.paymentConfirmed.msg },
+  2: { label:'Getting Ready to Sell',  msg:(f,id)=>`Hi ${f}! 🌿 While we make your Najah Chemist order ${id}, get set up: ① choose your business name ② set up WhatsApp Business ③ create your Instagram business page. Your full launch guide 🚀 https://najahchemistja.com/guide/24-hour-brand-launch-blueprint.pdf` },
+  3: { label:'Pricing Guide',          msg:(f,id)=>`Hi ${f}! 💰 Pricing tip: don't underprice. Selling price = product cost + packaging + shipping + fees + your profit. Aim for 2.5x–4x your wholesale cost. Recommended retail prices: https://najahchemistja.com/pricing-guide` },
+  4: { label:'Branding + Labels',      msg:(f,id)=>`Hi ${f}! 🏷️ Before your products arrive, get your logo, brand colours & labels ready. Labels need: brand + product name, net weight/volume, directions, ingredients (INCI), warnings, manufacturer info. Need label design (from J$3,000)? https://najahchemistja.com/start` },
+  5: { label:'Production Update',      msg: JOURNEY_WA.productionUpdate.msg },
+  6: { label:'Shipped',                msg:(f,id)=>`Hi ${f}! 🚚 Your Najah Chemist order ${id} is on its way! 🎉 While you wait, make a list of your first 20 potential customers — friends, family, coworkers, church, salon clients, social followers. Questions? Reply anytime.` },
+  7: { label:'Delivery Check-in',      msg: JOURNEY_WA.deliveryCheckin.msg },
+  8: { label:'Week 1 Check-in',        msg:(f,id)=>`Hi ${f}! 🌿 It's been a week — how's your launch going? Made your first sale yet? We're here to help. 💰 Pricing: https://najahchemistja.com/pricing-guide · 📖 How to start: https://najahchemistja.com/start-skincare-business-jamaica. Reply anytime 💚` },
+  9: { label:'Month 1 Reorder',        msg:(f,id)=>`Hi ${f}! 🌿 It's been a month — congrats! Most clients sell through in 30–60 days. Running low? Reorder before you sell out 🛒 https://najahchemistja.com — how are sales going?` },
+  10:{ label:'Month 2 Win-back',       msg:(f,id)=>`Hi ${f}! 🌿 It's been two months since your Najah Chemist order. Hit any challenges with selling, pricing or marketing? We're here — no pressure. Ready for your next order? 🛒 https://najahchemistja.com. We're rooting for you 💚` }
+};
+
 function jEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function jIsPaid(o){ return (o.paymentStatus||o.payStatus||o.payment||'').toLowerCase()==='paid'; }
 function jStatus(o){ return (o.status||'').toLowerCase(); }
@@ -1554,6 +1576,12 @@ function jOrderDate(o){ return jDate(o.createdAt) || jDate(o.date) || jDate(o.jo
 function jFirst(o){ return (((o.client||o.customerName||'there').trim().split(/\s+/)[0])||'there'); }
 function jOrderLabel(o){ const raw=String(o.id||o.orderId||o._docId||''); return raw.startsWith('NC-')?raw:('NC-'+raw); }
 function jIntlPhone(o){ const d=(o.whatsapp||o.phone||o.wa||o.customerWhatsApp||'').replace(/\D/g,''); return d.startsWith('876')?'1'+d:d; }
+// WhatsApp-only when the Cloud Function flagged emailAvailable=false, or the order simply has no email.
+function jHasEmail(o){ if(o.journey && o.journey.emailAvailable===false) return false; return !!((o.email||o.customerEmail||'').trim()); }
+// The 10 sequence WhatsApp buttons for a client, with a ✓ on any already logged as sent.
+function journeySeqButtons(o){ const seq=(o.journey&&o.journey.manualSeqSent)||{};
+  return Object.keys(JOURNEY_WA_FULL).map(n=>{ const m=JOURNEY_WA_FULL[n]; const done=!!jDate(seq[n]);
+    return `<button class="btn ${done?'btn-gr':'btn-wa'} btn-sm" title="${jEsc(m.label)}" onclick="journeyOpenSeqWA('${o._docId}',${n})">${done?'✓ ':''}${n}. ${jEsc(m.label)}</button>`; }).join(''); }
 function jManualState(o,key){ return (o.journey&&o.journey.manualWhatsApp&&o.journey.manualWhatsApp[key])||null; }
 function jManualDue(o,key){
   const cfg=JOURNEY_WA[key]; if(!cfg.ready(o)) return false;
@@ -1594,8 +1622,9 @@ function jNextMessage(o){ const j=o.journey||{};
   if(j.paused) return '<span style="color:var(--mid);">Paused</span>';
   return '—'; }
 function jStatusBadge(o){ const j=o.journey||{}, p=jProgress(o);
-  if(p.mth2) return '<span class="badge b-complete">Complete</span>';
   if(j.paused) return '<span class="badge b-cancelled">Paused</span>';
+  if(!jHasEmail(o)) return '<span class="badge b-await">Manual only</span>';
+  if(p.mth2) return '<span class="badge b-complete">Complete</span>';
   for(const k of Object.keys(JOURNEY_WA)){ if(jManualDue(o,k)) return '<span class="badge b-pending">Needs Attention</span>'; }
   return '<span class="badge b-processing">On Track</span>'; }
 
@@ -1607,7 +1636,7 @@ function renderJourney(){
   const clients=journeyClients();
   // Section 1 — Due Today (skip paused clients)
   const due=[];
-  clients.forEach(o=>{ if(o.journey&&o.journey.paused) return; Object.keys(JOURNEY_WA).forEach(key=>{ if(jManualDue(o,key)) due.push({o,key}); }); });
+  clients.forEach(o=>{ if(o.journey&&o.journey.paused) return; if(!jHasEmail(o)) return; Object.keys(JOURNEY_WA).forEach(key=>{ if(jManualDue(o,key)) due.push({o,key}); }); });
   const dueEl=document.getElementById('journey-due-body');
   if(dueEl){
     dueEl.innerHTML = due.length ? due.map(({o,key})=>{
@@ -1625,6 +1654,18 @@ function renderJourney(){
         </div></div>`;
     }).join('') : '<div class="empty-state" style="padding:1rem;">🎉 Nothing due today — all clients are up to date.</div>';
   }
+  // Section 1b — No Email (WhatsApp-only clients): full 10-message manual sequence
+  const noEmail=clients.filter(o=>!(o.journey&&o.journey.paused) && !jHasEmail(o));
+  const neEl=document.getElementById('journey-noemail-body');
+  if(neEl){
+    neEl.innerHTML = noEmail.length ? noEmail.map(o=>{
+      const id=jOrderLabel(o), phone=jIntlPhone(o);
+      return `<div style="padding:0.7rem 0;border-bottom:1px solid var(--border);">
+        <div style="font-weight:700;margin-bottom:0.45rem;">📱 ${jEsc(o.client||o.customerName||'—')} <span class="pill">${id}</span> · ${jStageLabel(o)}${phone?'':' <span class="badge b-cancelled">no phone!</span>'}</div>
+        <div class="btn-group">${journeySeqButtons(o)}</div>
+      </div>`;
+    }).join('') : '<div class="empty-state" style="padding:1rem;">None — every paid client has an email address. 🎉</div>';
+  }
   // Section 2 — All Clients
   const tb=document.getElementById('journey-clients-tbody');
   if(tb){
@@ -1633,7 +1674,7 @@ function renderJourney(){
       const dot=(on,label)=>`<span title="${label}" style="color:${on?'#059669':'#C9C6C1'};font-weight:700;">${on?'✓':'○'}</span>`;
       const prog=dot(p.paid,'Paid')+dot(p.production,'Production')+dot(p.shipped,'Shipped')+dot(p.delivered,'Delivered')+dot(p.wk1,'Week 1')+dot(p.mth1,'Month 1')+dot(p.mth2,'Month 2');
       return `<tr>
-        <td>${jEsc(o.client||o.customerName||'—')}<div style="font-size:0.7rem;color:var(--mid);">${id}</div></td>
+        <td><span title="${jHasEmail(o)?'Has email — nurtured automatically':'WhatsApp-only — nurture manually'}">${jHasEmail(o)?'📧':'📱'}</span> ${jEsc(o.client||o.customerName||'—')}<div style="font-size:0.7rem;color:var(--mid);">${id}</div></td>
         <td style="white-space:nowrap;">${od?od.toLocaleDateString():'—'}</td>
         <td>${jStageLabel(o)}</td>
         <td>${p.delivered?'<span class="badge b-shipped">Delivered</span>':'<span class="badge b-pending">Not yet</span>'}</td>
@@ -1704,7 +1745,8 @@ function journeyRenderDetail(docId){
       <div class="card">
         <div class="card-title">WhatsApp</div>
         ${waHist.join('')}
-        ${waBtns.length?`<div class="btn-group" style="margin-top:0.7rem;">${waBtns.join('')}</div>`:''}
+        ${(jHasEmail(o)&&waBtns.length)?`<div class="btn-group" style="margin-top:0.7rem;">${waBtns.join('')}</div>`:''}
+        ${!jHasEmail(o)?`<div style="margin-top:0.7rem;padding:0.65rem;background:#FEF3C7;border-radius:8px;font-size:0.8rem;color:#92400E;font-weight:600;">📱 No email address — all nurture messages must be sent manually via WhatsApp.</div><div class="btn-group" style="margin-top:0.6rem;">${journeySeqButtons(o)}</div>`:''}
       </div>
     </div>
     <div class="card" style="margin-top:1rem;">
@@ -1745,6 +1787,14 @@ window.journeyMarkDelivered=async function(docId){
 window.journeyPause=async function(docId){ try{ await updateDoc(doc(db,'orders',docId),{'journey.paused':true}); toast('Journey paused'); }catch(e){ toast('Failed: '+e.message); } };
 window.journeyResume=async function(docId){ try{ await updateDoc(doc(db,'orders',docId),{'journey.paused':false}); toast('Journey resumed'); }catch(e){ toast('Failed: '+e.message); } };
 window.journeySaveNotes=async function(docId,val){ try{ await updateDoc(doc(db,'orders',docId),{'journey.notes':val}); toast('Notes saved'); }catch(e){ toast('Notes save failed: '+e.message); } };
+window.journeyOpenSeqWA=async function(docId,n){
+  const o=ORDERS.find(x=>x._docId===docId); if(!o){ toast('Order not found'); return; }
+  const m=JOURNEY_WA_FULL[n], phone=jIntlPhone(o);
+  if(!phone){ toast('No WhatsApp number on this order'); return; }
+  window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(m.msg(jFirst(o),jOrderLabel(o))),'_blank');
+  try{ await updateDoc(doc(db,'orders',docId),{ [`journey.manualSeqSent.${n}`]:serverTimestamp() }); toast('Message '+n+' ('+m.label+') logged as sent'); }
+  catch(e){ toast('Opened, but logging failed: '+e.message); }
+};
 
 // ── DASHBOARD ──
 function _getRevenueDateRange(filter) {
