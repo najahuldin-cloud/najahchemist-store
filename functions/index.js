@@ -2753,3 +2753,453 @@ exports.checkLeadFollowUps = onSchedule(
 // Aggregates agent-owned Cloud Functions without modifying any existing export.
 // Phase 1: the agents barrel exports nothing, so this adds zero new functions.
 Object.assign(exports, require('./agents'));
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CLIENT JOURNEY — automated post-purchase email sequences (Part A)
+// ──────────────────────────────────────────────────────────────────────────────
+// onClientJourney (orders/{orderId} update trigger) fires stage emails on
+// transitions and schedules the timed ones. sendJourneyEmails (hourly cron)
+// sends the due scheduled emails. ALL journey state lives in the order's
+// `journey` sub-object — no new Firestore collections:
+//
+//   journey.paidAt / productionAt / shippedAt   — stage timestamps
+//   journey.deliveredAt                          — set by admin "Mark as Delivered"
+//   journey.stage                                — latest stage label (for admin UI)
+//   journey.emailsSent { "<n>": Timestamp }      — which emails already went out
+//   journey.scheduledEmails [ {emailNumber, scheduledAt, sent} ] — timed queue
+//   journey.paused (bool), journey.notes (string) — set from the admin tab (Part B)
+//
+// Idempotency mirrors sendScheduledEmails: mark sent FIRST, then send, roll back
+// on failure. Emails send via the existing sendResendEmail() / wrapEmail() path
+// (from start@najahchemistja.com), same Resend setup as the lead sequences.
+// WhatsApp is intentionally NOT sent here — it stays manual (admin Client Journey
+// tab, Part B) until Meta approves the templates. The shipped WhatsApp is already
+// handled by onOrderUpdated (order_shipped_v2); Email 6 is the email counterpart.
+
+const HOUR_MS_ = 60 * 60 * 1000;
+const DAY_MS_  = 24 * HOUR_MS_;
+
+// Timed emails scheduled off the paid / delivered events.
+const PAID_SCHEDULE      = [ { n: 2, delayMs: 24 * HOUR_MS_ }, { n: 3, delayMs: 48 * HOUR_MS_ }, { n: 4, delayMs: 72 * HOUR_MS_ } ];
+const DELIVERED_SCHEDULE = [ { n: 8, delayMs: 7 * DAY_MS_ },  { n: 9, delayMs: 30 * DAY_MS_ }, { n: 10, delayMs: 60 * DAY_MS_ } ];
+
+// Exact copy for the 10 journey emails. [First Name] and [Order ID] are replaced
+// per-send; Email 6's [Tracking info if available] is replaced with the order's
+// tracking (or removed when absent).
+const JOURNEY_EMAILS = {
+  1: {
+    subtitle: 'Payment Confirmed',
+    subject: 'Your Najah Chemist order [Order ID] is confirmed 🌿',
+    body:
+`Hi [First Name],
+
+Payment received — thank you! 🎉
+
+Your order [Order ID] is now in our production queue.
+
+Here's what happens next:
+✓ Order review (today)
+✓ Production: 2–3 business days
+✓ Quality check
+✓ Packaging
+✓ Shipping — you'll get a notification when it's on the way
+
+We'll be sending you a series of guides over the next few days to help you prepare for your launch while we manufacture your products. Watch your inbox!
+
+Questions? WhatsApp us anytime: wa.me/18768851099
+
+— The Najah Chemist Team 🌿
+najahchemistja.com`
+  },
+  2: {
+    subtitle: 'Launch Prep · Day 1',
+    subject: 'Getting ready to sell — your launch guide is here 🚀',
+    body:
+`Hi [First Name],
+
+While we're manufacturing your order, now is the perfect time to prepare your business.
+
+📗 Download your complete Getting Started guide:
+https://najahchemistja.com/guide/24-hour-brand-launch-blueprint.pdf
+
+Today's 3 tasks:
+☐ Choose your business name
+☐ Set up WhatsApp Business
+☐ Create your Instagram business page
+
+Your business should look professional before your products arrive.
+
+Tomorrow we'll show you how to price your products for maximum profit.
+
+— The Najah Chemist Team 🌿`
+  },
+  3: {
+    subtitle: 'Launch Prep · Pricing',
+    subject: 'How to price your products for profit 💰',
+    body:
+`Hi [First Name],
+
+One of the biggest mistakes new brand owners make is underpricing.
+
+Here's how to calculate your selling price:
+• Product cost (what you paid us)
+• Packaging + labels
+• Shipping to your customer
+• Payment processing fees
+• Your desired profit margin
+
+📊 See our recommended retail prices:
+https://najahchemistja.com/pricing-guide
+
+Today's task: Set a retail price for every product you ordered. Aim for 2.5x–4x your wholesale cost.
+
+Your goal isn't to be the cheapest — it's to build a sustainable business.
+
+Tomorrow: getting your brand and labels ready.
+
+— The Najah Chemist Team 🌿`
+  },
+  4: {
+    subtitle: 'Launch Prep · Branding',
+    subject: 'Labels, branding, and looking professional from day one 🏷️',
+    body:
+`Hi [First Name],
+
+Your packaging is often the first impression customers have of your brand.
+
+Before your products arrive, make sure you have:
+✓ Logo finalised
+✓ Brand colours chosen
+✓ Labels designed and ready to print
+
+Your labels must include:
+• Brand name
+• Product name
+• Net weight or volume
+• Directions for use
+• Ingredients (INCI order, highest to lowest)
+• Any warnings
+• Manufacturer information
+
+Need help with label design? We offer professional label design from J$3,000.
+Visit: https://najahchemistja.com/start
+
+Learn more about starting your brand:
+https://najahchemistja.com/start-skincare-business-jamaica
+
+— The Najah Chemist Team 🌿`
+  },
+  5: {
+    subtitle: 'In Production',
+    subject: 'Your order [Order ID] is in production 🏭',
+    body:
+`Hi [First Name],
+
+Great news — your products are now being manufactured! 🌿
+
+While you wait, today's focus is product photography. Good photos sell products.
+
+📸 Tips for great product photos:
+• Use natural daylight (near a window)
+• Clean white or neutral background
+• Take multiple angles
+• Close-up shots showing texture
+• Lifestyle images showing the product in use
+
+You don't need expensive equipment — a modern smartphone with good lighting produces excellent results.
+
+We'll notify you as soon as your order is ready for shipping.
+
+— The Najah Chemist Team 🌿`
+  },
+  6: {
+    subtitle: 'Shipped',
+    subject: 'Your order [Order ID] has been shipped 🚚',
+    body:
+`Hi [First Name],
+
+Your order is on its way! 🎉
+
+[Tracking info if available]
+
+While you wait for delivery, make a list of your first 20 potential customers:
+• Friends and family
+• Coworkers
+• Church members
+• Salon clients
+• Social media followers
+
+Your first customers are often people who already know and trust you.
+
+Questions? WhatsApp us: wa.me/18768851099
+
+— The Najah Chemist Team 🌿`
+  },
+  7: {
+    subtitle: 'Delivery Check-in',
+    subject: 'Did everything arrive safely? ✅',
+    body:
+`Hi [First Name],
+
+We hope everything arrived perfectly! 🌿
+
+Please check:
+✓ Correct quantity received
+✓ No damaged items
+✓ Labels secure and straight
+✓ Products stored in a cool, dry place away from sunlight
+
+Shelf life: 12 months unopened.
+
+Any issues? Message us immediately — wa.me/18768851099
+
+Ready to launch? Your complete launch guide:
+https://najahchemistja.com/guide/24-hour-brand-launch-blueprint.pdf
+
+How to start your skincare business:
+https://najahchemistja.com/how-to-start-skincare-business-jamaica
+
+— The Najah Chemist Team 🌿`
+  },
+  8: {
+    subtitle: 'Week 1 Check-in',
+    subject: "How's your launch going? We're here to help 🌿",
+    body:
+`Hi [First Name],
+
+It's been a week since your order arrived — how are things going?
+
+Have you made your first sale yet? Whether you have or haven't, we're here to help.
+
+Useful resources:
+💰 Pricing guide: https://najahchemistja.com/pricing-guide
+🚀 Start your brand: https://najahchemistja.com/start
+📖 How to start: https://najahchemistja.com/start-skincare-business-jamaica
+💡 Cost breakdown: https://najahchemistja.com/cost-skincare-business-jamaica
+
+Common mistakes to avoid:
+❌ Underpricing your products
+❌ Waiting for everything to be perfect before launching
+❌ Posting only when you want to sell
+❌ Ignoring customer messages
+❌ Forgetting to ask for reviews
+
+Remember: done is better than perfect. Your first sale is closer than you think.
+
+Reply to this email anytime — we love hearing from our clients.
+
+— The Najah Chemist Team 🌿`
+  },
+  9: {
+    subtitle: 'Reorder Reminder',
+    subject: 'Time to check your stock levels 🌿',
+    body:
+`Hi [First Name],
+
+It's been a month since your order arrived — congratulations on making it this far!
+
+Most of our clients find their products sell through within 30–60 days with consistent promotion. If you're running low, now is the perfect time to reorder before you sell out and lose sales momentum.
+
+Ready to reorder?
+🛒 https://najahchemistja.com
+
+How are sales going? We'd love to hear — reply to this email and tell us about your first month.
+
+— The Najah Chemist Team 🌿`
+  },
+  10: {
+    subtitle: 'Checking In',
+    subject: "We're thinking about you 🌿",
+    body:
+`Hi [First Name],
+
+It's been two months since your order arrived from Najah Chemist.
+
+We know starting a business takes time, and the journey isn't always straightforward. If you've hit any challenges — with selling, pricing, marketing, or anything else — we're here to help.
+
+No pressure, no pitch — just checking in.
+
+If you're ready for your next order, we'd love to have you back:
+🛒 https://najahchemistja.com
+
+And if you have questions or need advice, reply to this email or WhatsApp us anytime:
+wa.me/18768851099
+
+We're rooting for you.
+
+— Najah Chemist 🌿
+Where Your Product Ideas Come to Life.`
+  }
+};
+
+// Render a plain-text journey body into the shared email HTML: blank-line blocks
+// become paragraphs, single newlines become <br>, URLs and wa.me links become
+// clickable. HTML-escapes first so customer/order text can't inject markup.
+function renderJourneyBody(text) {
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const linkify = s => s
+    .replace(/(https?:\/\/[^\s]+)/g, u => `<a href="${u}" style="color:#2D6A4F;font-weight:600;text-decoration:none;">${u}</a>`)
+    .replace(/\b(wa\.me\/\d+)/g, m => `<a href="https://${m}" style="color:#2D6A4F;font-weight:600;text-decoration:none;">${m}</a>`);
+  return String(text).trim().split(/\n\s*\n/)
+    .filter(block => block.trim())
+    .map(block => {
+      const lines = block.split('\n').map(l => linkify(esc(l))).join('<br>');
+      return `<p style="margin:0 0 16px;color:#333;font-size:0.92rem;line-height:1.7;">${lines}</p>`;
+    })
+    .join('\n');
+}
+
+// Human order label — avoids the NC-NC- double prefix when order.id already has it.
+function journeyOrderLabel(order, docId) {
+  const raw = String(order.id || order.orderId || docId || '');
+  return raw.startsWith('NC-') ? raw : ('NC-' + raw);
+}
+
+// Build { subject, html } for journey email n against an order.
+function buildJourneyEmail(n, order, docId) {
+  const spec  = JOURNEY_EMAILS[n];
+  const first = (getClientName(order).split(' ')[0]) || 'there';
+  const label = journeyOrderLabel(order, docId);
+  const subject = spec.subject.replaceAll('[Order ID]', label);
+  let body = spec.body.replaceAll('[First Name]', first).replaceAll('[Order ID]', label);
+  if (n === 6) {
+    body = body.replace('[Tracking info if available]', order.tracking ? `Tracking: ${order.tracking}` : '');
+  }
+  return { subject, html: wrapEmail(spec.subtitle, renderJourneyBody(body), null) };
+}
+
+// Fire an immediate (event-driven) journey email once. Marks emailsSent FIRST so a
+// trigger retry can't double-send; rolls the flag back if the send throws.
+async function fireImmediateJourneyEmail(ref, order, docId, n) {
+  const journey = order.journey || {};
+  if (journey.emailsSent && journey.emailsSent[n]) return;              // already sent
+  const to = (order.email || order.customerEmail || '').trim();
+  if (!to) { console.warn(`[journey] No email on order ${docId} — skip email ${n}`); return; }
+  await ref.update({ [`journey.emailsSent.${n}`]: Timestamp.now() });
+  try {
+    const { subject, html } = buildJourneyEmail(n, order, docId);
+    await sendResendEmail(to, subject, html);
+    console.log(`[journey] Sent email ${n} → ${to} (${docId})`);
+  } catch (err) {
+    await ref.update({ [`journey.emailsSent.${n}`]: FieldValue.delete() }).catch(() => {});
+    console.error(`[journey] Email ${n} failed for ${docId}:`, err.message);
+  }
+}
+
+// Append timed emails to journey.scheduledEmails (skips numbers already queued).
+async function scheduleJourneyEmails(ref, order, schedule) {
+  const nowMs = Date.now();
+  const existing = (order.journey && Array.isArray(order.journey.scheduledEmails)) ? order.journey.scheduledEmails : [];
+  const existingNums = new Set(existing.map(e => e.emailNumber));
+  const toAdd = schedule
+    .filter(s => !existingNums.has(s.n))
+    .map(s => ({ emailNumber: s.n, scheduledAt: Timestamp.fromMillis(nowMs + s.delayMs), sent: false }));
+  if (toAdd.length) {
+    await ref.update({ 'journey.scheduledEmails': FieldValue.arrayUnion(...toAdd) });
+  }
+}
+
+// ── Trigger: onClientJourney ──────────────────────────────────────────────────
+// Watches orders/{orderId} and fires journey emails on stage transitions. Writes
+// back only to the `journey` sub-object; those writes don't satisfy any transition
+// guard, so there's no re-trigger loop. Never touches checkout/order/payment logic.
+exports.onClientJourney = onDocumentUpdated(
+  { document: 'orders/{orderId}', secrets: ['RESEND_API_KEY'] },
+  async (event) => {
+    const before  = event.data.before.data() || {};
+    const after   = event.data.after.data()  || {};
+    const orderId = event.params.orderId;
+    const ref     = event.data.after.ref;
+
+    const isPaid    = o => (o.paymentStatus || o.payStatus || o.payment || '').toLowerCase() === 'paid';
+    const statusOf  = o => (o.status || '').toLowerCase();
+    const journey   = after.journey || {};
+
+    // Pause stops all journey sends for this client (scheduled queue too, via the cron).
+    if (journey.paused) return;
+
+    // 1. Payment → Paid: Email 1 now, schedule Emails 2/3/4.
+    if (!isPaid(before) && isPaid(after)) {
+      await ref.update({ 'journey.paidAt': Timestamp.now(), 'journey.stage': 'paid' });
+      await fireImmediateJourneyEmail(ref, after, orderId, 1);
+      await scheduleJourneyEmails(ref, after, PAID_SCHEDULE);
+    }
+
+    // 2. status → Processing: Email 5.
+    if (statusOf(before) !== 'processing' && statusOf(after) === 'processing') {
+      await ref.update({ 'journey.productionAt': Timestamp.now(), 'journey.stage': 'production' });
+      await fireImmediateJourneyEmail(ref, after, orderId, 5);
+    }
+
+    // 3. status → Shipped: Email 6 (order_shipped_v2 WhatsApp handled by onOrderUpdated).
+    if (statusOf(before) !== 'shipped' && statusOf(after) === 'shipped') {
+      await ref.update({ 'journey.shippedAt': Timestamp.now(), 'journey.stage': 'shipped' });
+      await fireImmediateJourneyEmail(ref, after, orderId, 6);
+    }
+
+    // 4. journey.deliveredAt newly set (admin "Mark as Delivered"): Email 7 now,
+    //    schedule Emails 8/9/10.
+    const beforeDelivered = !!(before.journey && before.journey.deliveredAt);
+    const afterDelivered  = !!(after.journey  && after.journey.deliveredAt);
+    if (!beforeDelivered && afterDelivered) {
+      await ref.update({ 'journey.stage': 'delivered' });
+      await fireImmediateJourneyEmail(ref, after, orderId, 7);
+      await scheduleJourneyEmails(ref, after, DELIVERED_SCHEDULE);
+    }
+  }
+);
+
+// ── Scheduled: sendJourneyEmails (hourly) ─────────────────────────────────────
+// Sends due journey.scheduledEmails entries. Small dataset → load all orders and
+// filter in JS (same approach as reorderReminder). Marks each entry sent BEFORE
+// sending and rolls back on failure, mirroring sendScheduledEmails.
+exports.sendJourneyEmails = onSchedule(
+  { schedule: '0 * * * *', timeZone: 'America/Jamaica', secrets: ['RESEND_API_KEY'] },
+  async () => {
+    const db  = getFirestore();
+    const now = new Date();
+    const snap = await db.collection('orders').get();
+
+    let dueCount = 0;
+    for (const doc of snap.docs) {
+      const order   = doc.data();
+      const journey = order.journey;
+      if (!journey || journey.paused) continue;
+      const arr = Array.isArray(journey.scheduledEmails) ? journey.scheduledEmails.slice() : [];
+      if (!arr.length) continue;
+
+      for (let i = 0; i < arr.length; i++) {
+        const entry = arr[i];
+        if (!entry || entry.sent) continue;
+        const at = toDate(entry.scheduledAt);
+        if (!at || at > now) continue;
+        dueCount++;
+
+        const to = (order.email || order.customerEmail || '').trim();
+
+        // Mark sent FIRST (prevents duplicate send if the cron retries mid-run).
+        arr[i] = { ...entry, sent: true, sentAt: Timestamp.now() };
+        await doc.ref.update({ 'journey.scheduledEmails': arr });
+
+        if (!to) {
+          arr[i] = { ...arr[i], skippedReason: 'no_email' };
+          await doc.ref.update({ 'journey.scheduledEmails': arr }).catch(() => {});
+          console.warn(`[sendJourneyEmails] No email on order ${doc.id} — skip email ${entry.emailNumber}`);
+          continue;
+        }
+
+        try {
+          const { subject, html } = buildJourneyEmail(entry.emailNumber, order, doc.id);
+          await sendResendEmail(to, subject, html);
+          await doc.ref.update({ [`journey.emailsSent.${entry.emailNumber}`]: Timestamp.now() });
+          console.log(`[sendJourneyEmails] Sent email ${entry.emailNumber} → ${to} (${doc.id})`);
+        } catch (err) {
+          arr[i] = { ...entry, sent: false };            // roll back so it retries next hour
+          await doc.ref.update({ 'journey.scheduledEmails': arr }).catch(() => {});
+          console.error(`[sendJourneyEmails] Email ${entry.emailNumber} failed for ${doc.id}:`, err.message);
+        }
+      }
+    }
+    console.log(`[sendJourneyEmails] Done. ${dueCount} due processed.`);
+  }
+);
