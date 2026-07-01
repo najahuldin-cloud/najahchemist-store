@@ -557,7 +557,7 @@ function skUpdateSummary() {
     ? '<div style="display:flex;justify-content:space-between;font-size:1rem;font-weight:800;border-top:1px solid #bbf7d0;padding-top:0.6rem;margin-top:0.4rem;"><span>Total (after 5% off)</span><span style="color:#0F0E0D;">J$' + finalTotal.toLocaleString() + '</span></div>'
     : '';
   var addBtn = allPicked
-    ? '<button onclick="skAddToCart()" style="margin-top:1rem;width:100%;padding:0.9rem;background:#0F0E0D;color:white;border:none;border-radius:10px;font-family:\'Outfit\',sans-serif;font-size:0.92rem;font-weight:700;cursor:pointer;letter-spacing:0.02em;">\uD83D\uDED2 Add Kit to Cart</button>'
+    ? '<button onclick="skAddToCart()" style="margin-top:1rem;width:100%;padding:0.9rem;background:#2D6A4F;color:white;border:none;border-radius:10px;font-family:\'Outfit\',sans-serif;font-size:0.92rem;font-weight:700;cursor:pointer;letter-spacing:0.02em;">\uD83D\uDED2 Add Kit to Cart</button>'
     : '<button disabled style="margin-top:1rem;width:100%;padding:0.9rem;background:#E8E4DE;color:#8A8480;border:none;border-radius:10px;font-family:\'Outfit\',sans-serif;font-size:0.92rem;font-weight:700;cursor:not-allowed;letter-spacing:0.02em;">\uD83D\uDED2 Add Kit to Cart (' + count + '/3 selected)</button>';
   body.innerHTML = rows + subtotalRow + discountRow + totalRow + addBtn;
   summary.style.display = 'block';
@@ -1334,7 +1334,7 @@ function sfRenderUpsell() {
         <div style="font-size:0.8rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.emoji||'🧴'} ${p.name}</div>
         <div style="font-size:0.7rem;color:#8A8480;">${price}</div>
       </div>
-      <button onclick="sfCloseCart();sfOpenProduct('${p.id}')" style="flex-shrink:0;padding:0.35rem 0.8rem;background:#0F0E0D;color:white;border:none;border-radius:6px;font-family:'Outfit',sans-serif;font-size:0.7rem;font-weight:600;cursor:pointer;">Add</button>
+      <button onclick="sfCloseCart();sfOpenProduct('${p.id}')" style="flex-shrink:0;padding:0.35rem 0.8rem;background:#2D6A4F;color:white;border:none;border-radius:6px;font-family:'Outfit',sans-serif;font-size:0.7rem;font-weight:600;cursor:pointer;">Add</button>
     </div>`;
   }).join('');
   return `<div style="padding:0.65rem 1.4rem 0.5rem;border-top:1px solid #E8E4DE;">
@@ -1352,7 +1352,7 @@ function sfRenderCart() {
   if (!el) return;
 
   if (sfCart.length === 0) {
-    el.innerHTML = '<div style="padding:2.5rem 1.4rem;text-align:center;"><div style="font-size:2.5rem;margin-bottom:0.75rem;">🛒</div><div style="font-weight:700;font-size:0.88rem;margin-bottom:0.3rem;">Your cart is empty</div><div style="font-size:0.78rem;color:#8A8480;margin-bottom:1.2rem;">Browse products and tap Details → Add to Cart</div><button onclick="sfCloseCart()" style="padding:0.6rem 1.5rem;background:#0F0E0D;color:white;border:none;border-radius:8px;font-family:Outfit,sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;">Browse Products</button></div>';
+    el.innerHTML = '<div style="padding:2.5rem 1.4rem;text-align:center;"><div style="font-size:2.5rem;margin-bottom:0.75rem;">🛒</div><div style="font-weight:700;font-size:0.88rem;margin-bottom:0.3rem;">Your cart is empty</div><div style="font-size:0.78rem;color:#8A8480;margin-bottom:1.2rem;">Browse products and tap Details → Add to Cart</div><button onclick="sfCloseCart()" style="padding:0.6rem 1.5rem;background:#2D6A4F;color:white;border:none;border-radius:8px;font-family:Outfit,sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;">Browse Products</button></div>';
     if (footer) footer.style.display='none';
     if (detSec) detSec.style.display='none';
     if (shipSec) shipSec.style.display='none';
@@ -1415,10 +1415,10 @@ function sfRenderCart() {
           <span style="color:#8A8480;">${count} item${count!==1?'s':''}</span>
           <span style="font-weight:700;">J$${sub.toLocaleString()}</span>
         </div>
-        <button onclick="sfGoCheckout()" style="width:100%;padding:0.82rem;background:#0F0E0D;color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;">
+        <button onclick="sfGoCheckout()" style="width:100%;padding:0.82rem;background:#2D6A4F;color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;">
           Proceed to Checkout →
         </button>
-        <button onclick="sfCloseCart()" style="width:100%;margin-top:0.4rem;background:none;border:none;font-size:0.75rem;color:#8A8480;cursor:pointer;padding:0.4rem;font-family:'Outfit',sans-serif;">
+        <button onclick="sfCloseCart()" style="width:100%;margin-top:0.4rem;background:none;border:none;font-size:0.75rem;color:#2D6A4F;font-weight:600;cursor:pointer;padding:0.4rem;font-family:'Outfit',sans-serif;">
           ← Continue Shopping
         </button>
       </div>`;
