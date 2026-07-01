@@ -3099,6 +3099,26 @@ async function scheduleJourneyEmails(ref, order, schedule) {
   }
 }
 
+// Duplicate Reorder Guard: has the existing reorder system reminded this customer
+// within the last `days` days? Reuses the existing reorder_reminders/{phone} doc
+// (last_reminded), which the reorderReminder job writes for BOTH its WhatsApp and
+// email nudges — so this covers any reorder reminder regardless of channel. No new
+// collection. Used to suppress Client Journey Email 9 (Month 1 reorder).
+async function reorderReminderSentWithinDays(db, order, days) {
+  const phone = getPhone(order);
+  if (!phone) return false;
+  try {
+    const snap = await db.collection('reorder_reminders').doc(phone).get();
+    if (!snap.exists) return false;
+    const last = toDate(snap.data().last_reminded);
+    if (!last) return false;
+    return (Date.now() - last.getTime()) <= days * DAY_MS_;
+  } catch (err) {
+    console.error(`[journey] reorder-guard lookup failed for ${phone}:`, err.message);
+    return false; // fail open — a lookup error must not silently drop the reorder email
+  }
+}
+
 // ── Trigger: onClientJourney ──────────────────────────────────────────────────
 // Watches orders/{orderId} and fires journey emails on stage transitions. Writes
 // back only to the `journey` sub-object; those writes don't satisfy any transition
@@ -3174,6 +3194,16 @@ exports.sendJourneyEmails = onSchedule(
         const at = toDate(entry.scheduledAt);
         if (!at || at > now) continue;
         dueCount++;
+
+        // Duplicate Reorder Guard — Email 9 (Month 1 reorder): if the existing
+        // reorder reminder system already nudged this customer within the last 7
+        // days, skip it (mark sent so it isn't retried) and log for audit.
+        if (entry.emailNumber === 9 && await reorderReminderSentWithinDays(db, order, 7)) {
+          arr[i] = { ...entry, sent: true, sentAt: Timestamp.now(), skippedReason: 'reorder_reminder_within_7d' };
+          await doc.ref.update({ 'journey.scheduledEmails': arr }).catch(() => {});
+          console.log(`[sendJourneyEmails] Skipped Client Journey Email 9 — reorder reminder already sent within 7 days (${doc.id})`);
+          continue;
+        }
 
         const to = (order.email || order.customerEmail || '').trim();
 
