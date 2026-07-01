@@ -891,18 +891,94 @@ window.sfAddToCart = function() {
 
   sfPersistCart();
   sfUpdateCartBtn();
+  // Preserve the shopper's scroll position when the product modal closes.
+  const _y = window.scrollY || window.pageYOffset || 0;
   window.closeSfModal();
-  sfShowToast('✓ Added: '+p.name);
+  window.scrollTo(0, _y);
+  sfShowAddedConfirm(p.name);
   sfSaveAbandonedCart();
 };
 
+// ── "Added to cart" inline confirmation (non-blocking) ───────────────
+window.sfDismissAdded = function() {
+  clearTimeout(window._sfAddedTimer);
+  const el = document.getElementById('sf-added-confirm');
+  if (el) el.classList.remove('show');
+};
+function sfShowAddedConfirm(name) {
+  let el = document.getElementById('sf-added-confirm');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'sf-added-confirm';
+    document.body.appendChild(el);
+  }
+  const safe = String(name || 'Item').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  el.innerHTML =
+    '<div class="sf-ac-msg">✓ <strong>' + safe + '</strong> added to cart</div>' +
+    '<div class="sf-ac-btns">' +
+      '<button class="sf-ac-btn sf-ac-cont" onclick="sfDismissAdded()">Continue Shopping</button>' +
+      '<button class="sf-ac-btn sf-ac-view" onclick="sfDismissAdded();sfOpenCart()">View Cart</button>' +
+    '</div>';
+  // reflow so the transition runs even if the element already existed
+  void el.offsetWidth;
+  el.classList.add('show');
+  clearTimeout(window._sfAddedTimer);
+  window._sfAddedTimer = setTimeout(function(){ el.classList.remove('show'); }, 4000);
+}
+
+function sfCartSubtotal() {
+  return sfCart.reduce((s,i)=>s + (i.price||0)*(i.qty||0), 0);
+}
 function sfUpdateCartBtn() {
   const total = sfCart.reduce((s,i)=>s+i.qty, 0);
+  const sub = sfCartSubtotal();
+  // Floating mobile cart button
   const btn = document.getElementById('sf-cart-btn');
   const badge = document.getElementById('sf-cart-badge');
+  const lbl = document.getElementById('sf-cart-btn-label');
   if (badge) badge.textContent = total;
+  if (lbl) lbl.textContent = 'Cart (' + total + ' item' + (total!==1?'s':'') + ') · J$' + sub.toLocaleString();
   if (btn) btn.style.display = total > 0 ? 'flex' : 'none';
+  // Desktop nav cart (badge + running subtotal)
+  const navBadge = document.getElementById('sf-nav-cart-badge');
+  if (navBadge) { navBadge.textContent = total; navBadge.style.display = total > 0 ? 'flex' : 'none'; }
+  const navSub = document.getElementById('sf-nav-cart-sub');
+  if (navSub) navSub.textContent = total > 0 ? 'J$' + sub.toLocaleString() : '';
 }
+
+function sfIsMobile() {
+  try { return window.matchMedia('(max-width:640px)').matches; } catch(e) { return window.innerWidth <= 640; }
+}
+
+// Swipe-down-to-dismiss for the mobile bottom-sheet drawer (attached once, when the handle exists).
+(function sfInitDrawerSwipe() {
+  function attach() {
+    var handle = document.getElementById('sf-cart-drag');
+    var panel  = document.querySelector('.sf-cart-modal');
+    if (!handle || !panel) { return; }
+    var startY = 0, dy = 0, dragging = false;
+    handle.addEventListener('touchstart', function(e){
+      if (!sfIsMobile()) return;
+      dragging = true; dy = 0;
+      startY = e.touches[0].clientY;
+      panel.style.transition = 'none';
+    }, {passive:true});
+    handle.addEventListener('touchmove', function(e){
+      if (!dragging) return;
+      dy = Math.max(0, e.touches[0].clientY - startY);
+      panel.style.transform = 'translateY(' + dy + 'px)';
+    }, {passive:true});
+    handle.addEventListener('touchend', function(){
+      if (!dragging) return;
+      dragging = false;
+      panel.style.transition = '';
+      panel.style.transform = '';
+      if (dy > 80) window.sfCloseCart();
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach);
+  else attach();
+})();
 
 window.sfOpenCart = function() {
   sfCartStep = 'cart';
@@ -911,11 +987,15 @@ window.sfOpenCart = function() {
   if (ov) { ov.classList.add('open'); }
   const body = document.querySelector('.sf-cart-body');
   if (body) body.scrollTop = 0;
+  // On mobile the drawer is a full-height sheet — lock background scroll while open.
+  // On desktop the drawer sits alongside the catalogue, so background stays scrollable.
+  if (sfIsMobile()) document.body.style.overflow = 'hidden';
 };
 
 window.sfCloseCart = function() {
   const ov = document.getElementById('sf-cart-overlay');
   if (ov) ov.classList.remove('open');
+  document.body.style.overflow = '';
 };
 
 window.sfCartQty = function(i, d) {
@@ -931,6 +1011,67 @@ window.sfRemoveItem = function(i) {
   sfRenderCart(); sfUpdateCartBtn();
   sfSaveAbandonedCart();
 };
+
+// ── Inline cart item editing (size / scent) ──────────────────────────
+// Whether the scent selector applies to a product — mirrors the product-modal logic.
+function sfScentApplies(p) {
+  if (!p) return false;
+  const blocked = NO_SCENT_NAMES.some(n => (p.name||'').toLowerCase().includes(n.toLowerCase()));
+  return (MINT_SCENT_IDS.includes(p.id) || SCENT_ONLY_IDS.includes(p.id)) && !blocked;
+}
+// Reverse a display label ("1 Litre") back to its pricing key ("litre") for a product.
+function sfSizeKeyFromLabel(p, label) {
+  const keys = Object.keys((p && p.pricing) || {});
+  return keys.find(k => sfSizeLabel(k) === label) || null;
+}
+// Parse a cart item's _key ("id|sizeLabel|scent|mint") into parts. Returns null if not standard.
+function sfParseKey(item) {
+  if (!item || typeof item._key !== 'string') return null;
+  const parts = item._key.split('|');
+  if (parts.length < 4) return null;
+  return { id: parts[0], sizeLabel: parts[1], scent: parts[2], mint: parts[3] };
+}
+// Full editability context for a cart line, or null if the line can't be edited inline
+// (custom add-ons like the herb blend / starter kit, or products no longer in the catalogue).
+function sfCartEditContext(item) {
+  const parsed = sfParseKey(item);
+  if (!parsed) return null;
+  const p = (window.PRODUCTS || []).find(x => x.id === item.id);
+  if (!p || !p.pricing) return null;
+  const curKey = sfSizeKeyFromLabel(p, parsed.sizeLabel);
+  if (!curKey) return null;
+  return {
+    p, curKey, curScent: parsed.scent, curMint: parsed.mint,
+    sizeKeys: Object.keys(p.pricing),
+    scentApplies: sfScentApplies(p)
+  };
+}
+// Rebuild a cart line after a size/scent change, merging into an identical line if one exists.
+function sfCartRebuild(i, newSizeKey, newScent) {
+  const it = sfCart[i];
+  const ctx = sfCartEditContext(it);
+  if (!it || !ctx) return;
+  const sizeKey = newSizeKey != null ? newSizeKey : ctx.curKey;
+  const scent   = newScent   != null ? newScent   : ctx.curScent;
+  const mint    = ctx.curMint;
+  const label = sfSizeLabel(sizeKey);
+  const price = (ctx.p.pricing[sizeKey] && ctx.p.pricing[sizeKey].price) || it.price;
+  const extras = [scent, mint].filter(Boolean).join(' · ');
+  const displaySize = label + (extras ? ' · ' + extras : '');
+  const key = it.id + '|' + label + '|' + (scent||'') + '|' + (mint||'');
+  const dupIdx = sfCart.findIndex((x, idx) => idx !== i && x._key === key);
+  if (dupIdx >= 0) {
+    sfCart[dupIdx].qty += it.qty;
+    sfCart.splice(i, 1);
+  } else {
+    it._key = key; it.size = displaySize; it.price = price;
+  }
+  sfPersistCart();
+  sfRenderCart(); sfUpdateCartBtn();
+  sfSaveAbandonedCart();
+}
+window.sfCartSetSize  = function(i, sizeKey) { sfCartRebuild(i, sizeKey, null); };
+window.sfCartSetScent = function(i, scent)   { sfCartRebuild(i, null, scent); };
 
 window.sfGoCheckout = function() {
   sfCartStep = 'checkout';
@@ -1223,21 +1364,48 @@ function sfRenderCart() {
     if (detSec) detSec.style.display='none';
     if (shipSec) shipSec.style.display='none';
     if (payInfo) payInfo.style.display='none';
-    el.innerHTML = sfCart.map((item,i) => `
-      <div class="sf-cart-item">
-        <div class="sf-cart-item-emoji">${item.emoji}</div>
-        <div class="sf-cart-item-info">
-          <div class="sf-cart-item-name">${item.name}</div>
-          <div class="sf-cart-item-sub">${item.size}</div>
-          <div class="sf-cart-item-qty-row">
-            <button class="sf-cq-btn" onclick="sfCartQty(${i},-1)">−</button>
-            <span class="sf-cq-val">${item.qty}</span>
-            <button class="sf-cq-btn" onclick="sfCartQty(${i},1)">+</button>
-            <button class="sf-rm-btn" onclick="sfRemoveItem(${i})">🗑</button>
-          </div>
-        </div>
-        <div class="sf-cart-item-price">J$${(item.price*item.qty).toLocaleString()}</div>
-      </div>`).join('') + sfRenderUpsell();
+    el.innerHTML = sfCart.map((item,i) => {
+      const ctx = sfCartEditContext(item);
+      const showSizeSel  = ctx && ctx.sizeKeys.length > 1;
+      const showScentSel = ctx && ctx.scentApplies;
+      let mid = '';
+      if (showSizeSel || showScentSel) {
+        const bits = [];
+        if (showSizeSel) {
+          bits.push('<select class="sf-cart-sel" aria-label="Size" onchange="sfCartSetSize(' + i + ', this.value)">' +
+            ctx.sizeKeys.map(k => '<option value="' + k + '"' + (k===ctx.curKey?' selected':'') + '>' + sfSizeLabel(k) + '</option>').join('') +
+            '</select>');
+        }
+        if (showScentSel) {
+          bits.push('<select class="sf-cart-sel" aria-label="Scent" onchange="sfCartSetScent(' + i + ', this.value)">' +
+            SCENTS.map(s => '<option' + (s===ctx.curScent?' selected':'') + '>' + s + '</option>').join('') +
+            '</select>');
+        }
+        // Show any non-editable extras (e.g. mint choice) as a small sub line so nothing is lost.
+        const staticBits = [];
+        if (!showSizeSel && ctx) staticBits.push(sfSizeLabel(ctx.curKey));
+        if (ctx && ctx.curMint) staticBits.push(ctx.curMint);
+        mid = '<div class="sf-cart-edit-row">' + bits.join('') + '</div>' +
+              (staticBits.length ? '<div class="sf-cart-item-sub">' + staticBits.join(' · ') + '</div>' : '');
+      } else {
+        mid = '<div class="sf-cart-item-sub">' + item.size + '</div>';
+      }
+      return '' +
+      '<div class="sf-cart-item">' +
+        '<div class="sf-cart-item-emoji">' + item.emoji + '</div>' +
+        '<div class="sf-cart-item-info">' +
+          '<div class="sf-cart-item-name">' + item.name + '</div>' +
+          mid +
+          '<div class="sf-cart-item-qty-row">' +
+            '<button class="sf-cq-btn" onclick="sfCartQty(' + i + ',-1)">−</button>' +
+            '<span class="sf-cq-val">' + item.qty + '</span>' +
+            '<button class="sf-cq-btn" onclick="sfCartQty(' + i + ',1)">+</button>' +
+            '<button class="sf-rm-btn" onclick="sfRemoveItem(' + i + ')" title="Remove">🗑</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="sf-cart-item-price">J$' + (item.price*item.qty).toLocaleString() + '</div>' +
+      '</div>';
+    }).join('') + sfRenderUpsell();
     const sub = sfCart.reduce((s,i)=>s+i.price*i.qty,0);
     const count = sfCart.reduce((s,i)=>s+i.qty,0);
     if (footer) {
@@ -2416,6 +2584,36 @@ if (window.location.search.includes('staff=true')) {
   setTimeout(tryAddBundle, 300);
 })();
 
+// ── "Welcome back" prompt for a cart carried over from a previous visit ──
+window.sfWelcomeRestore = function() {
+  var el = document.getElementById('sf-welcome-back');
+  if (el) el.classList.remove('show');
+};
+window.sfWelcomeStartFresh = function() {
+  sfCart = [];
+  try { localStorage.removeItem('nc_cart'); } catch(e) {}
+  try { sfUpdateCartBtn(); } catch(e) {}
+  try { sfRenderCart(); } catch(e) {}
+  var el = document.getElementById('sf-welcome-back');
+  if (el) el.classList.remove('show');
+};
+function sfShowWelcomeBack(count) {
+  var el = document.getElementById('sf-welcome-back');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'sf-welcome-back';
+    document.body.appendChild(el);
+  }
+  el.innerHTML =
+    '<div class="sf-wb-msg">👋 Welcome back — you have <strong>' + count + ' item' + (count!==1?'s':'') + '</strong> in your cart.</div>' +
+    '<div class="sf-wb-btns">' +
+      '<button class="sf-wb-btn sf-wb-fresh" onclick="sfWelcomeStartFresh()">Start fresh</button>' +
+      '<button class="sf-wb-btn sf-wb-restore" onclick="sfWelcomeRestore();sfOpenCart()">Restore</button>' +
+    '</div>';
+  void el.offsetWidth;
+  el.classList.add('show');
+}
+
 // ── Cart persistence: restore from localStorage on page load ──────────
 (function sfRestoreCart() {
   try {
@@ -2426,5 +2624,13 @@ if (window.location.search.includes('staff=true')) {
     sfCart = saved;
     try { sfUpdateCartBtn(); } catch(e) {}
     try { sfRenderCart(); } catch(e) {}
+    // Offer to restore/clear a cart carried over from a previous visit — once per session.
+    try {
+      if (!sessionStorage.getItem('nc_welcome_shown')) {
+        sessionStorage.setItem('nc_welcome_shown', '1');
+        var count = saved.reduce(function(s,i){ return s + (i.qty||0); }, 0);
+        setTimeout(function(){ try { sfShowWelcomeBack(count); } catch(e) {} }, 900);
+      }
+    } catch(e) {}
   } catch(e) {}
 })();
