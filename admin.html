@@ -270,6 +270,7 @@ select.finp{cursor:pointer;}
     <button class="nb" onclick="nav('orders',this)"><span class="nb-icon">📦</span>Orders<span class="nb-badge" id="nb-orders-badge" style="display:none">0</span></button>
     <button class="nb" onclick="nav('invoices',this)"><span class="nb-icon">🧾</span>Invoices</button>
     <button class="nb" onclick="nav('clients',this)"><span class="nb-icon">👥</span>Clients</button>
+    <button class="nb" onclick="nav('journey',this)"><span class="nb-icon">🧭</span>Client Journey</button>
     <button class="nb" onclick="nav('products',this)"><span class="nb-icon">🧴</span>Products</button>
     <button class="nb" onclick="nav('labels',this)"><span class="nb-icon">🏷</span>Shipping Labels</button>
     <button class="nb" onclick="nav('consultations',this)"><span class="nb-icon">📋</span>Consultations</button>
@@ -659,6 +660,36 @@ select.finp{cursor:pointer;}
         </div>
       </div>
       <div id="v-client-profile" style="display:none;"></div>
+    </div>
+
+    <!-- ══════════════ CLIENT JOURNEY ══════════════ -->
+    <div class="view" id="v-journey">
+      <div id="v-journey-list">
+        <div class="section-title">Client Journey</div>
+
+        <!-- Section 1 — Due Today -->
+        <div class="card" style="margin-bottom:1.2rem;">
+          <div class="card-title">📌 Due Today — Manual WhatsApp</div>
+          <div id="journey-due-body"><div class="empty-state" style="padding:1rem;">Loading…</div></div>
+        </div>
+
+        <!-- Section 2 — All Clients -->
+        <div class="card">
+          <div class="card-title">All Clients <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--mid);">paid orders · last 90 days</span></div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>Client</th><th>Order Date</th><th>Stage</th><th>Delivered</th>
+                <th>Progress</th><th>Last Message</th><th>Next Due</th><th>Status</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="journey-clients-tbody"><tr><td colspan="9" class="empty-state">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3 — Client Detail Card -->
+      <div id="v-journey-detail" style="display:none;" data-docid=""></div>
     </div>
 
     <!-- ══════════════ PRODUCTS ══════════════ -->
@@ -1430,6 +1461,7 @@ async function initAdmin() {
         renderDashRecentOrders();
         renderLabelsTable();
         updateDashStats();
+        if(document.getElementById('v-journey')) renderJourney();
       }
       updateOrdersHealthCheck();
       const pending = ORDERS.filter(o => o.status === 'Pending' || o.status === 'pending').length;
@@ -1471,7 +1503,7 @@ window.nav = function(id, btn) {
   document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
   document.getElementById('v-'+id).classList.add('on');
   if(btn) btn.classList.add('on');
-  const titles = {dashboard:'Dashboard',orders:'Orders',invoices:'Invoices',clients:'Clients',products:'Products',labels:'Shipping Labels',consultations:'Consultations',knowledge:'Chatbot Knowledge Base',sitecontent:'Site Content',leads:'Leads',broadcast:'Broadcast Email',productlookup:'Product Lookup',bi:'Business Intelligence'};
+  const titles = {dashboard:'Dashboard',orders:'Orders',invoices:'Invoices',clients:'Clients',journey:'Client Journey',products:'Products',labels:'Shipping Labels',consultations:'Consultations',knowledge:'Chatbot Knowledge Base',sitecontent:'Site Content',leads:'Leads',broadcast:'Broadcast Email',productlookup:'Product Lookup',bi:'Business Intelligence'};
   document.getElementById('topbar-title').textContent = titles[id]||id;
   closeSidebar();
   if(id==='clients'){
@@ -1482,6 +1514,7 @@ window.nav = function(id, btn) {
   if(id==='waitlist') loadWaitlist();
   if(id==='bi') loadBI();
   if(id==='invoices') invInit();
+  if(id==='journey'){ journeyBackToList(); renderJourney(); }
 };
 
 window.openM = function(id){ document.getElementById(id).classList.add('open'); };
@@ -1490,6 +1523,228 @@ window.toggleSidebar = function(){ document.getElementById('sidebar').classList.
 window.closeSidebar = function(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('on'); };
 
 function toast(msg){ const t=document.getElementById('a-toast'); t.textContent=msg; t.style.opacity='1'; setTimeout(()=>t.style.opacity='0',2800); }
+
+// ── CLIENT JOURNEY (Part B) ──────────────────────────────────────────────────
+// Read-only visibility over order.journey (written by the onClientJourney Cloud
+// Function) plus manual one-tap WhatsApp for the 3 pre-Meta moments. All state is
+// stored on order.journey.* — no new collections. Nothing here touches other tabs.
+const JOURNEY_WA = {
+  paymentConfirmed: {
+    label: 'Payment Confirmed', stageField: 'paidAt',
+    ready: o => jIsPaid(o) || !!(o.journey && o.journey.paidAt),
+    msg: (first,id) => `Hi ${first}! 🌿 Payment received for your Najah Chemist order ${id}. Your order is now in production — 2–3 business days. We'll update you when it ships. Check your email for your launch prep guides. Questions? Reply anytime 😊`
+  },
+  productionUpdate: {
+    label: 'Production Update', stageField: 'productionAt',
+    ready: o => ['processing','shipped','complete','completed'].includes(jStatus(o)) || !!(o.journey && o.journey.productionAt),
+    msg: (first,id) => `Hi ${first}! 🌿 Your Najah Chemist order ${id} is now in production. We'll message you when it's ready to ship. Watch your email for today's photography tips 📸`
+  },
+  deliveryCheckin: {
+    label: 'Delivery Check-in', stageField: 'deliveredAt',
+    ready: o => !!(o.journey && o.journey.deliveredAt),
+    msg: (first,id) => `Hi ${first}! 🌿 We hope your Najah Chemist order arrived safely! Please check quantities and store in a cool dry place. Any issues? Message us right away. Ready to launch? Reply here anytime 💚`
+  }
+};
+
+function jEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function jIsPaid(o){ return (o.paymentStatus||o.payStatus||o.payment||'').toLowerCase()==='paid'; }
+function jStatus(o){ return (o.status||'').toLowerCase(); }
+function jDate(v){ if(!v) return null; if(v.toDate) return v.toDate(); if(typeof v==='object'&&v.seconds!=null) return new Date(v.seconds*1000); const d=new Date(v); return isNaN(d.getTime())?null:d; }
+function jOrderDate(o){ return jDate(o.createdAt) || jDate(o.date) || jDate(o.journey&&o.journey.paidAt) || null; }
+function jFirst(o){ return (((o.client||o.customerName||'there').trim().split(/\s+/)[0])||'there'); }
+function jOrderLabel(o){ const raw=String(o.id||o.orderId||o._docId||''); return raw.startsWith('NC-')?raw:('NC-'+raw); }
+function jIntlPhone(o){ const d=(o.whatsapp||o.phone||o.wa||o.customerWhatsApp||'').replace(/\D/g,''); return d.startsWith('876')?'1'+d:d; }
+function jManualState(o,key){ return (o.journey&&o.journey.manualWhatsApp&&o.journey.manualWhatsApp[key])||null; }
+function jManualDue(o,key){
+  const cfg=JOURNEY_WA[key]; if(!cfg.ready(o)) return false;
+  const s=jManualState(o,key);
+  if(s){
+    if(s.status==='sent'||s.status==='skipped') return false;
+    if(s.snoozeUntil){ const su=jDate(s.snoozeUntil); if(su && su>new Date()) return false; }
+  }
+  return true;
+}
+function jProgress(o){
+  const j=o.journey||{}, st=jStatus(o);
+  return {
+    paid:      jIsPaid(o) || !!j.paidAt,
+    production:['processing','shipped','complete','completed'].includes(st) || !!j.productionAt,
+    shipped:   ['shipped','complete','completed'].includes(st) || !!j.shippedAt,
+    delivered: !!j.deliveredAt,
+    wk1:  !!(j.emailsSent && j.emailsSent['8']),
+    mth1: !!(j.emailsSent && j.emailsSent['9']),
+    mth2: !!(j.emailsSent && j.emailsSent['10'])
+  };
+}
+function jStageLabel(o){ const p=jProgress(o);
+  if(p.mth2) return 'Complete'; if(p.delivered) return 'Delivered'; if(p.shipped) return 'Shipped';
+  if(p.production) return 'In Production'; if(p.paid) return 'Paid'; return 'Awaiting Payment'; }
+function jAgo(d){ if(!d) return ''; const ms=Date.now()-d.getTime(); if(ms<0) return '';
+  const days=Math.floor(ms/86400000); if(days>0) return days+'d'; const h=Math.floor(ms/3600000); if(h>0) return h+'h'; return Math.max(1,Math.floor(ms/60000))+'m'; }
+function jWaitingSince(o,key){ const j=o.journey||{}; const d=jDate(j[JOURNEY_WA[key].stageField]); return d || (key==='paymentConfirmed'?jOrderDate(o):null); }
+function jLastMessage(o){ const j=o.journey||{}; let best=null;
+  if(j.emailsSent) Object.keys(j.emailsSent).forEach(n=>{ const d=jDate(j.emailsSent[n]); if(d&&(!best||d>best.d)) best={d,label:'Email '+n}; });
+  if(j.manualWhatsApp) Object.keys(j.manualWhatsApp).forEach(k=>{ const s=j.manualWhatsApp[k]; if(s&&s.status==='sent'){ const d=jDate(s.at); if(d&&(!best||d>best.d)) best={d,label:((JOURNEY_WA[k]&&JOURNEY_WA[k].label)||k)+' WA'}; } });
+  return best?`${best.label}<br><span style="color:var(--mid);">${best.d.toLocaleDateString()}</span>`:'—'; }
+function jNextMessage(o){ const j=o.journey||{};
+  if(!j.paused){ for(const k of Object.keys(JOURNEY_WA)){ if(jManualDue(o,k)) return `${JOURNEY_WA[k].label} WA<br><span style="color:var(--red);">due now</span>`; } }
+  const arr=(j.scheduledEmails||[]).filter(e=>e&&!e.sent);
+  if(arr.length){ arr.sort((a,b)=>((jDate(a.scheduledAt)||0)-(jDate(b.scheduledAt)||0))); const e=arr[0]; const d=jDate(e.scheduledAt);
+    return `Email ${e.emailNumber}<br><span style="color:var(--mid);">${d?d.toLocaleDateString():'scheduled'}</span>`; }
+  if(j.paused) return '<span style="color:var(--mid);">Paused</span>';
+  return '—'; }
+function jStatusBadge(o){ const j=o.journey||{}, p=jProgress(o);
+  if(p.mth2) return '<span class="badge b-complete">Complete</span>';
+  if(j.paused) return '<span class="badge b-cancelled">Paused</span>';
+  for(const k of Object.keys(JOURNEY_WA)){ if(jManualDue(o,k)) return '<span class="badge b-pending">Needs Attention</span>'; }
+  return '<span class="badge b-processing">On Track</span>'; }
+
+function journeyClients(){ const cutoff=Date.now()-90*86400000;
+  return ORDERS.filter(o=>{ if(!jIsPaid(o) && !(o.journey&&o.journey.paidAt)) return false; const d=jOrderDate(o); return !d || d.getTime()>=cutoff; }); }
+
+function renderJourney(){
+  if(!document.getElementById('v-journey')) return;
+  const clients=journeyClients();
+  // Section 1 — Due Today (skip paused clients)
+  const due=[];
+  clients.forEach(o=>{ if(o.journey&&o.journey.paused) return; Object.keys(JOURNEY_WA).forEach(key=>{ if(jManualDue(o,key)) due.push({o,key}); }); });
+  const dueEl=document.getElementById('journey-due-body');
+  if(dueEl){
+    dueEl.innerHTML = due.length ? due.map(({o,key})=>{
+      const cfg=JOURNEY_WA[key], id=jOrderLabel(o), wait=jAgo(jWaitingSince(o,key));
+      const dq="'"+o._docId+"'", kq="'"+key+"'";
+      return `<div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:center;padding:0.6rem 0;border-bottom:1px solid var(--border);">
+        <div><div style="font-weight:700;">${jEsc(o.client||o.customerName||'—')} <span class="pill">${id}</span></div>
+        <div style="font-size:0.78rem;color:var(--mid);margin-top:0.2rem;">${cfg.label} WhatsApp due${wait?' · waiting '+wait:''}</div></div>
+        <div class="btn-group">
+          <button class="btn btn-wa btn-sm" onclick="journeyOpenWA(${dq},${kq})">📱 Open WhatsApp</button>
+          <select class="status-sel" onchange="journeySnooze(${dq},${kq},this.value);this.selectedIndex=0;">
+            <option value="">⏰ Snooze…</option><option value="tomorrow">Tomorrow</option><option value="3days">3 days</option><option value="nextweek">Next week</option>
+          </select>
+          <button class="btn btn-ol btn-sm" onclick="journeySkip(${dq},${kq})">✓ Skip</button>
+        </div></div>`;
+    }).join('') : '<div class="empty-state" style="padding:1rem;">🎉 Nothing due today — all clients are up to date.</div>';
+  }
+  // Section 2 — All Clients
+  const tb=document.getElementById('journey-clients-tbody');
+  if(tb){
+    tb.innerHTML = clients.length ? clients.map(o=>{
+      const p=jProgress(o), id=jOrderLabel(o), od=jOrderDate(o);
+      const dot=(on,label)=>`<span title="${label}" style="color:${on?'#059669':'#C9C6C1'};font-weight:700;">${on?'✓':'○'}</span>`;
+      const prog=dot(p.paid,'Paid')+dot(p.production,'Production')+dot(p.shipped,'Shipped')+dot(p.delivered,'Delivered')+dot(p.wk1,'Week 1')+dot(p.mth1,'Month 1')+dot(p.mth2,'Month 2');
+      return `<tr>
+        <td>${jEsc(o.client||o.customerName||'—')}<div style="font-size:0.7rem;color:var(--mid);">${id}</div></td>
+        <td style="white-space:nowrap;">${od?od.toLocaleDateString():'—'}</td>
+        <td>${jStageLabel(o)}</td>
+        <td>${p.delivered?'<span class="badge b-shipped">Delivered</span>':'<span class="badge b-pending">Not yet</span>'}</td>
+        <td style="letter-spacing:0.18em;white-space:nowrap;font-size:0.85rem;">${prog}</td>
+        <td style="font-size:0.75rem;">${jLastMessage(o)}</td>
+        <td style="font-size:0.75rem;">${jNextMessage(o)}</td>
+        <td>${jStatusBadge(o)}</td>
+        <td><button class="btn btn-ol btn-sm" onclick="journeyViewDetail('${o._docId}')">View</button></td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="9" class="empty-state">No paid orders in the last 90 days.</td></tr>';
+  }
+  // Refresh detail if it is currently open
+  const dw=document.getElementById('v-journey-detail');
+  if(dw && dw.style.display!=='none' && dw.dataset.docid) journeyRenderDetail(dw.dataset.docid);
+}
+
+function journeyRenderDetail(docId){
+  const dw=document.getElementById('v-journey-detail'); if(!dw) return;
+  const o=ORDERS.find(x=>x._docId===docId);
+  if(!o){ dw.innerHTML='<button class="btn btn-ol btn-sm" onclick="journeyBackToList()">← Back</button><div class="empty-state" style="margin-top:1rem;">Order not found.</div>'; return; }
+  const j=o.journey||{}, id=jOrderLabel(o), p=jProgress(o);
+  const items=(Array.isArray(o.items)&&o.items.length)
+    ? o.items.map(i=>`${jEsc(i.name)}${i.size&&i.size!=='—'?' — '+jEsc(i.size):''} ×${i.qty||1}`).join('<br>')
+    : jEsc(o.product||'—');
+  const total=o.total?'J$'+Number(o.total).toLocaleString():'—';
+  const od=jOrderDate(o);
+  const timeline=[['Paid',j.paidAt,p.paid],['In Production',j.productionAt,p.production],['Shipped',j.shippedAt,p.shipped],['Delivered',j.deliveredAt,p.delivered]]
+    .map(([lbl,ts,on])=>{ const d=jDate(ts); return `<div style="display:flex;gap:0.6rem;align-items:center;padding:0.3rem 0;"><span style="color:${on?'#059669':'#C9C6C1'};font-weight:700;">${on?'✓':'○'}</span><span style="min-width:120px;">${lbl}</span><span style="font-size:0.75rem;color:var(--mid);">${d?d.toLocaleString():''}</span></div>`; }).join('');
+  const emailRows=[];
+  for(let n=1;n<=10;n++){ const sent=j.emailsSent&&j.emailsSent[n]; if(sent){ const d=jDate(sent); emailRows.push(`<div style="padding:0.2rem 0;"><span class="badge b-complete">Sent</span> Email ${n} <span style="color:var(--mid);font-size:0.72rem;">· ${d?d.toLocaleString():''} · Email</span></div>`); } }
+  (j.scheduledEmails||[]).filter(e=>e&&!e.sent).sort((a,b)=>((jDate(a.scheduledAt)||0)-(jDate(b.scheduledAt)||0)))
+    .forEach(e=>{ const d=jDate(e.scheduledAt); emailRows.push(`<div style="padding:0.2rem 0;"><span class="badge b-pending">Scheduled</span> Email ${e.emailNumber} <span style="color:var(--mid);font-size:0.72rem;">· ${d?d.toLocaleString():''}</span></div>`); });
+  if(!emailRows.length) emailRows.push('<div style="color:var(--mid);font-size:0.8rem;">No emails yet.</div>');
+  const waHist=[], waBtns=[];
+  Object.keys(JOURNEY_WA).forEach(key=>{ const cfg=JOURNEY_WA[key], s=jManualState(o,key);
+    if(s&&s.status==='sent'){ const d=jDate(s.at); waHist.push(`<div style="padding:0.2rem 0;"><span class="badge b-shipped">WhatsApp</span> ${cfg.label} <span style="color:var(--mid);font-size:0.72rem;">· ${d?d.toLocaleString():''}</span></div>`); }
+    else if(s&&s.status==='skipped'){ waHist.push(`<div style="padding:0.2rem 0;"><span class="badge b-cancelled">Skipped</span> ${cfg.label}</div>`); }
+    if(cfg.ready(o) && !(s&&(s.status==='sent'||s.status==='skipped'))) waBtns.push(`<button class="btn btn-wa btn-sm" onclick="journeyOpenWA('${docId}','${key}')">📱 ${cfg.label}</button>`);
+  });
+  if(!waHist.length) waHist.push('<div style="color:var(--mid);font-size:0.8rem;">No WhatsApp messages sent yet.</div>');
+  const markDelivered=(p.shipped&&!p.delivered)?`<button class="btn btn-dk btn-sm" onclick="journeyMarkDelivered('${docId}')">📦 Mark as Delivered</button>`:'';
+  const pauseBtn=j.paused?`<button class="btn btn-gr btn-sm" onclick="journeyResume('${docId}')">▶ Resume Journey</button>`:`<button class="btn btn-ol btn-sm" onclick="journeyPause('${docId}')">⏸ Pause Journey</button>`;
+  const notes=jEsc(j.notes||'');
+  dw.innerHTML=`
+    <button class="btn btn-ol btn-sm" onclick="journeyBackToList()" style="margin-bottom:1rem;">← Back to Client Journey</button>
+    <div class="section-title" style="margin-bottom:0.8rem;">${jEsc(o.client||o.customerName||'—')} <span class="pill">${id}</span> ${jStatusBadge(o)}</div>
+    <div class="btn-group" style="margin-bottom:1.2rem;">${markDelivered}${pauseBtn}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;">
+      <div class="card">
+        <div class="card-title">Order Summary</div>
+        <div style="font-size:0.85rem;line-height:1.9;">
+          <div><strong>Order:</strong> ${id}</div>
+          <div><strong>Date:</strong> ${od?od.toLocaleString():'—'}</div>
+          <div><strong>Total:</strong> ${total}</div>
+          <div><strong>Payment:</strong> ${jEsc(o.paymentStatus||o.payment||'—')}</div>
+          <div><strong>Status:</strong> ${jEsc(o.status||'—')}</div>
+          <div style="margin-top:0.5rem;"><strong>Items:</strong><br>${items}</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Journey Timeline</div>
+        ${timeline}
+      </div>
+      <div class="card">
+        <div class="card-title">Emails</div>
+        ${emailRows.join('')}
+      </div>
+      <div class="card">
+        <div class="card-title">WhatsApp</div>
+        ${waHist.join('')}
+        ${waBtns.length?`<div class="btn-group" style="margin-top:0.7rem;">${waBtns.join('')}</div>`:''}
+      </div>
+    </div>
+    <div class="card" style="margin-top:1rem;">
+      <div class="card-title">Internal Notes</div>
+      <textarea id="journey-notes-${jEsc(docId)}" onblur="journeySaveNotes('${docId}',this.value)" placeholder="Private notes about this client…" style="width:100%;min-height:80px;padding:0.6rem;border:1px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:0.85rem;resize:vertical;">${notes}</textarea>
+      <div style="font-size:0.7rem;color:var(--mid);margin-top:0.3rem;">Saves automatically when you click away.</div>
+    </div>`;
+}
+
+window.journeyViewDetail=function(docId){ const dw=document.getElementById('v-journey-detail'), lw=document.getElementById('v-journey-list'); if(!dw||!lw) return; dw.dataset.docid=docId; lw.style.display='none'; dw.style.display=''; journeyRenderDetail(docId); };
+window.journeyBackToList=function(){ const dw=document.getElementById('v-journey-detail'), lw=document.getElementById('v-journey-list'); if(!dw||!lw) return; dw.style.display='none'; dw.dataset.docid=''; lw.style.display=''; };
+window.journeyOpenWA=async function(docId,key){
+  const o=ORDERS.find(x=>x._docId===docId); if(!o){ toast('Order not found'); return; }
+  const cfg=JOURNEY_WA[key], phone=jIntlPhone(o);
+  if(!phone){ toast('No WhatsApp number on this order'); return; }
+  window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(cfg.msg(jFirst(o),jOrderLabel(o))),'_blank');
+  try{ await updateDoc(doc(db,'orders',docId),{ [`journey.manualWhatsApp.${key}.status`]:'sent', [`journey.manualWhatsApp.${key}.at`]:serverTimestamp(), [`journey.manualWhatsApp.${key}.channel`]:'WhatsApp' }); toast(cfg.label+' WhatsApp logged as sent'); }
+  catch(e){ toast('Send opened, but logging failed: '+e.message); }
+};
+window.journeySkip=async function(docId,key){
+  try{ await updateDoc(doc(db,'orders',docId),{ [`journey.manualWhatsApp.${key}.status`]:'skipped', [`journey.manualWhatsApp.${key}.at`]:serverTimestamp() }); toast('Marked as done (skipped)'); }
+  catch(e){ toast('Failed: '+e.message); }
+};
+window.journeySnooze=async function(docId,key,when){
+  if(!when) return; const now=new Date(), until=new Date(now);
+  if(when==='tomorrow') until.setDate(now.getDate()+1);
+  else if(when==='3days') until.setDate(now.getDate()+3);
+  else if(when==='nextweek') until.setDate(now.getDate()+7);
+  else return;
+  until.setHours(6,0,0,0);
+  try{ await updateDoc(doc(db,'orders',docId),{ [`journey.manualWhatsApp.${key}.snoozeUntil`]:until, [`journey.manualWhatsApp.${key}.status`]:'snoozed' }); toast('Snoozed until '+until.toLocaleDateString()); }
+  catch(e){ toast('Failed: '+e.message); }
+};
+window.journeyMarkDelivered=async function(docId){
+  try{ await updateDoc(doc(db,'orders',docId),{ 'journey.deliveredAt':serverTimestamp(), 'journey.stage':'delivered' }); toast('Marked as delivered — delivery + follow-up emails scheduled'); }
+  catch(e){ toast('Failed: '+e.message); }
+};
+window.journeyPause=async function(docId){ try{ await updateDoc(doc(db,'orders',docId),{'journey.paused':true}); toast('Journey paused'); }catch(e){ toast('Failed: '+e.message); } };
+window.journeyResume=async function(docId){ try{ await updateDoc(doc(db,'orders',docId),{'journey.paused':false}); toast('Journey resumed'); }catch(e){ toast('Failed: '+e.message); } };
+window.journeySaveNotes=async function(docId,val){ try{ await updateDoc(doc(db,'orders',docId),{'journey.notes':val}); toast('Notes saved'); }catch(e){ toast('Notes save failed: '+e.message); } };
 
 // ── DASHBOARD ──
 function _getRevenueDateRange(filter) {
