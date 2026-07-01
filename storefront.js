@@ -1686,7 +1686,7 @@ window.sfCheckoutWA = function() {
     const WA = window.WA_NUMBER || '18768851099';
     const fillingLine = fillingFee > 0 ? '\n🧴 Container Filling Service: J$' + fillingFee.toLocaleString() : '';
     const grandTotal = total + fillingFee;
-    const msg = 'Hi Najah Chemist! I would like to place an order.\n\nORDER ID: ' + orderId + '\n\nCUSTOMER\nName: ' + name + (phone?'\nPhone: '+phone:'') + deliveryAddr.waBlock + '\n\nORDER\n' + items + '\n\nSUBTOTAL: J$' + rawSub.toLocaleString() + discountNote + '\nSHIPPING: ' + shipDetail + fillingLine + '\nTOTAL: J$' + grandTotal.toLocaleString() + '\n\nPAYMENT\nI understand payment is required upfront (no COD).\nI will pay via bank transfer, Fygaro, or Lynk.\n\nPlease confirm my order. Thank you!';
+    const msg = 'Hi Najah Chemist! I would like to place an order.\n\nORDER ID: ' + orderId + '\n\nCUSTOMER\nName: ' + name + (phone?'\nPhone: '+phone:'') + deliveryAddr.waBlock + '\n\nORDER\n' + items + '\n\nSUBTOTAL: J$' + rawSub.toLocaleString() + discountNote + '\nSHIPPING: ' + shipDetail + fillingLine + '\nTOTAL: J$' + grandTotal.toLocaleString() + '\n\nI am ready to pay now. Please find payment details below.\n\nPAYMENT OPTIONS:\n• Bank Transfer: NCB JMD Account 354-747-294\n• Card Payment: najahchemistja.com (Fygaro)\n• Lynk: @najahchemist\n\nI will send proof of payment once done.';
     window.open('https://wa.me/' + WA + '?text=' + encodeURIComponent(msg), '_blank');
 
     document.getElementById('cf-order-id').textContent = orderId;
@@ -1833,7 +1833,7 @@ window.sfCheckoutFygaro = function() {
   // 1b. Open WhatsApp with the order (same as bank transfer flow) — synchronous
   //     to avoid browser popup block — with the Fygaro payment link included.
   const WA = window.WA_NUMBER || '18768851099';
-  const waMsg = 'New Order — ' + orderId + '\n\nCUSTOMER\nName: ' + name + (phone ? '\nPhone: ' + phone : '') + deliveryAddr.waBlock + '\n\nORDER\n' + items + '\n\nSUBTOTAL: J$' + rawSub.toLocaleString() + discountNote + '\nSHIPPING: ' + shipDetail + '\nTOTAL: J$' + cardTotal.toLocaleString() + ' (includes 15% card processing fee)\n\nPAYMENT\nPaying by card via Fygaro.\n👉 Pay by card here: ' + fygaroLink + '\n\nPlease confirm my order. Thank you!';
+  const waMsg = 'New Order — ' + orderId + '\n\nCUSTOMER\nName: ' + name + (phone ? '\nPhone: ' + phone : '') + deliveryAddr.waBlock + '\n\nORDER\n' + items + '\n\nSUBTOTAL: J$' + rawSub.toLocaleString() + discountNote + '\nSHIPPING: ' + shipDetail + '\nTOTAL: J$' + cardTotal.toLocaleString() + ' (includes 15% card processing fee)\n\nI am ready to pay now. Please find payment details below.\n\nPAYMENT OPTIONS:\n👉 Pay by card here: ' + fygaroLink + '\n• Bank Transfer: NCB JMD Account 354-747-294\n• Lynk: @najahchemist\n\nI will send proof of payment once done.';
   window.open('https://wa.me/' + WA + '?text=' + encodeURIComponent(waMsg), '_blank');
 
   // 2. Show confirmation modal
@@ -2314,7 +2314,7 @@ window.sfAddUpsellItem = async function(productId, discPrice, btn) {
     + '\n\nSUBTOTAL: J$' + newRawSub.toLocaleString() + discountNote
     + '\nSHIPPING: ' + shipDetail
     + '\nTOTAL: J$' + newTotal.toLocaleString()
-    + '\n\nPAYMENT\nI understand payment is required upfront (no COD).\nI will pay via bank transfer, Fygaro, or Lynk.\n\nPlease confirm my updated order. Thank you!';
+    + '\n\nI am ready to pay now for my updated order. Please find payment details below.\n\nPAYMENT OPTIONS:\n• Bank Transfer: NCB JMD Account 354-747-294\n• Card Payment: najahchemistja.com (Fygaro)\n• Lynk: @najahchemist\n\nI will send proof of payment once done.';
   var WA = window.WA_NUMBER || '18768851099';
   window.open('https://wa.me/' + WA + '?text=' + encodeURIComponent(waMsg), '_blank');
 
