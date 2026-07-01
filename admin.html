@@ -1576,8 +1576,12 @@ function jOrderDate(o){ return jDate(o.createdAt) || jDate(o.date) || jDate(o.jo
 function jFirst(o){ return (((o.client||o.customerName||'there').trim().split(/\s+/)[0])||'there'); }
 function jOrderLabel(o){ const raw=String(o.id||o.orderId||o._docId||''); return raw.startsWith('NC-')?raw:('NC-'+raw); }
 function jIntlPhone(o){ const d=(o.whatsapp||o.phone||o.wa||o.customerWhatsApp||'').replace(/\D/g,''); return d.startsWith('876')?'1'+d:d; }
-// WhatsApp-only when the Cloud Function flagged emailAvailable=false, or the order simply has no email.
-function jHasEmail(o){ if(o.journey && o.journey.emailAvailable===false) return false; return !!((o.email||o.customerEmail||'').trim()); }
+// Has-email reflects the order's CURRENT email address (source of truth), not the
+// journey.emailAvailable flag — so adding an email later flips a client out of
+// WhatsApp-only mode immediately. The flag stays as an informational skip marker
+// written by the Cloud Function; the email sequence resumes from the current stage
+// on the next transition/scheduled send (it never restarts).
+function jHasEmail(o){ return !!((o.email||o.customerEmail||'').trim()); }
 // The 10 sequence WhatsApp buttons for a client, with a ✓ on any already logged as sent.
 function journeySeqButtons(o){ const seq=(o.journey&&o.journey.manualSeqSent)||{};
   return Object.keys(JOURNEY_WA_FULL).map(n=>{ const m=JOURNEY_WA_FULL[n]; const done=!!jDate(seq[n]);
@@ -1637,6 +1641,8 @@ function renderJourney(){
   // Section 1 — Due Today (skip paused clients)
   const due=[];
   clients.forEach(o=>{ if(o.journey&&o.journey.paused) return; if(!jHasEmail(o)) return; Object.keys(JOURNEY_WA).forEach(key=>{ if(jManualDue(o,key)) due.push({o,key}); }); });
+  // Most overdue first (oldest waiting-since at the top), not alphabetical.
+  due.sort((a,b)=>((jWaitingSince(a.o,a.key)||new Date()).getTime()) - ((jWaitingSince(b.o,b.key)||new Date()).getTime()));
   const dueEl=document.getElementById('journey-due-body');
   if(dueEl){
     dueEl.innerHTML = due.length ? due.map(({o,key})=>{
@@ -1784,13 +1790,27 @@ window.journeyMarkDelivered=async function(docId){
   try{ await updateDoc(doc(db,'orders',docId),{ 'journey.deliveredAt':serverTimestamp(), 'journey.stage':'delivered' }); toast('Marked as delivered — delivery + follow-up emails scheduled'); }
   catch(e){ toast('Failed: '+e.message); }
 };
-window.journeyPause=async function(docId){ try{ await updateDoc(doc(db,'orders',docId),{'journey.paused':true}); toast('Journey paused'); }catch(e){ toast('Failed: '+e.message); } };
-window.journeyResume=async function(docId){ try{ await updateDoc(doc(db,'orders',docId),{'journey.paused':false}); toast('Journey resumed'); }catch(e){ toast('Failed: '+e.message); } };
+window.journeyPause=async function(docId){ try{ await updateDoc(doc(db,'orders',docId),{'journey.paused':true,'journey.pausedAt':serverTimestamp()}); toast('Journey paused'); }catch(e){ toast('Failed: '+e.message); } };
+window.journeyResume=async function(docId){
+  const o=ORDERS.find(x=>x._docId===docId); if(!o){ toast('Order not found'); return; }
+  const j=o.journey||{}, upd={'journey.paused':false,'journey.pausedAt':null};
+  // Resume from where it stopped: push every unsent scheduled email forward by the
+  // paused duration so the remaining intervals are preserved (no catch-up burst).
+  const pausedAt=jDate(j.pausedAt);
+  if(pausedAt && Array.isArray(j.scheduledEmails) && j.scheduledEmails.length){
+    const delta=Date.now()-pausedAt.getTime();
+    if(delta>0) upd['journey.scheduledEmails']=j.scheduledEmails.map(e=>{ if(e&&!e.sent){ const at=jDate(e.scheduledAt); if(at) return {...e,scheduledAt:new Date(at.getTime()+delta)}; } return e; });
+  }
+  try{ await updateDoc(doc(db,'orders',docId),upd); toast('Journey resumed'+(upd['journey.scheduledEmails']?' — schedule shifted by pause duration':'')); }catch(e){ toast('Failed: '+e.message); }
+};
 window.journeySaveNotes=async function(docId,val){ try{ await updateDoc(doc(db,'orders',docId),{'journey.notes':val}); toast('Notes saved'); }catch(e){ toast('Notes save failed: '+e.message); } };
 window.journeyOpenSeqWA=async function(docId,n){
   const o=ORDERS.find(x=>x._docId===docId); if(!o){ toast('Order not found'); return; }
   const m=JOURNEY_WA_FULL[n], phone=jIntlPhone(o);
   if(!phone){ toast('No WhatsApp number on this order'); return; }
+  // Guard against accidental duplicate sends; still allows an intentional resend.
+  const prevSent=jDate(((o.journey&&o.journey.manualSeqSent)||{})[n]);
+  if(prevSent && !confirm(`Message ${n} (${m.label}) was already sent on ${prevSent.toLocaleString()}.\n\nSend it again?`)) return;
   window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(m.msg(jFirst(o),jOrderLabel(o))),'_blank');
   try{ await updateDoc(doc(db,'orders',docId),{ [`journey.manualSeqSent.${n}`]:serverTimestamp() }); toast('Message '+n+' ('+m.label+') logged as sent'); }
   catch(e){ toast('Opened, but logging failed: '+e.message); }
