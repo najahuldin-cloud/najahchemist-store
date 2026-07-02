@@ -2360,8 +2360,9 @@ CONTAINERS (per unit):
 MOQ & TURNAROUND:
 - Existing private label products: 1 litre or 2 lbs minimum
 - New custom products (first bulk order): 5 gallons minimum
-- Existing products turnaround: 7-10 business days after payment
-- New custom products: 14-21 business days after R&D fee received
+- Ready-made (in-stock) products: 2-3 business days after payment
+- Customisation of an existing product (add acid, change scent, custom batch): 7-10 business days after payment
+- New custom formulations (from scratch): 14-21 business days after R&D fee received
 
 PAYMENT:
 - Bank transfer (NCB), Lynk, or Fygaro (card) only
@@ -2797,12 +2798,14 @@ Payment received — thank you! 🎉
 
 Your order [Order ID] is now in our production queue.
 
-Here's what happens next:
-✓ Order review (today)
-✓ Production: 2–3 business days
-✓ Quality check
-✓ Packaging
-✓ Shipping — you'll get a notification when it's on the way
+Your order has been confirmed and our team will begin processing it shortly.
+
+Production time depends on the type of order you've placed:
+• Ready-made products: typically 2–3 business days
+• Customisation of an existing product: typically 7–10 business days
+• New custom formulations: typically 14–21 business days
+
+We'll keep you updated throughout the process and notify you as soon as your order is ready to ship.
 
 We'll be sending you a series of guides over the next few days to help you prepare for your launch while we manufacture your products. Watch your inbox!
 
